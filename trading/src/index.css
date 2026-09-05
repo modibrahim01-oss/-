@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    @apply bg-ink-900 text-paper-100;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* منع الجوال من تكبير الخط تلقائياً في الوضع الأفقي */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* هذا دفتر أرقام: كل رقم يشغل نفس العرض حتى تصطف الأعمدة عمودياً. */
+  input[type='number'],
+  input[inputmode='decimal'],
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  /* الأرقام دائماً غربية ومن اليسار لليمين حتى داخل نص عربي. */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+
+  /* إخفاء أسهم حقول الأرقام — الإدخال من لوحة المفاتيح الرقمية على الجوال */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /* تقويم المتصفح أبيض على داكن */
+  input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(0.75);
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: rgba(201, 162, 39, 0.3);
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /* خط الدفتر: الفاصل الأساسي في هذا التصميم بدل حواف البطاقات وظلالها. */
+  .rule {
+    @apply border-b border-rule;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-rule bg-ink-600 px-3 py-3 text-paper-100
+           outline-none transition placeholder:text-paper-700
+           focus:border-proj/60 focus:ring-1 focus:ring-proj/30;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium
+           transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn bg-paper-100 text-ink-900 hover:bg-white;
+  }
+
+  .btn-ghost {
+    @apply btn border border-rule-strong text-paper-300 hover:bg-ink-700 hover:text-paper-100;
+  }
+
+  .btn-danger {
+    @apply btn border border-loss/40 text-loss hover:bg-loss/10;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[13px] text-paper-500;
+  }
+}
+
+/* شريط تمرير رفيع لا يقطع الإحساس الورقي */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(232, 230, 225, 0.14);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
