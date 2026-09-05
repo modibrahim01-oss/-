@@ -1,0 +1,121 @@
+{
+  "app": {
+    "name": "إتقان المقاس",
+    "tagline": "إدارة طلبات الكراتين"
+  },
+  "nav": {
+    "dashboard": "لوحتي",
+    "orders": "طلباتي",
+    "newOrder": "طلب جديد",
+    "clients": "عملائي",
+    "account": "حسابي",
+    "companyDashboard": "لوحة الشركة",
+    "allOrders": "كل الطلبات",
+    "repsPerformance": "أداء المندوبين",
+    "clientsAnalysis": "تحليل العملاء",
+    "users": "المستخدمون",
+    "withdrawals": "المسحوبات",
+    "auditLog": "سجل التدقيق",
+    "import": "الاستيراد",
+    "logout": "تسجيل الخروج"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "submit": "دخول",
+    "error": "بيانات الدخول غير صحيحة"
+  },
+  "orders": {
+    "orderNumber": "رقم الطلب",
+    "client": "العميل",
+    "orderDate": "تاريخ التعميد",
+    "costCarton": "تكلفة الكرتون",
+    "costMold": "تكلفة القالب",
+    "costPlate": "تكلفة الكليشة",
+    "costShipping": "تكلفة الشحن",
+    "factoryCost": "تكلفة المصنع",
+    "clientPrice": "سعر العميل",
+    "profit": "الربح",
+    "profitExVat": "الربح بدون ضريبة",
+    "vatDue": "ضريبة القيمة المضافة",
+    "repShare": "حصة المندوب",
+    "companyShare": "حصة الشركة",
+    "marginPct": "هامش الربح",
+    "status": "الحالة",
+    "needsReview": "يحتاج مراجعة",
+    "save": "حفظ",
+    "cancel": "إلغاء"
+  },
+  "stages": {
+    "plate": "الكليشة",
+    "mold": "القالب",
+    "processing": "قيد التنفيذ",
+    "ordered_from_factory": "طُلب من المصنع",
+    "carton_ready": "الكرتون جاهز",
+    "shipped": "تم الشحن",
+    "received": "تم الاستلام",
+    "not_yet": "لم يبدأ",
+    "in_progress": "جاري",
+    "done": "تم"
+  },
+  "clients": {
+    "name": "اسم العميل",
+    "phone": "الجوال",
+    "city": "المدينة",
+    "vatNumber": "الرقم الضريبي",
+    "similarWarning": "يوجد عميل مشابه",
+    "totalPurchases": "إجمالي المشتريات",
+    "remaining": "المتبقي عليه"
+  },
+  "dashboard": {
+    "ordersThisMonth": "عدد الطلبات هذا الشهر",
+    "salesThisMonth": "مبيعاتي هذا الشهر",
+    "profitThisMonth": "ربحي هذا الشهر",
+    "commissionDue": "عمولتي المستحقة",
+    "remainingAfterWithdrawals": "المتبقي لي بعد المسحوبات",
+    "last6Months": "آخر 6 أشهر"
+  },
+  "company": {
+    "totalSales": "إجمالي المبيعات",
+    "totalCost": "إجمالي التكلفة",
+    "totalProfit": "إجمالي الربح",
+    "avgMargin": "متوسط الهامش",
+    "vatDue": "الضريبة المستحقة",
+    "concentrationAlert": "تحذير: تركّز العملاء",
+    "lowMarginAlert": "هامش منخفض"
+  },
+  "withdrawals": {
+    "amount": "المبلغ",
+    "date": "التاريخ",
+    "note": "ملاحظة",
+    "rep": "المندوب",
+    "balance": "الرصيد المتبقي"
+  },
+  "import": {
+    "step1": "رفع الملف",
+    "step2": "معاينة",
+    "step3": "تأكيد",
+    "upload": "رفع",
+    "preview": "معاينة المشاكل",
+    "confirm": "تأكيد الاستيراد",
+    "missingDate": "تاريخ مفقود",
+    "conflict": "تعارض بيانات",
+    "duplicate": "تكرار محتمل",
+    "adjustment": "قيد تسوية"
+  },
+  "common": {
+    "sar": "ر.س",
+    "search": "بحث",
+    "filter": "فلترة",
+    "export": "تصدير",
+    "loading": "جارٍ التحميل...",
+    "noData": "لا توجد بيانات",
+    "back": "رجوع",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "add": "إضافة",
+    "confirm": "تأكيد",
+    "close": "إغلاق"
+  }
+}
