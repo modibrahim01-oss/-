@@ -41,12 +41,18 @@ npm run dev
 
 ### تجهيز قاعدة البيانات
 
-طبّق ملفات `supabase/migrations/` بالترتيب الرقمي (عبر Supabase CLI أو محرر
-SQL في لوحة Supabase):
+**الأسهل — ملف واحد:** افتح مشروعك في Supabase ← `SQL Editor` ← `New query`،
+والصق محتوى **`supabase/schema.sql`** كاملًا ثم اضغط `Run`. هذا الملف يجمع
+ملفات الترحيل العشرة بالترتيب الصحيح (12 جدولًا، 25 سياسة RLS، 8 triggers).
+
+**أو** عبر Supabase CLI بملفات الترحيل المنفصلة:
 
 ```bash
-supabase db push          # أو نفّذ كل ملف يدويًا بالترتيب
+supabase db push          # أو نفّذ كل ملف في supabase/migrations/ بالترتيب
 ```
+
+> `supabase/schema.sql` مولَّد آليًا. بعد أي تعديل على ملفات الترحيل أعد
+> توليده بـ `./scripts/build-schema.sh` حتى لا يتباعد الملفان.
 
 ثم أنشئ أول حساب مشرف من لوحة Supabase Auth مع `user_metadata`:
 
