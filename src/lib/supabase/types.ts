@@ -109,6 +109,23 @@ export interface WithdrawalRow {
   created_at: string;
 }
 
+export type AttachmentKind =
+  | "plate_design"
+  | "factory_invoice"
+  | "client_invoice"
+  | "shipping"
+  | "other";
+
+export interface AttachmentRow {
+  id: string;
+  order_id: string;
+  file_path: string;
+  file_name: string;
+  kind: AttachmentKind;
+  uploaded_by: string | null;
+  uploaded_at: string;
+}
+
 export interface AdjustmentRow {
   id: string;
   profit: number;
