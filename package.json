@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:db": "./scripts/test-db.sh"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.1.6",

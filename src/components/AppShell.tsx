@@ -9,6 +9,7 @@ const REP_NAV = [
   { href: "/orders/new", label: "طلب جديد" },
   { href: "/clients", label: "عملائي" },
   { href: "/account", label: "حسابي" },
+  { href: "/notifications", label: "التنبيهات" },
 ];
 
 const ADMIN_NAV = [
@@ -18,8 +19,10 @@ const ADMIN_NAV = [
   { href: "/admin/clients", label: "تحليل العملاء" },
   { href: "/admin/users", label: "المستخدمون" },
   { href: "/admin/withdrawals", label: "المسحوبات" },
+  { href: "/admin/reports", label: "التقارير" },
   { href: "/admin/audit", label: "سجل التدقيق" },
   { href: "/admin/import", label: "الاستيراد" },
+  { href: "/notifications", label: "التنبيهات" },
 ];
 
 export function AppShell({

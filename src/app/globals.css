@@ -23,3 +23,22 @@
     display: inline-block;
   }
 }
+
+/* الطباعة/حفظ PDF: المتصفح يتكفّل بتشكيل الحروف العربية واتجاهها بشكل
+   صحيح، وهو أضمن من توليد PDF على الخادم بخطوط عربية. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .print-page {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}
