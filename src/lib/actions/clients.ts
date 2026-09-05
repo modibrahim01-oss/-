@@ -84,13 +84,53 @@ export async function createClientAction(
   return { error: null, success: "تم حفظ العميل" };
 }
 
-export async function updateClientOwnerAction(clientId: string, ownerId: string) {
+/**
+ * تحويل عميل من مندوب لآخر (القسم 2: "عملاء لم يُسجَّلوا باسمه إلا إذا
+ * حوّلهم المشرف له"). المشرف فقط.
+ *
+ * الطلبات السابقة تبقى منسوبة لمندوبها الأصلي بعمولاتها كما هي — التحويل
+ * ينقل ملكية العميل وطلباته المستقبلية فقط، ولا يعيد كتابة عمولة مستحقة
+ * سبق أن كُسبت. سياسة RLS تعتمد على orders.rep_id لا على clients.owner_id،
+ * فالمندوب الأصلي يبقى يرى طلباته القديمة، والمندوب الجديد لا يراها.
+ */
+export async function transferClientAction(
+  _prev: ClientActionState,
+  formData: FormData,
+): Promise<ClientActionState> {
   const user = await requireUser();
-  if (user.profile.role !== "admin") throw new Error("غير مصرّح");
+  if (user.profile.role !== "admin") return { error: "غير مصرّح" };
+
+  const clientId = String(formData.get("clientId") ?? "");
+  const ownerIdRaw = String(formData.get("ownerId") ?? "");
+  if (!clientId) return { error: "لم يُحدَّد العميل" };
+
+  // قيمة فارغة تعني إلغاء الإسناد (عميل يديره المشرف مباشرة)
+  const ownerId = ownerIdRaw === "" ? null : ownerIdRaw;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("clients").update({ owner_id: ownerId }).eq("id", clientId);
-  if (error) throw new Error(error.message);
+
+  if (ownerId) {
+    const { data: target } = await supabase
+      .from("users")
+      .select("id, role, is_active, full_name")
+      .eq("id", ownerId)
+      .single<{ id: string; role: string; is_active: boolean; full_name: string }>();
+
+    if (!target) return { error: "المندوب المستهدف غير موجود" };
+    if (!target.is_active) return { error: `حساب ${target.full_name} معطّل` };
+    if (target.role !== "rep" && target.role !== "admin") {
+      return { error: "لا يمكن إسناد العميل لهذا الحساب" };
+    }
+  }
+
+  const { error } = await supabase
+    .from("clients")
+    .update({ owner_id: ownerId })
+    .eq("id", clientId);
+  if (error) return { error: `تعذّر تحويل العميل: ${error.message}` };
 
   revalidatePath("/admin/clients");
+  revalidatePath("/admin/clients/assign");
+  revalidatePath("/clients");
+  return { error: null, success: "تم تحويل العميل" };
 }

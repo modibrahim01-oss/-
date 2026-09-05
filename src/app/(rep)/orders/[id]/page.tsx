@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { StageBar } from "@/components/StageBar";
@@ -54,11 +55,25 @@ export default async function OrderDetailPage({
             {order.raw.client?.name ?? "—"} · <span className="nums">{formatDate(f.order_date)}</span>
           </p>
         </div>
-        {f.needs_review ? (
-          <span className="rounded-lg bg-warn-50 text-warn-700 px-3 py-1 text-sm font-medium">
-            يحتاج مراجعة: {order.raw.review_reason ?? "—"}
-          </span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {f.needs_review ? (
+            <span className="rounded-lg bg-warn-50 text-warn-700 px-3 py-1 text-sm font-medium">
+              يحتاج مراجعة: {order.raw.review_reason ?? "—"}
+            </span>
+          ) : null}
+          {order.raw.deleted_at ? (
+            <span className="rounded-lg bg-gray-100 text-gray-600 px-3 py-1 text-sm font-medium">
+              طلب محذوف
+            </span>
+          ) : (
+            <Link
+              href={`/orders/${id}/edit`}
+              className="rounded-lg border border-brand-500 text-brand-700 px-4 py-1.5 text-sm font-medium hover:bg-brand-50"
+            >
+              تعديل الطلب
+            </Link>
+          )}
+        </div>
       </div>
 
       <Card title="مراحل الطلب">

@@ -172,6 +172,37 @@ export async function listClients(ownerId?: string): Promise<ClientRow[]> {
   return (data ?? []) as ClientRow[];
 }
 
+export interface ClientWithOwner extends ClientRow {
+  owner: { id: string; full_name: string } | null;
+  ordersCount: number;
+}
+
+/**
+ * كل العملاء مع مندوبهم المسؤول وعدد طلباتهم — لشاشة إسناد/تحويل العملاء
+ * (للمشرف). عدّ الطلبات يوضّح للمشرف كم طلبًا سيبقى منسوبًا للمندوب الأصلي
+ * بعد التحويل.
+ */
+export async function listClientsWithOwners(): Promise<ClientWithOwner[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select(`*, owner:users!clients_owner_id_fkey(id, full_name)`)
+    .order("name");
+  if (error) throw new Error(error.message);
+
+  const clients = (data ?? []) as unknown as (ClientRow & {
+    owner: { id: string; full_name: string } | null;
+  })[];
+
+  const { data: orderRows } = await supabase.from("orders").select("client_id");
+  const counts = new Map<string, number>();
+  for (const row of (orderRows ?? []) as { client_id: string }[]) {
+    counts.set(row.client_id, (counts.get(row.client_id) ?? 0) + 1);
+  }
+
+  return clients.map((c) => ({ ...c, ordersCount: counts.get(c.id) ?? 0 }));
+}
+
 export async function getClient(id: string): Promise<ClientRow | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("clients").select("*").eq("id", id).single();

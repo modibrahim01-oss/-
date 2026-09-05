@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientAction, type ClientActionState } from "@/lib/actions/clients";
 
@@ -11,9 +11,9 @@ export function ClientForm() {
   const [state, formAction, pending] = useActionState(createClientAction, initialState);
   const hasSimilarWarning = (state.similarNames?.length ?? 0) > 0;
 
-  if (state.success) {
-    router.push("/clients");
-  }
+  useEffect(() => {
+    if (state.success) router.push("/clients");
+  }, [state.success, router]);
 
   return (
     <form action={formAction} className="space-y-4">

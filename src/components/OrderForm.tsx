@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import type { ActionState } from "@/lib/actions/orders";
@@ -53,9 +53,13 @@ export function OrderForm({
     [costs, clientPrice, repSharePct],
   );
 
-  if (state.success && redirectOnSuccess) {
-    router.push(redirectOnSuccess);
-  }
+  // التوجيه بعد نجاح الحفظ يتم في effect، لا أثناء العرض — استدعاء
+  // router.push داخل جسم المكوّن يُحدِث تحديثًا لمكوّن آخر أثناء الرسم.
+  useEffect(() => {
+    if (state.success && redirectOnSuccess) {
+      router.push(redirectOnSuccess);
+    }
+  }, [state.success, redirectOnSuccess, router]);
 
   const numberField = (
     id: keyof typeof costs | "clientPrice",

@@ -8,6 +8,9 @@ import { notifyOrderCreated, notifyLowMargin, notifyStageChanged } from "@/lib/n
 import { computeOrderFinancials } from "@/lib/finance";
 import type { StageName, StageState } from "@/lib/supabase/types";
 
+/** نفس النص الذي يضعه trigger قاعدة البيانات (0003_orders_and_stages.sql). */
+const MISSING_DATE_REASON = "تاريخ مفقود";
+
 const orderSchema = z.object({
   clientId: z.string().uuid({ message: "اختر العميل" }),
   orderDate: z.string().optional().nullable(),
@@ -112,6 +115,25 @@ export async function updateOrderAction(
   const input = parsed.data;
 
   const supabase = await createClient();
+
+  // علامة "يحتاج مراجعة" قد تكون بسبب تاريخ مفقود أو بسبب تعارض/تكرار رُصد
+  // أثناء الاستيراد. إكمال التاريخ يرفع علامة التاريخ المفقود فقط، ولا يجوز
+  // أن يمسح ضمنيًا تحذير تعارض لم يبتّ فيه أحد.
+  const { data: current } = await supabase
+    .from("orders")
+    .select("needs_review, review_reason")
+    .eq("id", orderId)
+    .single<{ needs_review: boolean; review_reason: string | null }>();
+
+  const wasMissingDateOnly =
+    !current?.needs_review || current.review_reason === MISSING_DATE_REASON;
+
+  const reviewFields = input.orderDate
+    ? wasMissingDateOnly
+      ? { needs_review: false, review_reason: null }
+      : { needs_review: true, review_reason: current?.review_reason ?? null }
+    : { needs_review: true, review_reason: MISSING_DATE_REASON };
+
   const { error } = await supabase
     .from("orders")
     .update({
@@ -124,9 +146,7 @@ export async function updateOrderAction(
       client_price: input.clientPrice,
       factory_name: input.factoryName,
       notes: input.notes,
-      // إكمال التاريخ يرفع علامة "يحتاج مراجعة" تلقائيًا
-      needs_review: input.orderDate ? false : true,
-      review_reason: input.orderDate ? null : "تاريخ مفقود",
+      ...reviewFields,
     })
     .eq("id", orderId);
 

@@ -28,7 +28,11 @@ export default async function ClientAnalysisPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">تحليل العملاء</h1>
-        <ExportButton
+        <div className="flex items-center gap-3">
+          <Link href="/admin/clients/assign" className="text-sm text-brand-600 hover:underline">
+            إسناد العملاء
+          </Link>
+          <ExportButton
           rows={clients.map((c) => ({
             العميل: c.clientName,
             "عدد الطلبات": c.ordersCount,
@@ -36,9 +40,10 @@ export default async function ClientAnalysisPage({
             الربح: c.profit,
             "الهامش %": c.marginPct,
           }))}
-          fileName="تحليل-العملاء"
-          sheetName="العملاء"
-        />
+            fileName="تحليل-العملاء"
+            sheetName="العملاء"
+          />
+        </div>
       </div>
 
       {lowMarginCount > 0 ? (

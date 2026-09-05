@@ -17,6 +17,7 @@ const ADMIN_NAV = [
   { href: "/admin/orders", label: "كل الطلبات" },
   { href: "/admin/reps", label: "أداء المندوبين" },
   { href: "/admin/clients", label: "تحليل العملاء" },
+  { href: "/admin/clients/assign", label: "إسناد العملاء" },
   { href: "/admin/users", label: "المستخدمون" },
   { href: "/admin/withdrawals", label: "المسحوبات" },
   { href: "/admin/reports", label: "التقارير" },

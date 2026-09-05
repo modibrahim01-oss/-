@@ -401,6 +401,119 @@ begin
 end
 $$;
 
+-- ===================== تحويل العملاء بين المندوبين =====================
+-- الضمان: المشرف وحده يحوّل العميل. المندوب لا يستطيع التنازل عن عميله ولا
+-- الاستيلاء على عميل غيره. وبعد التحويل تبقى الطلبات السابقة (وعمولاتها)
+-- منسوبة لمندوبها الأصلي.
+
+-- --- المندوب أ يحاول التنازل عن عميله للمندوب ب ---
+set "test.user_id" = '22222222-2222-2222-2222-222222222222';
+
+-- نسجّل عدد طلبات المندوب أ لهذا العميل قبل التحويل، لنقارن به بعده بدل
+-- توقّع رقم ثابت يتغيّر كلما أُضيف طلب لبيانات الاختبار
+do $$
+begin
+  perform set_config('test.rep_a_orders_before',
+    (select count(*)::text from public.orders
+     where client_id = 'aaaaaaaa-0000-0000-0000-000000000001'), false);
+end
+$$;
+
+do $$
+declare
+  n int;
+begin
+  update public.clients
+    set owner_id = '33333333-3333-3333-3333-333333333333'
+    where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 0 then
+    raise exception 'فشل حرج: المندوب أ نجح في تحويل عميله لمندوب آخر';
+  end if;
+exception
+  when insufficient_privilege or check_violation then
+    null; -- الرفض بخطأ مقبول أيضًا
+end
+$$;
+
+-- --- المندوب ب يحاول الاستيلاء على عميل المندوب أ ---
+set "test.user_id" = '33333333-3333-3333-3333-333333333333';
+
+do $$
+declare
+  n int;
+begin
+  update public.clients
+    set owner_id = '33333333-3333-3333-3333-333333333333'
+    where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 0 then
+    raise exception 'فشل حرج: المندوب ب استولى على عميل المندوب أ';
+  end if;
+exception
+  when insufficient_privilege or check_violation then
+    null;
+end
+$$;
+
+-- --- المشرف يحوّل عميل المندوب أ إلى المندوب ب ---
+set "test.user_id" = '11111111-1111-1111-1111-111111111111';
+
+do $$
+declare
+  n int;
+begin
+  update public.clients
+    set owner_id = '33333333-3333-3333-3333-333333333333'
+    where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  get diagnostics n = row_count;
+  if n <> 1 then
+    raise exception 'فشل: المشرف لم يستطع تحويل العميل';
+  end if;
+end
+$$;
+
+-- --- بعد التحويل: المندوب ب يرى العميل، والمندوب أ لم يعد يراه ---
+set "test.user_id" = '33333333-3333-3333-3333-333333333333';
+
+do $$
+begin
+  if (select count(*) from public.clients
+      where id = 'aaaaaaaa-0000-0000-0000-000000000001') <> 1 then
+    raise exception 'فشل: المندوب ب لا يرى العميل المحوَّل إليه';
+  end if;
+  -- الطلب القديم يبقى للمندوب أ ولا يظهر للمندوب ب رغم امتلاكه العميل الآن
+  if (select count(*) from public.orders
+      where client_id = 'aaaaaaaa-0000-0000-0000-000000000001') <> 0 then
+    raise exception 'فشل حرج: تحويل العميل سرّب طلبات المندوب أ للمندوب ب';
+  end if;
+end
+$$;
+
+set "test.user_id" = '22222222-2222-2222-2222-222222222222';
+
+do $$
+begin
+  if (select count(*) from public.clients
+      where id = 'aaaaaaaa-0000-0000-0000-000000000001') <> 0 then
+    raise exception 'فشل: المندوب أ ما زال يرى العميل بعد تحويله';
+  end if;
+  -- لكن طلباته السابقة وعمولتها تبقى له
+  if (select count(*) from public.orders
+      where client_id = 'aaaaaaaa-0000-0000-0000-000000000001')
+     <> current_setting('test.rep_a_orders_before')::int then
+    raise exception 'فشل: التحويل غيّر عدد طلبات المندوب أ السابقة (كان % والآن %)',
+      current_setting('test.rep_a_orders_before'),
+      (select count(*) from public.orders
+       where client_id = 'aaaaaaaa-0000-0000-0000-000000000001');
+  end if;
+  if round((select sum(rep_share) from public.order_financials
+            where rep_id = '22222222-2222-2222-2222-222222222222'), 2) <= 0 then
+    raise exception 'فشل: عمولة المندوب أ السابقة ضاعت بعد التحويل';
+  end if;
+end
+$$;
+
 reset role;
 
 select 'كل اختبارات العزل والحساب نجحت ✓' as result;
