@@ -14,7 +14,16 @@ export default async function RepsPerformancePage() {
     listWithdrawals(),
   ]);
 
-  const reps = users.filter((u) => u.role === "rep" || u.role === "admin");
+  // الشاشة لأداء المندوبين. يُضاف المشرف فقط إذا كانت له طلبات أو مسحوبات
+  // فعلية (يحدث مع الطلبات القديمة المستوردة باسمه)، حتى لا يُحشى الجدول
+  // بصف أصفار لا معنى له.
+  const reps = users.filter(
+    (u) =>
+      u.role === "rep" ||
+      (u.role === "admin" &&
+        (orders.some((o) => o.rep_id === u.id) ||
+          withdrawals.some((w) => w.rep_id === u.id))),
+  );
 
   const rows = reps.map((rep) => {
     const repOrders = orders.filter((o) => o.rep_id === rep.id);

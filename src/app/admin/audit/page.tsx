@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/Card";
 import { requireAdmin } from "@/lib/auth";
-import { listUsers } from "@/lib/data";
+import { listClients, listUsers } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 
@@ -16,6 +16,67 @@ const ACTION_LABELS: Record<string, string> = {
   update: "تعديل",
   delete: "حذف",
 };
+
+/**
+ * أسماء أعمدة قاعدة البيانات بالعربية — سجل التدقيق يعرض القيم الخام من
+ * old_values/new_values، ولا يجوز أن يظهر اسم عمود إنجليزي للمستخدم النهائي.
+ */
+const FIELD_LABELS: Record<string, string> = {
+  client_id: "العميل",
+  rep_id: "المندوب",
+  owner_id: "المندوب المسؤول",
+  order_date: "تاريخ التعميد",
+  cost_carton: "تكلفة الكرتون",
+  cost_mold: "تكلفة القالب",
+  cost_plate: "تكلفة الكليشة",
+  cost_shipping: "تكلفة الشحن",
+  factory_cost: "تكلفة المصنع",
+  client_price: "سعر العميل",
+  rep_share_pct: "نسبة المندوب",
+  factory_name: "اسم المصنع",
+  status: "الحالة",
+  needs_review: "يحتاج مراجعة",
+  review_reason: "سبب المراجعة",
+  import_note: "ملاحظة الاستيراد",
+  notes: "ملاحظات",
+  deleted_at: "تاريخ الحذف",
+  name: "الاسم",
+  name_normalized: "الاسم المطبَّع",
+  phone: "الجوال",
+  city: "المدينة",
+  vat_number: "الرقم الضريبي",
+  amount: "المبلغ",
+  paid_at: "تاريخ الدفع",
+  withdrawn_at: "تاريخ السحب",
+  method: "طريقة الدفع",
+  note: "ملاحظة",
+  order_number: "رقم الطلب",
+  full_name: "الاسم",
+  role: "الدور",
+  share_pct: "النسبة",
+  is_active: "نشط",
+};
+
+function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field;
+}
+
+/** حقول تحمل معرّف مستخدم — تُعرض باسمه لا بالمعرّف الخام. */
+const USER_REF_FIELDS = new Set(["rep_id", "owner_id", "created_by", "changed_by", "uploaded_by"]);
+
+/** قيم منطقية أو فارغة تُعرض بالعربية بدل true/false/null. */
+function formatAuditValue(
+  field: string,
+  value: unknown,
+  namesById: Map<string, string>,
+): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "نعم" : "لا";
+  if (USER_REF_FIELDS.has(field)) return namesById.get(String(value)) ?? "—";
+  if (field === "client_id") return namesById.get(String(value)) ?? "—";
+  if (field === "role") return value === "admin" ? "مشرف" : "مندوب";
+  return String(value);
+}
 
 /** يستخرج الحقول التي تغيّرت فعليًا بين القيمتين القديمة والجديدة. */
 function changedFields(
@@ -49,8 +110,17 @@ export default async function AuditLogPage({
   if (params.from) query = query.gte("changed_at", params.from);
   if (params.to) query = query.lte("changed_at", `${params.to}T23:59:59`);
 
-  const [{ data: entries }, users] = await Promise.all([query, listUsers()]);
+  const [{ data: entries }, users, clients] = await Promise.all([
+    query,
+    listUsers(),
+    listClients(),
+  ]);
   const usersById = new Map(users.map((u) => [u.id, u.full_name]));
+  // خريطة واحدة للمستخدمين والعملاء لعرض المعرّفات في القيم المتغيّرة كأسماء
+  const namesById = new Map<string, string>([
+    ...users.map((u) => [u.id, u.full_name] as const),
+    ...clients.map((c) => [c.id, c.name] as const),
+  ]);
 
   const rows = (entries ?? []) as Array<{
     id: number;
@@ -162,9 +232,14 @@ export default async function AuditLogPage({
                     <ul className="mt-1 space-y-0.5 text-xs text-gray-600">
                       {changes.slice(0, 6).map((change) => (
                         <li key={change.field}>
-                          <span className="text-gray-500">{change.field}:</span>{" "}
-                          <span className="nums line-through">{String(change.from ?? "—")}</span> ←{" "}
-                          <span className="nums font-medium">{String(change.to ?? "—")}</span>
+                          <span className="text-gray-500">{fieldLabel(change.field)}:</span>{" "}
+                          <span className="nums line-through">
+                            {formatAuditValue(change.field, change.from, namesById)}
+                          </span>{" "}
+                          ←{" "}
+                          <span className="nums font-medium">
+                            {formatAuditValue(change.field, change.to, namesById)}
+                          </span>
                         </li>
                       ))}
                     </ul>

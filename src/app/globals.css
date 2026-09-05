@@ -16,11 +16,15 @@
 }
 
 @layer utilities {
+  /* الأرقام والمبالغ والتواريخ: عرض LTR معزول داخل النص العربي.
+     ملاحظة: لا تضِف display هنا — الصنف يُستخدم على خلايا <td> أيضًا،
+     و display:inline-block يُخرج الخلية من تخطيط الجدول فتنهار محاذاة
+     الأعمدة مع رؤوسها. unicode-bidi: isolate يكفي وحده للعزل على
+     العناصر السطرية وخلايا الجداول معًا. */
   .nums {
     font-variant-numeric: tabular-nums;
     direction: ltr;
     unicode-bidi: isolate;
-    display: inline-block;
   }
 }
 

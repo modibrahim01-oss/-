@@ -102,10 +102,18 @@ function UploadStep() {
           required
           className="text-sm file:ml-2 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5"
         />
-        <p className="text-xs text-gray-500">
-          الأعمدة المتوقّعة: src_row, order_date, client_name, factory_cost, client_price, profit.
-          لن يُكتب أي صف في قاعدة البيانات قبل مراجعتك للمعاينة.
-        </p>
+        <div className="text-xs text-gray-500 space-y-1">
+          <p>
+            الأعمدة المتوقّعة في الملف (أسماؤها كما هي في صف الترويسة): رقم الصف
+            الأصلي <code className="nums">src_row</code>، تاريخ التعميد{" "}
+            <code className="nums">order_date</code>، اسم العميل{" "}
+            <code className="nums">client_name</code>، تكلفة المصنع{" "}
+            <code className="nums">factory_cost</code>، سعر العميل{" "}
+            <code className="nums">client_price</code>، والربح{" "}
+            <code className="nums">profit</code>.
+          </p>
+          <p>لن يُكتب أي صف في قاعدة البيانات قبل مراجعتك للمعاينة.</p>
+        </div>
         {state.error ? <p className="text-sm text-danger-700">{state.error}</p> : null}
         <button
           type="submit"

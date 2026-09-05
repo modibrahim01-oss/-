@@ -6,7 +6,7 @@ export function ExportButton({
   rows,
   fileName,
   sheetName,
-  label = "تصدير Excel",
+  label = "تصدير إلى إكسل",
 }: {
   rows: Record<string, string | number>[];
   fileName: string;
