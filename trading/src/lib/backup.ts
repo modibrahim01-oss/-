@@ -3,8 +3,16 @@ import { todayInRiyadh } from './date'
 import { formatAmount, toSAR } from './money'
 import type { AppData } from './types'
 
-export function backupFileName(extension: string): string {
-  return `تداول-${todayInRiyadh()}.${extension}`
+export type ExportKind = 'backup' | 'trades' | 'daily'
+
+/**
+ * أسماء الملفات لاتينية عمداً رغم أن الواجهة عربية بالكامل.
+ * كروم يتجاهل خاصية `download` إن كانت غير ASCII وينزّل الملف باسم
+ * «download» بلا امتداد أصلاً — وملف نسخة احتياطية بلا امتداد لا يُستورد
+ * لاحقاً، وهو خط الدفاع الوحيد عن بيانات المستخدم.
+ */
+export function backupFileName(kind: ExportKind, extension: string): string {
+  return `tadawul-${kind}-${todayInRiyadh()}.${extension}`
 }
 
 export function toBackupJSON(data: AppData): string {

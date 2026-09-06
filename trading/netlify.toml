@@ -1,0 +1,23 @@
+# نشر مجلد trading/ وحده — جذر المستودع يحمل مشروعاً آخر.
+[build]
+  base    = "trading"
+  command = "npm run build"
+  publish = "trading/dist"
+
+# التنقّل داخل التطبيق عبر hash، لكن نُبقي التحويل احتياطاً
+# لأي رابط مباشر ولضمان عمل بدء التشغيل من شاشة الجوال.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# عامل الخدمة يجب ألا يُخزَّن، وإلا بقي التطبيق على نسخة قديمة.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

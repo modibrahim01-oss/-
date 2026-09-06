@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toBackupJSON, toDailyCSV, toTradesCSV } from './backup'
+import { backupFileName, toBackupJSON, toDailyCSV, toTradesCSV } from './backup'
 import { ImportError, normalize, parseBackup } from './storage'
 import { DEFAULT_SETTINGS, type AppData } from './types'
 
@@ -92,6 +92,29 @@ describe('التطبيع — لا ينهار أمام أي شكل', () => {
 
   it('يستبدل سعر صرف صفرياً بالافتراضي بدل القسمة على صفر', () => {
     expect(normalize({ settings: { fxRate: 0 } }).settings.fxRate).toBe(3.75)
+  })
+})
+
+describe('أسماء ملفات التصدير', () => {
+  it('لاتينية بالكامل — كروم يُسقط أي اسم غير ASCII وينزّل الملف بلا امتداد', () => {
+    for (const name of [
+      backupFileName('backup', 'json'),
+      backupFileName('trades', 'csv'),
+      backupFileName('daily', 'csv'),
+    ]) {
+      // eslint-disable-next-line no-control-regex
+      expect(name).toMatch(/^[\x20-\x7e]+$/)
+      expect(name).toMatch(/^tadawul-(backup|trades|daily)-\d{4}-\d{2}-\d{2}\.(json|csv)$/)
+    }
+  })
+
+  it('الأنواع الثلاثة لا تتصادم في اسم واحد', () => {
+    const names = new Set([
+      backupFileName('backup', 'json'),
+      backupFileName('trades', 'csv'),
+      backupFileName('daily', 'csv'),
+    ])
+    expect(names.size).toBe(3)
   })
 })
 

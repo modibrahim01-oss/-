@@ -66,7 +66,7 @@ export function SettingsScreen() {
         <button
           type="button"
           onClick={() =>
-            downloadFile(toBackupJSON(data), backupFileName('json'), 'application/json')
+            downloadFile(toBackupJSON(data), backupFileName('backup', 'json'), 'application/json')
           }
           className="btn-primary"
         >
@@ -184,20 +184,22 @@ export function SettingsScreen() {
             label="نسخة احتياطية كاملة (JSON)"
             hint="كل شيء: الإعدادات والصفقات والحركات والتسويات. هذا الملف وحده يعيد التطبيق كما هو."
             onClick={() =>
-              downloadFile(toBackupJSON(data), backupFileName('json'), 'application/json')
+              downloadFile(toBackupJSON(data), backupFileName('backup', 'json'), 'application/json')
             }
           />
           <ExportRow
             label="الصفقات (CSV)"
             hint="صف لكل صفقة، مع أرقام اليوم المحسوبة بجانبها."
-            onClick={() => downloadFile(toTradesCSV(data), backupFileName('csv'), 'text/csv')}
+            onClick={() =>
+              downloadFile(toTradesCSV(data), backupFileName('trades', 'csv'), 'text/csv')
+            }
           />
           <ExportRow
             label="السجل اليومي (CSV)"
             hint="صف لكل يوم — أقرب شكل لملف الإكسل الأصلي."
             last
             onClick={() =>
-              downloadFile(toDailyCSV(data), `تداول-يومي-${backupFileName('csv').slice(7)}`, 'text/csv')
+              downloadFile(toDailyCSV(data), backupFileName('daily', 'csv'), 'text/csv')
             }
           />
         </ul>
@@ -282,7 +284,7 @@ export function SettingsScreen() {
               type="button"
               className="btn-ghost mt-5 w-full"
               onClick={() =>
-                downloadFile(toBackupJSON(data), backupFileName('json'), 'application/json')
+                downloadFile(toBackupJSON(data), backupFileName('backup', 'json'), 'application/json')
               }
             >
               <IconDownload className="h-[18px] w-[18px]" />
