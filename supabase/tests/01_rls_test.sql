@@ -514,6 +514,60 @@ begin
 end
 $$;
 
+-- ===================== إنشاء طلب فعليًا (مسار الكتابة) =====================
+-- الاختبارات أعلاه تتحقق من القراءة والمنع. هذا يتحقق من نجاح المسار
+-- الأساسي: ضغط المندوب على "حفظ الطلب". كان يفشل قبل الترحيل 0011 لأن
+-- trigger إنشاء المراحل يعمل بصلاحيات المستخدم و order_stages بلا سياسة
+-- إدراج — أي أن أهم زر في النظام كان معطّلًا.
+
+-- المندوب ب صار مالك العميل بعد التحويل أعلاه
+set "test.user_id" = '33333333-3333-3333-3333-333333333333';
+
+do $$
+declare
+  new_id uuid;
+  stage_count int;
+begin
+  insert into public.orders (client_id, rep_id, order_date, cost_carton, client_price, rep_share_pct)
+  values ('aaaaaaaa-0000-0000-0000-000000000001',
+          '33333333-3333-3333-3333-333333333333',
+          '2026-05-01', 1000, 1500, 50)
+  returning id into new_id;
+
+  select count(*) into stage_count from public.order_stages where order_id = new_id;
+  if stage_count <> 7 then
+    raise exception 'فشل: أُنشئت % مرحلة بدل 7 عند إنشاء الطلب', stage_count;
+  end if;
+
+  -- وتحديث المرحلة يعمل أيضًا (شريط المراحل في شاشة التفاصيل)
+  update public.order_stages set state = 'done'
+  where order_id = new_id and stage = 'plate';
+  if (select state from public.order_stages
+      where order_id = new_id and stage = 'plate') <> 'done' then
+    raise exception 'فشل: المندوب لا يستطيع تحديث مرحلة طلبه';
+  end if;
+end
+$$;
+
+-- المشرف أيضًا يستطيع إنشاء طلب (نيابةً عن مندوب)
+set "test.user_id" = '11111111-1111-1111-1111-111111111111';
+
+do $$
+declare
+  new_id uuid;
+begin
+  insert into public.orders (client_id, rep_id, order_date, cost_carton, client_price, rep_share_pct)
+  values ('bbbbbbbb-0000-0000-0000-000000000002',
+          '33333333-3333-3333-3333-333333333333',
+          '2026-05-02', 2000, 2500, 50)
+  returning id into new_id;
+
+  if (select count(*) from public.order_stages where order_id = new_id) <> 7 then
+    raise exception 'فشل: المشرف لا يستطيع إنشاء طلب بمراحله';
+  end if;
+end
+$$;
+
 reset role;
 
 select 'كل اختبارات العزل والحساب نجحت ✓' as result;
