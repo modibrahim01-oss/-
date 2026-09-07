@@ -4,3 +4,4 @@ dist-ssr
 dev-dist
 *.local
 .DS_Store
+dist-single

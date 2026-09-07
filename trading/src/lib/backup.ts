@@ -90,7 +90,28 @@ export function toDailyCSV(data: AppData): string {
   return csvRows(rows)
 }
 
+/**
+ * دالة حفظ يُركّبها المضيف قبل إقلاع التطبيق.
+ *
+ * بعض البيئات تمنع الصفحة من تنزيل الملفات بنفسها، فلا يفعل رابط التنزيل
+ * المعتاد شيئاً. تلك البيئات تضع بديلها هنا، ونفضّله متى وُجد. تتكفّل هي
+ * بإبلاغ المستخدم عند الفشل — لذلك لا نُرجع وعداً ولا ننتظر نتيجة.
+ */
+type HostSave = (content: string, fileName: string, mimeType: string) => void
+
+declare global {
+  interface Window {
+    __saveFile?: HostSave
+  }
+}
+
 export function downloadFile(content: string, fileName: string, mimeType: string): void {
+  const hostSave = window.__saveFile
+  if (hostSave) {
+    hostSave(content, fileName, mimeType)
+    return
+  }
+
   const blob = new Blob([content], { type: `${mimeType};charset=utf-8` })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
