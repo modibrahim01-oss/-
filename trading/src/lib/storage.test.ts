@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { backupFileName, toBackupJSON, toDailyCSV, toTradesCSV } from './backup'
-import { ImportError, normalize, parseBackup } from './storage'
+import { ImportError, normalize, parseBackup, repository, StorageQuotaError } from './storage'
 import { DEFAULT_SETTINGS, type AppData } from './types'
 
 const sample: AppData = {
@@ -145,5 +145,131 @@ describe('التصدير إلى CSV', () => {
       trades: [{ ...sample.trades[0], note: 'دخول، ثم خروج' }],
     }
     expect(toTradesCSV(withComma)).toContain('"دخول، ثم خروج"')
+  })
+})
+
+
+// ————————————————————————————————————————————————————————————
+// مسارات فشل التخزين — الكود يعمل داخل المتصفح، فنُركّب `window` مزيّفاً
+// ————————————————————————————————————————————————————————————
+
+type FakeStorage = {
+  getItem: (key: string) => string | null
+  setItem: (key: string, value: string) => void
+  removeItem: (key: string) => void
+}
+
+function withStorage<T>(storage: FakeStorage, run: () => T): T {
+  const globals = globalThis as Record<string, unknown>
+  const previous = globals.window
+  globals.window = { localStorage: storage }
+  try {
+    return run()
+  } finally {
+    if (previous === undefined) delete globals.window
+    else globals.window = previous
+  }
+}
+
+function quotaError(name: string): DOMException {
+  return new DOMException('امتلأت', name)
+}
+
+describe('امتلاء مساحة التخزين', () => {
+  it.each(['QuotaExceededError', 'NS_ERROR_DOM_QUOTA_REACHED'])(
+    'يترجم %s إلى StorageQuotaError برسالة مفهومة',
+    (name) => {
+      const thrown = withStorage(
+        {
+          getItem: () => null,
+          setItem: () => {
+            throw quotaError(name)
+          },
+          removeItem: () => {},
+        },
+        () => {
+          try {
+            repository.save(sample)
+            return null
+          } catch (error) {
+            return error
+          }
+        },
+      )
+      expect(thrown).toBeInstanceOf(StorageQuotaError)
+      expect((thrown as Error).message).toMatch(/مساحة كافية/)
+    },
+  )
+
+  it('يمرّر الأخطاء الأخرى كما هي بدل ابتلاعها كخطأ مساحة', () => {
+    const thrown = withStorage(
+      {
+        getItem: () => null,
+        setItem: () => {
+          throw new TypeError('عطل آخر')
+        },
+        removeItem: () => {},
+      },
+      () => {
+        try {
+          repository.save(sample)
+          return null
+        } catch (error) {
+          return error
+        }
+      },
+    )
+    expect(thrown).toBeInstanceOf(TypeError)
+    expect(thrown).not.toBeInstanceOf(StorageQuotaError)
+  })
+})
+
+describe('قراءة تخزين معطوب أو ممنوع', () => {
+  it('متصفح يمنع التخزين (تصفح خاص) يبدأ ببيانات فارغة لا بانهيار', () => {
+    const data = withStorage(
+      {
+        getItem: () => {
+          throw new DOMException('ممنوع', 'SecurityError')
+        },
+        setItem: () => {},
+        removeItem: () => {},
+      },
+      () => repository.load(),
+    )
+    expect(data.trades).toEqual([])
+    expect(data.settings.startingCapitalSAR).toBe(320)
+  })
+
+  it('محتوى تالف لا يمسح شيئاً ويُحفظ جانباً للإنقاذ اليدوي', () => {
+    const written = new Map<string, string>()
+    const data = withStorage(
+      {
+        getItem: () => '{ هذا ليس JSON',
+        setItem: (key, value) => void written.set(key, value),
+        removeItem: () => {},
+      },
+      () => repository.load(),
+    )
+    expect(data.trades).toEqual([])
+    expect([...written.keys()]).toEqual(['trading-tracker/v1.corrupt'])
+    expect(written.get('trading-tracker/v1.corrupt')).toBe('{ هذا ليس JSON')
+  })
+
+  it('الحفظ ثم القراءة يعيدان نفس البيانات', () => {
+    const box = new Map<string, string>()
+    const restored = withStorage(
+      {
+        getItem: (key) => box.get(key) ?? null,
+        setItem: (key, value) => void box.set(key, value),
+        removeItem: (key) => void box.delete(key),
+      },
+      () => {
+        repository.save(sample)
+        return repository.load()
+      },
+    )
+    expect(restored.trades).toEqual(sample.trades)
+    expect(restored.cashFlows).toEqual(sample.cashFlows)
+    expect(restored.dayChecks).toEqual(sample.dayChecks)
   })
 })
