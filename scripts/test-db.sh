@@ -25,3 +25,6 @@ done
 
 echo "==> تشغيل اختبارات العزل والحساب"
 psql -q -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/01_rls_test.sql"
+
+echo "==> تشغيل اختبارات مسارات الكتابة"
+psql -q -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/02_write_paths_test.sql"
