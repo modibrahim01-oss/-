@@ -38,7 +38,8 @@ export async function listOrders(filters: OrderFilters = {}): Promise<OrderWithC
     .from("orders")
     .select(
       `id, order_number, client_id, rep_id, order_date, factory_cost, client_price,
-       rep_share_pct, status, needs_review, review_reason, deleted_at, notes,
+       rep_share_pct, owner_share_pct, partner_share_pct, company_share_pct,
+       status, needs_review, review_reason, deleted_at, notes,
        client:clients(id, name), rep:users!orders_rep_id_fkey(id, full_name)`,
     )
     .is("deleted_at", null)
@@ -86,6 +87,9 @@ function withFinancials(
   const factoryCost = Number(row.factory_cost);
   const clientPrice = Number(row.client_price);
   const repSharePct = Number(row.rep_share_pct);
+  const ownerSharePct = Number(row.owner_share_pct ?? 0);
+  const partnerSharePct = Number(row.partner_share_pct ?? 0);
+  const companySharePct = Number(row.company_share_pct ?? 0);
   const profit = clientPrice - factoryCost;
   const profitExVat = profit / 1.15;
 
@@ -98,6 +102,9 @@ function withFinancials(
     factory_cost: factoryCost,
     client_price: clientPrice,
     rep_share_pct: repSharePct,
+    owner_share_pct: ownerSharePct,
+    partner_share_pct: partnerSharePct,
+    company_share_pct: companySharePct,
     status: row.status,
     needs_review: row.needs_review,
     deleted_at: row.deleted_at,
@@ -105,7 +112,9 @@ function withFinancials(
     profit_ex_vat: profitExVat,
     vat_due: profit - profitExVat,
     rep_share: profitExVat * (repSharePct / 100),
-    company_share: profitExVat * (1 - repSharePct / 100),
+    owner_share: profitExVat * (ownerSharePct / 100),
+    partner_share: profitExVat * (partnerSharePct / 100),
+    company_share: profitExVat * (companySharePct / 100),
     margin_pct: clientPrice !== 0 ? (profit / clientPrice) * 100 : 0,
     client: row.client ?? null,
     rep: row.rep ?? null,

@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_SPLIT,
   computeClientConcentration,
   computeOrderFinancials,
   computeRepBalance,
   isCriticallyLowMargin,
   isLowMargin,
+  isValidSplit,
+  normalizeSplitFromRepPct,
+  splitTotal,
 } from "./finance";
 
 // أرقام حقيقية من seed-orders.csv (القسم 11 من الوثيقة: تحقق منها بأرقام حقيقية)
@@ -40,9 +44,12 @@ describe("computeOrderFinancials", () => {
     expect(r.repShare).toBeCloseTo(592.86, 2);
   });
 
-  it("companyShare + repShare == profitExVat", () => {
-    const r = computeOrderFinancials(1000, 1500, 50);
-    expect(r.companyShare + r.repShare).toBeCloseTo(r.profitExVat, 10);
+  it("مجموع الحصص الأربع == الربح بعد الضريبة", () => {
+    const r = computeOrderFinancials(1000, 1500, DEFAULT_SPLIT);
+    expect(r.repShare + r.ownerShare + r.partnerShare + r.companyShare).toBeCloseTo(
+      r.profitExVat,
+      10,
+    );
   });
 
   it("profit == profitExVat + vatDue", () => {
@@ -54,6 +61,56 @@ describe("computeOrderFinancials", () => {
     const r = computeOrderFinancials(1000, 1500, 60);
     expect(r.repSharePct).toBe(60);
     expect(r.repShare).toBeCloseTo(r.profitExVat * 0.6, 10);
+  });
+});
+
+// نموذج صاحب العمل: المندوب الذي جاء بالعميل 50% · المالك 20% ·
+// الشريك 20% · الشركة 10%
+describe("توزيع الربح على أربع جهات", () => {
+  it("التوزيع الافتراضي 50/20/20/10 مجموعه 100%", () => {
+    expect(splitTotal(DEFAULT_SPLIT)).toBe(100);
+    expect(isValidSplit(DEFAULT_SPLIT)).toBe(true);
+  });
+
+  it("يرفض توزيعًا لا يساوي 100%", () => {
+    expect(isValidSplit({ repPct: 50, ownerPct: 20, partnerPct: 20, companyPct: 20 })).toBe(
+      false,
+    );
+  });
+
+  it("شام وقمر (تكلفة 4772.50 وسعر 5536.10): الحصص الأربع بأرقامها", () => {
+    const r = computeOrderFinancials(4772.5, 5536.1, DEFAULT_SPLIT);
+    expect(r.profit).toBeCloseTo(763.6, 2);
+    expect(r.profitExVat).toBeCloseTo(664.0, 2);
+    expect(r.repShare).toBeCloseTo(332.0, 2); // 50%
+    expect(r.ownerShare).toBeCloseTo(132.8, 2); // 20%
+    expect(r.partnerShare).toBeCloseTo(132.8, 2); // 20%
+    expect(r.companyShare).toBeCloseTo(66.4, 2); // 10%
+  });
+
+  it("لا حصة للمندوب في صفقة بلا مندوب: 0/40/40/20 تبقى 100%", () => {
+    const split = { repPct: 0, ownerPct: 40, partnerPct: 40, companyPct: 20 };
+    const r = computeOrderFinancials(1000, 2150, split);
+    expect(r.repShare).toBe(0);
+    expect(r.repShare + r.ownerShare + r.partnerShare + r.companyShare).toBeCloseTo(
+      r.profitExVat,
+      10,
+    );
+  });
+
+  it("normalizeSplitFromRepPct يبقي المجموع 100% لأي نسبة مندوب", () => {
+    for (const repPct of [0, 25, 50, 60, 70, 100]) {
+      const split = normalizeSplitFromRepPct(repPct);
+      expect(split.repPct).toBe(repPct);
+      expect(splitTotal(split)).toBeCloseTo(100, 10);
+    }
+  });
+
+  it("نسبة مندوب 70% تترك 30% موزّعة بنفس تناسب 20/20/10", () => {
+    const split = normalizeSplitFromRepPct(70);
+    expect(split.ownerPct).toBeCloseTo(12, 6); // 20/50 × 30
+    expect(split.partnerPct).toBeCloseTo(12, 6);
+    expect(split.companyPct).toBeCloseTo(6, 6);
   });
 });
 

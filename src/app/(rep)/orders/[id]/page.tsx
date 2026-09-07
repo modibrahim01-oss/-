@@ -110,10 +110,22 @@ export default async function OrderDetailPage({
             <dd className="text-left text-brand-700 font-medium border-t pt-2 nums">
               {formatSAR(f.rep_share)}
             </dd>
+            {/* توزيع بقية الربح لا يراه المندوب — القسم 2: لا يرى إجماليات
+                الشركة ولا اقتسامها بين المالك والشريك. */}
             {user.profile.role === "admin" ? (
               <>
-                <dt className="text-gray-700 font-medium">حصة الشركة</dt>
-                <dd className="text-left font-medium nums">{formatSAR(f.company_share)}</dd>
+                <dt className="text-gray-700">
+                  حصة المالك ({formatPct(f.owner_share_pct, 0)})
+                </dt>
+                <dd className="text-left nums">{formatSAR(f.owner_share)}</dd>
+                <dt className="text-gray-700">
+                  حصة الشريك ({formatPct(f.partner_share_pct, 0)})
+                </dt>
+                <dd className="text-left nums">{formatSAR(f.partner_share)}</dd>
+                <dt className="text-gray-700">
+                  حصة الشركة ({formatPct(f.company_share_pct, 0)})
+                </dt>
+                <dd className="text-left nums">{formatSAR(f.company_share)}</dd>
               </>
             ) : null}
           </dl>

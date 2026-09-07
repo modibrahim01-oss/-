@@ -222,6 +222,66 @@ begin
 end
 $$;
 
+-- ===================== توزيع الربح على أربع جهات =====================
+-- النموذج: المندوب الذي جاء بالعميل 50% · المالك 20% · الشريك 20% ·
+-- الشركة 10%. يجب أن يطابق العرض SQL ما يحسبه src/lib/finance.ts.
+
+do $$
+declare
+  oid uuid;
+  f record;
+begin
+  insert into public.orders (client_id, rep_id, order_date, cost_carton,
+                             client_price, rep_share_pct, owner_share_pct,
+                             partner_share_pct, company_share_pct)
+  values (current_setting('test.client_id')::uuid,
+          'b2222222-2222-2222-2222-222222222222',
+          '2026-07-01', 4772.50, 5536.10, 50, 20, 20, 10)
+  returning id into oid;
+
+  select * into f from public.order_financials where id = oid;
+
+  -- نفس أرقام اختبار finance.test.ts لشام وقمر
+  if round(f.profit_ex_vat, 2) <> 664.00 then
+    raise exception 'فشل: الربح بعد الضريبة % بدل 664.00', round(f.profit_ex_vat, 2);
+  end if;
+  if round(f.rep_share, 2) <> 332.00 then
+    raise exception 'فشل: حصة المندوب % بدل 332.00', round(f.rep_share, 2);
+  end if;
+  if round(f.owner_share, 2) <> 132.80 then
+    raise exception 'فشل: حصة المالك % بدل 132.80', round(f.owner_share, 2);
+  end if;
+  if round(f.partner_share, 2) <> 132.80 then
+    raise exception 'فشل: حصة الشريك % بدل 132.80', round(f.partner_share, 2);
+  end if;
+  if round(f.company_share, 2) <> 66.40 then
+    raise exception 'فشل: حصة الشركة % بدل 66.40', round(f.company_share, 2);
+  end if;
+
+  -- مجموع الحصص الأربع = الربح بعد الضريبة بالضبط
+  if round(f.rep_share + f.owner_share + f.partner_share + f.company_share, 6)
+     <> round(f.profit_ex_vat, 6) then
+    raise exception 'فشل: مجموع الحصص لا يساوي الربح بعد الضريبة';
+  end if;
+end
+$$;
+
+-- قيد قاعدة البيانات يرفض توزيعًا لا يساوي 100%
+do $$
+begin
+  insert into public.orders (client_id, rep_id, order_date, cost_carton,
+                             client_price, rep_share_pct, owner_share_pct,
+                             partner_share_pct, company_share_pct)
+  values (current_setting('test.client_id')::uuid,
+          'b2222222-2222-2222-2222-222222222222',
+          '2026-07-02', 1000, 1500, 50, 20, 20, 30);
+  raise exception 'فشل حرج: قاعدة البيانات قبلت توزيعًا مجموعه 120%%';
+exception
+  when check_violation then
+    null; -- الرفض هو المتوقّع
+end
+$$;
+
 reset role;
 
 select 'كل اختبارات مسارات الكتابة نجحت ✓' as result;

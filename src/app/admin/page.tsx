@@ -99,6 +99,36 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
+      {/* توزيع صافي الربح بعد الضريبة على الجهات الأربع */}
+      <Card title="توزيع صافي الربح بعد الضريبة">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-sm">
+          <div className="rounded-xl border p-3">
+            <p className="text-gray-500">الربح بعد الضريبة</p>
+            <p className="font-semibold nums">{formatSAR(totals.profitExVat)}</p>
+          </div>
+          <div className="rounded-xl border p-3">
+            <p className="text-gray-500">المندوبون</p>
+            <p className="font-semibold nums">{formatSAR(totals.repShare)}</p>
+          </div>
+          <div className="rounded-xl border p-3 bg-brand-50 border-brand-500">
+            <p className="text-gray-600">نصيبك</p>
+            <p className="font-semibold text-brand-700 nums">{formatSAR(totals.ownerShare)}</p>
+          </div>
+          <div className="rounded-xl border p-3">
+            <p className="text-gray-500">الشريك</p>
+            <p className="font-semibold nums">{formatSAR(totals.partnerShare)}</p>
+          </div>
+          <div className="rounded-xl border p-3">
+            <p className="text-gray-500">الشركة</p>
+            <p className="font-semibold nums">{formatSAR(totals.companyShare)}</p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-3">
+          النسب محفوظة في كل طلب على حدة وقت إنشائه، فتعديل التوزيع لاحقًا لا يغيّر
+          الطلبات القديمة.
+        </p>
+      </Card>
+
       <Card title="المقارنة الشهرية (آخر 12 شهرًا)">
         <MonthlyChart data={series} />
       </Card>

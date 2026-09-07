@@ -65,6 +65,8 @@ export interface Totals {
   profitExVat: number;
   vatDue: number;
   repShare: number;
+  ownerShare: number;
+  partnerShare: number;
   companyShare: number;
   avgMarginPct: number;
 }
@@ -79,6 +81,8 @@ export function sumOrders(orders: OrderWithClient[]): Totals {
       acc.profitExVat += o.profit_ex_vat;
       acc.vatDue += o.vat_due;
       acc.repShare += o.rep_share;
+      acc.ownerShare += o.owner_share;
+      acc.partnerShare += o.partner_share;
       acc.companyShare += o.company_share;
       return acc;
     },
@@ -90,6 +94,8 @@ export function sumOrders(orders: OrderWithClient[]): Totals {
       profitExVat: 0,
       vatDue: 0,
       repShare: 0,
+      ownerShare: 0,
+      partnerShare: 0,
       companyShare: 0,
       avgMarginPct: 0,
     } as Totals,

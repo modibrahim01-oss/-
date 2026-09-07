@@ -106,8 +106,10 @@ begin
   if round(f.rep_share, 2) <> 344.75 then
     raise exception 'فشل: حصة المندوب % بدل 344.75', round(f.rep_share, 2);
   end if;
-  if round(f.company_share + f.rep_share - f.profit_ex_vat, 6) <> 0 then
-    raise exception 'فشل: حصة الشركة + حصة المندوب لا تساوي الربح بعد الضريبة';
+  -- الحصص الأربع (مندوب + مالك + شريك + شركة) مجموعها الربح بعد الضريبة
+  if round(f.rep_share + f.owner_share + f.partner_share + f.company_share
+           - f.profit_ex_vat, 6) <> 0 then
+    raise exception 'فشل: مجموع الحصص الأربع لا يساوي الربح بعد الضريبة';
   end if;
   if round(f.vat_due + f.profit_ex_vat - f.profit, 6) <> 0 then
     raise exception 'فشل: الضريبة + الربح بدون ضريبة لا يساوي الربح';

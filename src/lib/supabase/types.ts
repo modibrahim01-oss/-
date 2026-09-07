@@ -38,6 +38,9 @@ export interface OrderRow {
   factory_cost: number;
   client_price: number;
   rep_share_pct: number;
+  owner_share_pct: number;
+  partner_share_pct: number;
+  company_share_pct: number;
   factory_name: string | null;
   status: OrderStatus;
   needs_review: boolean;
@@ -58,6 +61,9 @@ export interface OrderFinancialsRow {
   factory_cost: number;
   client_price: number;
   rep_share_pct: number;
+  owner_share_pct: number;
+  partner_share_pct: number;
+  company_share_pct: number;
   status: OrderStatus;
   needs_review: boolean;
   deleted_at: string | null;
@@ -65,6 +71,8 @@ export interface OrderFinancialsRow {
   profit_ex_vat: number;
   vat_due: number;
   rep_share: number;
+  owner_share: number;
+  partner_share: number;
   company_share: number;
   margin_pct: number;
 }
