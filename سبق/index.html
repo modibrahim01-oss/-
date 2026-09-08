@@ -1,0 +1,1495 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#173d31">
+<title>سَبْق | مجمع أبي يوسف القرآني</title>
+<meta name="description" content="سَبْق — متابعة الحفظ والمراجعة والحضور والانضباط في أيام الحلقة، ورصد النقاط ومسار التقدم — مجمع أبي يوسف القرآني.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="سَبْق | مجمع أبي يوسف القرآني">
+<meta property="og:description" content="تابع نقاطك ومسار تقدّمك يومًا بيوم حتى التأهل للسحب.">
+<meta property="og:image" content="logo-abi-yusuf.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="logo-abi-yusuf.png">
+<link rel="apple-touch-icon" href="logo-abi-yusuf.png">
+<style>
+:root{
+ --bg:#f6f6f1;--surface:#fff;--ink:#20382f;--muted:#66786f;--primary:#173d31;--green:#6f973e;
+ --teal:#268494;--gold:#e7b53f;--line:#dbe4de;--shadow:0 16px 45px rgba(23,61,49,.09);--danger:#b45b4b
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:linear-gradient(180deg,#f8f7f3,#edf3ee);color:var(--ink);
+ font-family:"SF Arabic","Segoe UI",system-ui,"Noto Sans Arabic","Dubai",Tahoma,Arial,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px;border-radius:8px}
+.app{min-height:100vh;padding:18px}
+.scene{display:none;max-width:1020px;margin:auto}
+.scene.active{display:block;animation:in .42s cubic-bezier(.16,1,.3,1) both}
+@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.hero{text-align:center;padding:48px 16px 20px;max-width:720px;margin:0 auto}
+.kicker{color:var(--teal);font-weight:800;font-size:13px}
+h1{font-size:clamp(26px,5vw,42px);margin:8px 0;color:var(--primary)}
+h2,h3{color:var(--primary)}
+h3{margin:0 0 10px}
+p{color:var(--muted);line-height:1.8;margin:0 0 12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--shadow)}
+.card+.card{margin-top:14px}
+.grid{display:grid;gap:12px}.grid2{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:repeat(3,1fr)}
+.btn{padding:13px 17px;border-radius:15px;font-weight:800;transition:.18s;text-align:center}
+.btn:hover{transform:translateY(-2px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.primary{background:linear-gradient(135deg,var(--primary),#245b48);color:#fff}
+.soft{background:#fff;color:var(--primary);border:1px solid var(--line)}
+.gold{background:linear-gradient(135deg,#f2c34c,var(--gold));color:#4d3910}
+.danger{background:#fff;color:var(--danger);border:1px solid #e6c3bb}
+.home-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0}
+.progress{height:12px;background:#e4ece7;border-radius:99px;overflow:hidden}
+.fill{height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--teal));border-radius:99px;transition:width .8s cubic-bezier(.16,1,.3,1)}
+.progress-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);font-weight:800;margin-top:8px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.back{background:#fff;border:1px solid var(--line);color:var(--primary);padding:10px 14px;border-radius:13px;font-weight:800}
+.search,select.search{width:100%;padding:14px;border:2px solid var(--line);border-radius:15px;color:var(--ink);background:#fff;outline:none}
+.search:focus{border-color:var(--teal)}
+.student-list{max-height:60vh;overflow:auto;padding:4px}
+.student{width:100%;text-align:right;margin:8px 0;padding:15px 17px;border-radius:17px;background:#fff;border:1px solid var(--line);color:var(--primary);font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 7px 18px rgba(23,61,49,.05)}
+.student small{display:block;color:var(--muted);font-weight:700;font-size:11px;margin-top:3px}
+.student span.go{color:var(--teal);font-size:11px;white-space:nowrap}
+.stat{text-align:center}.stat b{display:block;font-size:26px;color:var(--primary)}.stat small{color:var(--muted);font-weight:700}
+.ring{width:145px;height:145px;border-radius:50%;margin:14px auto;display:grid;place-items:center;background:conic-gradient(var(--green) 0deg,#e4ece7 0deg)}
+.ring-in{width:116px;height:116px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center}
+.ring-in b{font-size:27px;color:var(--primary)}.ring-in small{color:var(--muted);font-weight:800}
+.fire{display:inline-block;font-size:24px}
+.fire.hot{animation:fire .8s ease-in-out infinite alternate;filter:drop-shadow(0 0 9px #ff8a0080)}
+@keyframes fire{to{transform:translateY(-4px) scale(1.12)}}
+.badges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.badge{padding:13px;border-radius:17px;background:#f2f5f2;border:1px solid var(--line);text-align:center;opacity:.55}
+.badge.on{background:#fff8e7;border-color:#ecd58d;opacity:1;box-shadow:0 8px 20px #e7b53f22}
+.badge .emoji{font-size:24px;display:block}
+.badge b{display:block;font-size:12px;margin:5px 0;color:var(--primary)}
+.badge small{font-size:10px;color:var(--muted)}
+.history{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.day{border:1px solid var(--line);border-radius:12px;padding:8px 3px;text-align:center;color:var(--muted);background:#fff}
+.day.ok{background:#eef7e7;border-color:#b8d49b;color:#356528}
+.day.no{background:#fff1ed;border-color:#e4b9ae;color:#9a5041}
+.day .wd{display:block;font-size:9.5px;opacity:.75}
+.day .mark{display:block;font-size:15px;line-height:1.5;font-weight:800}
+.day .hd{display:block;font-size:10px;opacity:.85}
+.mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.mini{background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px}
+.mini span{font-size:11px;color:var(--muted);font-weight:700}
+.mini b{display:block;margin-top:5px;color:var(--primary);font-size:20px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+input[type=date],input[type=number],input[type=email],input[type=password],input[type=text]{padding:11px;border:1px solid var(--line);border-radius:13px;background:#fff;color:var(--ink);max-width:100%}
+.rows{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.row-name{font-weight:800;color:var(--primary)}
+.row-name small{display:block;font-weight:700;font-size:11px;color:var(--muted);margin-top:2px}
+.note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.7}
+.notice{padding:12px 14px;border-radius:15px;background:#eef6f7;color:#24636e;font-size:12.5px;font-weight:700;line-height:1.7}
+.notice.warn{background:#fdf3ea;color:#8a5620}
+.notice.bad{background:#fdeeea;color:#8f3f2f}
+.row.wide{grid-template-columns:1fr auto auto auto}
+.raffle-stage{margin-top:0}
+.raffle-stage+.raffle-stage{margin-top:14px}
+.reel{background:#f7faf7;border:1px solid var(--line);border-radius:13px;padding:16px;text-align:center;overflow:hidden;margin:10px 0}
+.reel b{display:block;font-size:16px;color:var(--primary);transition:transform .15s,color .15s}
+.reel.settle b{color:var(--gold);transform:scale(1.08)}
+.badge-assigned{display:inline-block;padding:2px 9px;border-radius:99px;background:#e8f4e3;color:#356528;border:1px solid #b7d59b;font-size:10.5px;font-weight:800;margin-inline-start:6px}
+
+.ev{border:1px solid var(--line);border-radius:18px;background:#fff;padding:14px;display:grid;gap:11px}
+.ev.absent{background:#fdf6f4;border-color:#e8cbc3}
+.ev.excused{background:#eef8f9;border-color:#bfe1e5}
+.ev-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ev-head b{color:var(--primary);font-size:15px}
+.ev-pts{font-weight:900;color:var(--green);font-size:15px;white-space:nowrap}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:#f2f5f2;border-radius:13px;padding:4px}
+.seg button{padding:9px 4px;border-radius:10px;background:transparent;color:var(--muted);font-weight:800;font-size:13px}
+.seg button.on{background:#fff;box-shadow:0 3px 10px rgba(23,61,49,.10)}
+.seg button.on[data-v=present]{color:#356528}
+.seg button.on[data-v=late]{color:#8a5620}
+.seg button.on[data-v=absent]{color:var(--danger)}
+.seg button.on[data-v=excused]{color:var(--teal)}
+.step{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7faf7;border:1px solid var(--line);border-radius:13px;padding:7px 9px}
+.step .lbl{font-size:12.5px;font-weight:800;color:var(--muted)}
+.step .ctl{display:flex;align-items:center;gap:8px}
+.step .ctl button{width:32px;height:32px;border-radius:10px;background:#fff;border:1px solid var(--line);color:var(--primary);font-weight:900;font-size:16px;line-height:1;display:grid;place-items:center}
+.step .ctl b{min-width:70px;text-align:center;color:var(--primary);font-size:13px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip{padding:10px;border-radius:12px;background:#f2f5f2;color:var(--muted);font-weight:800;font-size:12.5px;border:1px solid transparent}
+.chip.on{background:#e8f4e3;color:#356528;border-color:#b7d59b}
+
+.rank{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:13px 15px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.rank .pos{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:900;background:#f2f5f2;color:var(--muted);font-size:14px}
+.rank.top1 .pos{background:linear-gradient(135deg,#f2c34c,var(--gold));color:#4d3910}
+.rank.top2 .pos{background:#e3e8e5;color:#4a5b53}
+.rank.top3 .pos{background:#f0dfd0;color:#7a5433}
+.rank b{color:var(--primary);display:block}
+.rank small{color:var(--muted);font-weight:700;font-size:11px}
+.rank .pts{text-align:left;white-space:nowrap}
+.rank .pts b{color:var(--green);font-size:17px;display:inline}
+.toggle{display:inline-flex;background:#f2f5f2;border-radius:13px;padding:4px;gap:4px}
+.toggle button{padding:9px 14px;border-radius:10px;background:transparent;color:var(--muted);font-weight:800;font-size:12.5px}
+.toggle button.on{background:#fff;color:var(--primary);box-shadow:0 3px 10px rgba(23,61,49,.10)}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(140px);background:var(--primary);color:#fff;padding:13px 18px;border-radius:15px;box-shadow:0 15px 35px #173d3144;transition:.3s;z-index:70;max-width:90vw;text-align:center;font-size:13.5px}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.overlay{position:fixed;inset:0;background:#173d31d9;display:none;place-items:center;padding:18px;z-index:60;backdrop-filter:blur(8px)}
+.overlay.show{display:grid}
+.welcome{background:#fff;border-radius:30px;padding:34px 24px;text-align:center;width:min(460px,100%);animation:pop .5s cubic-bezier(.16,1,.3,1)}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(18px)}to{opacity:1;transform:none}}
+.dialog{background:#fff;border-radius:26px;padding:26px 22px;width:min(430px,100%);animation:pop .32s cubic-bezier(.16,1,.3,1)}
+.dialog h3{margin:0 0 8px}.dialog p{margin:0 0 18px;font-size:14px;white-space:pre-line}
+.dialog .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sync{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;padding:8px 13px;border-radius:99px;background:#fff;border:1px solid var(--line);color:var(--muted)}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.sync.ok i{background:var(--green)}.sync.ok{color:#3f6b2c}
+.sync.busy i{background:var(--gold);animation:pulse 1s infinite}
+.sync.off i{background:var(--danger)}.sync.off{color:var(--danger)}
+@keyframes pulse{50%{opacity:.25}}
+.banner{max-width:1020px;margin:0 auto 14px;border-radius:16px;padding:12px 15px;font-size:12.5px;font-weight:700;line-height:1.7;display:none}
+.banner.show{display:block}
+.hero-accent{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 auto 14px}
+.hero-accent span{width:38px;height:2px;background:linear-gradient(90deg,transparent,var(--green));border-radius:99px}
+.hero-accent span:last-child{background:linear-gradient(90deg,var(--teal),transparent)}
+.hero-accent i{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 6px rgba(111,151,62,.10)}
+.home-logo{width:72px;height:72px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:18px;background:#fff;border:1px solid var(--line);box-shadow:0 10px 24px rgba(23,61,49,.10)}
+.home-logo img{width:100%;height:100%;object-fit:contain;display:block}
+.winners{display:grid;gap:10px}
+.win{background:linear-gradient(135deg,#fff5db,#fff);border:1px solid #eed38e;border-radius:18px;padding:14px}
+.win small{color:#80601a;font-weight:800;font-size:11px}
+.win b{display:block;color:#5b4313;font-size:17px;margin-top:5px}
+.skeleton{height:14px;border-radius:8px;background:linear-gradient(90deg,#e9efea,#f4f7f4,#e9efea);background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button{padding:10px 15px;border-radius:13px;background:#fff;border:1px solid var(--line);color:var(--muted);font-weight:800;font-size:13px}
+.tabs button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pane{display:none}.pane.on{display:block}
+@media(max-width:760px){
+ .app{padding:12px}
+ .grid2,.grid3{grid-template-columns:1fr}
+ .mini-grid{grid-template-columns:1fr 1fr}
+ .badges{grid-template-columns:repeat(2,1fr)}
+ .hero{padding-top:30px}
+ .home-logo{width:62px;height:62px;border-radius:16px}
+ .row,.row.wide{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<noscript>
+ <div style="max-width:520px;margin:60px auto;padding:24px;background:#fff;border-radius:20px;border:1px solid #dbe4de;text-align:center;color:#20382f">
+  <h2 style="color:#173d31">شغّل الجافاسكربت لعرض البرنامج</h2>
+  <p style="color:#66786f;line-height:1.8">هذه الصفحة تحتاج الجافاسكربت. فعّله من إعدادات المتصفح ثم أعد التحميل.</p>
+ </div>
+</noscript>
+
+<div class="banner notice warn" id="banner"></div>
+
+<div class="app">
+
+<section class="scene active" id="home">
+ <div class="hero">
+  <div class="home-logo"><img src="logo-abi-yusuf.png" alt="شعار مجمع أبي يوسف القرآني" width="256" height="256"></div>
+  <div class="hero-accent"><span></span><i></i><span></span></div>
+  <div class="kicker">مجمع أبي يوسف القرآني</div>
+  <h1>سَبْق</h1>
+  <p class="note" style="margin:-4px 0 10px;font-size:12.5px">سُمّي البرنامج «سَبْق» لما يحمله من معنى التقدم والمسارعة إلى الخير — يدفعك للتقدم في مسيرتك القرآنية بالحضور والتسميع والاستمرار.</p>
+  <p>احضر مبكرًا، احفظ وراجع، والتزم بالزي والأدب — تجمع النقاط ويرتفع مسار تقدّمك حتى التأهل للسحب.</p>
+  <div class="home-actions">
+   <button class="btn primary" id="btnStart">ابدأ رحلتي</button>
+   <button class="btn soft" id="btnStaffLogin">دخول المشرف والمعلم</button>
+  </div>
+ </div>
+ <div class="card">
+  <div class="kicker">🎁 الدورة الحالية</div>
+  <h3 id="cycleTitle" style="margin:7px 0 10px">الدورة الحالية مستمرة</h3>
+  <div class="progress"><div class="fill" id="cycleFill"></div></div>
+  <div class="progress-row"><span id="cycleDone">—</span><span id="cycleLeft">—</span></div>
+  <div class="note">يُحتسب التقدّم في <b>أيام الحلقة فقط: الأحد إلى الأربعاء</b>. الخميس والجمعة والسبت أيام توقف لا يُسجَّل فيها شيء ولا تكسر مسار التقدم.</div>
+ </div>
+ <div class="card">
+  <h3>🏆 فائزو الدورة السابقة</h3>
+  <div class="winners" id="winnersBox"></div>
+ </div>
+</section>
+
+<section class="scene" id="choose">
+ <div class="topbar"><button class="back" data-go="home">الرئيسية</button><h2>اختر اسمك</h2></div>
+ <div class="card">
+  <input id="studentSearch" class="search" placeholder="ابحث عن اسمك..." autocomplete="off">
+  <div id="studentList" class="student-list"></div>
+ </div>
+</section>
+
+<section class="scene" id="student">
+ <div class="topbar"><button class="back" data-go="choose">الأسماء</button><h2>رحلتي</h2></div>
+ <div class="card" style="text-align:center">
+  <div class="kicker" id="studentWhere"></div>
+  <h1 id="studentName" style="font-size:29px"></h1>
+  <div class="ring" id="ring"><div class="ring-in"><div><b id="trackNum">0</b><br><small id="trackGoal">من 10</small></div></div></div>
+  <div class="progress-row"><span id="trackLeft"></span><span id="trackStatus"></span></div>
+ </div>
+ <div class="grid grid3" style="margin-top:14px">
+  <div class="card stat"><b id="ptsCycle">0</b><small>نقاط الدورة</small></div>
+  <div class="card stat"><b id="ptsTotal">0</b><small>النقاط التراكمية</small></div>
+  <div class="card stat"><b><span class="fire" id="fire">🔥</span> <span id="streakNum">0</span></b><small>مسار التقدم</small></div>
+ </div>
+ <div class="card"><h3>الأوسمة</h3><div class="badges" id="badges"></div></div>
+ <div class="card">
+  <h3>آخر الأيام</h3>
+  <div class="history" id="history"></div>
+  <div class="note">✓ تعني أنك أنجزت الحفظ وحضرت. الأرقام أيام الشهر الهجري، والتفصيل يظهر عند التمرير على اليوم.</div>
+ </div>
+</section>
+
+<section class="scene" id="login">
+ <div class="topbar"><button class="back" data-go="home">الرئيسية</button><h2>دخول المشرف والمعلم</h2></div>
+ <div class="card" style="max-width:500px;margin:auto">
+  <div class="tabs" style="margin-bottom:16px">
+   <button class="on" id="loginModeAdmin">المشرف</button>
+   <button id="loginModeTeacher">المعلم</button>
+  </div>
+
+  <div id="loginPaneAdmin">
+   <p>أدخل رمز دخول المشرف.</p>
+   <input id="loginCode" class="search" type="password" inputmode="numeric" autocomplete="current-password" placeholder="رمز الدخول">
+   <button class="btn primary" style="width:100%;margin-top:12px" id="btnLoginCode">دخول</button>
+   <p class="note" id="toggleAdvanced" style="cursor:pointer;text-decoration:underline;margin-top:14px">مشرف آخر؟ سجّل ببريد وكلمة مرور</p>
+   <div id="loginAdvanced" style="display:none;margin-top:10px">
+    <div class="grid" style="gap:10px">
+     <input id="loginEmail" class="search" type="email" inputmode="email" autocomplete="username" placeholder="البريد الإلكتروني">
+     <input id="loginPass" class="search" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+    </div>
+    <button class="btn soft" style="width:100%;margin-top:10px" id="btnLogin">دخول بالبريد</button>
+   </div>
+  </div>
+
+  <div id="loginPaneTeacher" style="display:none">
+   <p>سجّل الدخول ببريدك وكلمة مرورك ليأخذك النظام إلى حلقتك.</p>
+   <div class="grid" style="gap:10px">
+    <input id="loginEmailT" class="search" type="email" inputmode="email" autocomplete="username" placeholder="البريد الإلكتروني">
+    <input id="loginPassT" class="search" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+   </div>
+   <button class="btn primary" style="width:100%;margin-top:12px" id="btnLoginTeacher">دخول</button>
+  </div>
+
+  <div class="note" id="loginNote"></div>
+ </div>
+</section>
+
+<section class="scene" id="teacher">
+ <div class="topbar">
+  <button class="back" data-logout>خروج</button>
+  <h2 id="teacherTitle">لوحة المعلم</h2>
+  <span class="sync" id="syncT"><i></i><span>جاهز</span></span>
+ </div>
+ <div class="tabs">
+  <button class="on" data-tab="t-eval">التقييم اليومي</button>
+  <button data-tab="t-res">نتائج حلقتي</button>
+ </div>
+ <div class="pane on" id="t-eval">
+  <div class="card">
+   <div class="bar">
+    <b>الحلقة:</b><select id="tCircle" class="search" style="width:auto;min-width:170px"></select>
+    <b>التاريخ:</b><input type="date" id="tDate"><button class="btn soft" data-today="tDate">اليوم</button>
+   </div>
+   <div class="note" id="tHijri" style="margin:0 0 10px"></div>
+   <div class="note" id="tLockNote" style="margin:0 0 10px"></div>
+   <input id="tSearch" class="search" placeholder="ابحث عن اسم الطالب..." autocomplete="off" style="margin-bottom:10px">
+   <div class="rows" id="tRows"></div>
+  </div>
+ </div>
+ <div class="pane" id="t-res"><div class="card"><div id="tResults"></div></div></div>
+</section>
+
+<section class="scene" id="admin">
+ <div class="topbar">
+  <button class="back" data-logout>خروج</button>
+  <h2>لوحة المشرف</h2>
+  <span class="sync" id="syncA"><i></i><span>جاهز</span></span>
+ </div>
+ <div class="tabs">
+  <button class="on" data-tab="a-eval">التقييم</button>
+  <button data-tab="a-res">لوحة النتائج</button>
+  <button data-tab="a-org">المراحل والحلقات</button>
+  <button data-tab="a-people">الطلاب والمعلمون</button>
+  <button data-tab="a-set">الإعدادات والسحب</button>
+ </div>
+
+ <div class="pane on" id="a-eval">
+  <div class="mini-grid">
+   <div class="mini"><span>👥 في الحلقة</span><b id="mTotal">0</b></div>
+   <div class="mini"><span>✅ حضور</span><b id="mPresent">0</b></div>
+   <div class="mini"><span>📖 حفظوا</span><b id="mHifz">0</b></div>
+   <div class="mini"><span>⭐ نقاط اليوم</span><b id="mPts">0</b></div>
+  </div>
+  <div class="card">
+   <div class="bar">
+    <b>الحلقة:</b><select id="aCircle" class="search" style="width:auto;min-width:170px"></select>
+    <b>التاريخ:</b><input type="date" id="aDate"><button class="btn soft" data-today="aDate">اليوم</button>
+   </div>
+   <div class="note" id="aHijri" style="margin:0 0 10px"></div>
+   <input id="aSearch" class="search" placeholder="ابحث عن اسم الطالب..." autocomplete="off" style="margin-bottom:10px">
+   <div class="rows" id="aRows"></div>
+  </div>
+ </div>
+
+ <div class="pane" id="a-res"><div class="card"><div id="aResults"></div></div></div>
+
+ <div class="pane" id="a-org">
+  <div class="card">
+   <h3>المراحل</h3>
+   <div class="grid grid2">
+    <input id="newStage" class="search" placeholder="اسم المرحلة (مثال: المرحلة المتوسطة)">
+    <button class="btn primary" id="btnAddStage">إضافة مرحلة</button>
+   </div>
+   <div class="rows" style="margin-top:12px" id="stageList"></div>
+  </div>
+  <div class="card">
+   <h3>الحلقات</h3>
+   <div class="grid grid3">
+    <input id="newCircle" class="search" placeholder="اسم الحلقة">
+    <select id="newCircleStage" class="search"></select>
+    <button class="btn primary" id="btnAddCircle">إضافة حلقة</button>
+   </div>
+   <div class="rows" style="margin-top:12px" id="circleList"></div>
+  </div>
+ </div>
+
+ <div class="pane" id="a-people">
+  <div class="card">
+   <h3>الطلاب</h3>
+   <div class="grid grid3">
+    <input id="newStudent" class="search" placeholder="اسم الطالب كاملًا">
+    <select id="newStudentCircle" class="search"></select>
+    <button class="btn primary" id="btnAddStudent">إضافة طالب</button>
+   </div>
+   <div class="bar" style="margin:14px 0 0">
+    <b>عرض:</b><select id="filterCircle" class="search" style="width:auto;min-width:170px"></select>
+   </div>
+   <div class="rows" style="margin-top:12px" id="studentAdminList"></div>
+  </div>
+  <div class="card">
+   <h3>المعلمون</h3>
+   <p>ينشئ المشرف حساب المعلم هنا مباشرة، ثم يسند له حلقة أو أكثر.</p>
+   <div class="grid grid2">
+    <input id="newTeacherName" class="search" placeholder="اسم المعلم">
+    <input id="newTeacherEmail" class="search" type="email" placeholder="البريد الإلكتروني">
+   </div>
+   <div class="grid grid2" style="margin-top:10px">
+    <input id="newTeacherPass" class="search" type="text" placeholder="كلمة مرور (٦ أحرف فأكثر)">
+    <button class="btn primary" id="btnAddTeacher">إنشاء حساب المعلم</button>
+   </div>
+   <div class="rows" style="margin-top:12px" id="teacherList"></div>
+  </div>
+ </div>
+
+ <div class="pane" id="a-set">
+  <div class="card">
+   <h3>الدورة</h3>
+   <div class="grid grid3">
+    <label class="note" style="margin:0">طول الدورة (أيام حلقة)<br><input type="number" id="setLength" min="1" max="200" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">مسار التقدم للتأهل<br><input type="number" id="setGoal" min="1" max="200" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">بداية الدورة<br><input type="date" id="setStart" style="width:100%;margin-top:6px"></label>
+   </div>
+   <button class="btn soft" style="margin-top:12px" id="btnSaveCycle">حفظ إعدادات الدورة</button>
+  </div>
+  <div class="card">
+   <h3>حسبة النقاط</h3>
+   <div class="grid grid3">
+    <label class="note" style="margin:0">نصف وجه حفظ<br><input type="number" id="pHalf" min="0" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">وجه مراجعة<br><input type="number" id="pRev" min="0" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">حضور مبكر<br><input type="number" id="pPresent" min="0" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">حضور متأخر<br><input type="number" id="pLate" min="0" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">الانضباط العام<br><input type="number" id="pGen" min="0" style="width:100%;margin-top:6px"></label>
+    <label class="note" style="margin:0">الزي<br><input type="number" id="pUni" min="0" style="width:100%;margin-top:6px"></label>
+   </div>
+   <button class="btn soft" style="margin-top:12px" id="btnSavePoints">حفظ النقاط</button>
+   <div class="note">الغياب صفر دائمًا. تغيير القيم يعيد حساب كل النقاط السابقة تلقائيًا.</div>
+  </div>
+  <div class="card">
+   <h3>السحب — لكل مرحلة على حدة</h3>
+   <div class="rows" id="raffleBox"></div>
+   <button class="btn soft" style="margin-top:12px" id="btnNewCycle">بدء دورة جديدة</button>
+  </div>
+  <div class="card">
+   <h3>النسخ الاحتياطي</h3>
+   <div class="grid grid2">
+    <button class="btn soft" id="btnExport">تنزيل نسخة (JSON)</button>
+    <button class="btn soft" id="btnImport">استيراد نسخة</button>
+   </div>
+   <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+ </div>
+</section>
+
+</div>
+
+<div class="overlay" id="welcome"><div class="welcome"><div style="font-size:48px">✨</div><div class="kicker">سَبْق</div><h1 id="welcomeName">أهلًا بك</h1><p>نجهّز رحلتك ونحسب نقاطك...</p></div></div>
+<div class="overlay" id="dialog"><div class="dialog" role="dialog" aria-modal="true">
+ <h3 id="dlgTitle"></h3><p id="dlgBody"></p>
+ <div class="acts"><button class="btn primary" id="dlgOk">تأكيد</button><button class="btn soft" id="dlgCancel">إلغاء</button></div>
+</div></div>
+
+<div class="overlay" id="streakDialog"><div class="dialog" role="dialog" aria-modal="true">
+ <h3>تعديل مسار التقدم يدويًا</h3>
+ <p id="streakStudentName" style="font-weight:800;color:var(--primary)"></p>
+ <div class="grid" style="gap:10px">
+  <label class="note" style="margin:0">القيمة الجديدة<br><input type="number" id="streakValue" min="0" max="200" style="width:100%;margin-top:6px"></label>
+  <label class="note" style="margin:0">السبب (سيُسجَّل ويظهر في السجل)<br><input type="text" id="streakReason" placeholder="مثال: خطأ في تسجيل يوم الثلاثاء" style="width:100%;margin-top:6px"></label>
+ </div>
+ <div class="acts" style="margin-top:14px"><button class="btn primary" id="streakOk">حفظ</button><button class="btn soft" id="streakCancel">إلغاء</button></div>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════
+   ١) إعدادات Supabase — الصقها من Project settings ← API
+      اتركها فارغة لتجربة الموقع محليًا بلا مزامنة.
+   ═══════════════════════════════════════════════════ */
+const SUPABASE_URL  = "https://vpwrqkomkbuatnpaaews.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwd3Jxa29ta2J1YXRucGFhZXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODIxNTEsImV4cCI6MjEwNDM1ODE1MX0.-Ns9F5N6Mp6sGwGXwstEpykLJAvKLuZ6ph-4FmtAv6A";
+const SB_CDN = "https://esm.sh/@supabase/supabase-js@2";
+/* بريد ثابت غير سرّي لحساب المشرف الأول — يُستخدم داخليًا فقط ليدخل المشرف برمز واحد.
+   عند إنشاء حساب المشرف في Supabase استخدم هذا البريد بالضبط. */
+const ADMIN_EMAIL = "admin@sabaq.local";
+
+/* ═══════════ ٢) ثوابت ومساعدات ═══════════ */
+const SESSION_WEEKDAYS = [0,1,2,3];
+const LOCAL_KEY = "aby_yusuf_tahfizi_v3";
+const MAX_PAGES = 10;
+const DEF_POINTS = { half:50, rev:150, present:100, late:50, gen:75, uni:25 };
+const DEFAULTS = { goal:10, cycleLength:20, cycleStart:null, points:{...DEF_POINTS}, raffleHistory:[] };
+const $ = id => document.getElementById(id);
+
+function dayKey(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function parseKey(s){ const [y,m,d] = String(s).split("-").map(Number); return new Date(y, m-1, d, 12,0,0,0); }
+const todayKey = () => dayKey(new Date());
+const isSessionDay = d => SESSION_WEEKDAYS.includes(d.getDay());
+
+function makeFmt(cal, opts){
+  try { return new Intl.DateTimeFormat(`ar-SA-u-ca-${cal}`, opts); }
+  catch { return new Intl.DateTimeFormat("ar", opts); }
+}
+const fmtHijriDay  = makeFmt("islamic-umalqura", { day:"numeric" });
+const fmtHijriLong = makeFmt("islamic-umalqura", { day:"numeric", month:"long", year:"numeric" });
+const WEEKDAY_AR = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const ATT_AR = { present:"مبكر", late:"متأخر", absent:"غائب", excused:"معذور" };
+
+const nf = new Intl.NumberFormat("ar-EG");
+function daysPhrase(n){
+  if(n === 1) return "يوم واحد";
+  if(n === 2) return "يومان";
+  if(n >= 3 && n <= 10) return `${nf.format(n)} أيام`;
+  return `${nf.format(n)} يومًا`;
+}
+function pagesPhrase(n){
+  if(!n) return "لا شيء";
+  const whole = Math.floor(n), half = (n - whole) >= 0.5;
+  let s = "";
+  if(whole === 1) s = "وجه";
+  else if(whole === 2) s = "وجهان";
+  else if(whole >= 3) s = `${nf.format(whole)} أوجه`;
+  if(half) s = s ? `${s} ونصف` : "نصف وجه";
+  return s;
+}
+function normalizeAr(s){
+  return String(s ?? "")
+    .replace(/[\u064B-\u0652\u0670\u0640]/g,"")
+    .replace(/[أإآٱ]/g,"ا").replace(/[ىي]/g,"ي").replace(/[ةه]/g,"ه")
+    .replace(/ؤ/g,"و").replace(/ئ/g,"ي")
+    .replace(/\s+/g," ").trim().toLowerCase();
+}
+const uid = () => crypto.randomUUID?.() ||
+  "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random()*16|0; return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+/* ═══════════ ٣) طبقة البيانات ═══════════ */
+let store = null;
+
+/* تحويل أسماء الحقول: التطبيق يستخدم camelCase وقاعدة البيانات snake_case */
+const K2R = { order:"sort", circleId:"circle_id", stageId:"stage_id", circleIds:"circle_ids",
+              streakOverride:"streak_override",
+              cycleLength:"cycle_length", cycleStart:"cycle_start", raffleHistory:"raffle_history" };
+const R2K = Object.fromEntries(Object.entries(K2R).map(([k,v]) => [v,k]));
+const toRow   = o => Object.fromEntries(Object.entries(o).map(([k,v]) => [K2R[k] || k, v]));
+const fromRow = o => Object.fromEntries(Object.entries(o).map(([k,v]) => [R2K[k] || k, v]));
+const TABLES  = ["stages","circles","students","teachers"];
+
+async function initStore(){
+  const ok = SUPABASE_URL && SUPABASE_ANON && !SUPABASE_URL.includes("XXXX");
+  if(!ok) return localStore("setup");
+  try{
+    const { createClient } = await import(SB_CDN);
+    return supabaseStore(createClient);
+  }catch(e){ console.error("Supabase:", e); return localStore("offline"); }
+}
+
+function supabaseStore(createClient){
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+  let reload = () => {};
+
+  const pull = async name => {
+    if(name === "settings"){
+      const { data, error } = await sb.from("program").select("*").eq("id","main").maybeSingle();
+      if(error) throw error;
+      return data ? fromRow(data) : {};
+    }
+    const { data, error } = await sb.from(name).select("*");
+    if(error) throw error;
+    return data.map(fromRow);
+  };
+
+  return {
+    mode:"cloud",
+    subscribe(cbs, onErr){
+      const load = async which => {
+        try{ cbs[which](await pull(which)); }
+        catch(e){ console.error(which, e); onErr?.(e); }
+      };
+      reload = load;
+      ["settings", ...TABLES].forEach(load);
+
+      const timers = {};
+      const bump = which => { clearTimeout(timers[which]); timers[which] = setTimeout(() => load(which), 250); };
+      const ch = sb.channel("tahfizi-live");
+      ch.on("postgres_changes", { event:"*", schema:"public", table:"program"  }, () => bump("settings"));
+      for(const t of TABLES)
+        ch.on("postgres_changes", { event:"*", schema:"public", table:t }, () => bump(t));
+      ch.subscribe();
+
+      /* شبكة أمان لو انقطع البث اللحظي */
+      setInterval(() => { if(document.visibilityState === "visible") ["settings", ...TABLES].forEach(load); }, 120000);
+      document.addEventListener("visibilitychange", () => {
+        if(document.visibilityState === "visible") ["settings", ...TABLES].forEach(load);
+      });
+    },
+
+    onAuth(cb){
+      let last = "\u0000";
+      const resolve = async session => {
+        const key = session?.user?.id || "";
+        if(key === last) return;
+        last = key;
+        if(!session) return cb(null);
+        let role = "none";
+        try{
+          const { data, error } = await sb.rpc("my_role");
+          if(!error) role = data || "none";
+        }catch(e){ console.error(e); }
+        /* سحب subscribe() الأول قد يكون تم كـ anon قبل تسجيل الدخول، فيفوّت صفوفًا مقيّدة
+           بالـRLS (مثل صف المعلم نفسه في teachers) — أعد سحب كل الجداول الآن بعد أن صار
+           للطلب هوية حقيقية، بدل انتظار حدث عرضي (تغيّر بالقاعدة أو مؤقّت أو ظهور التبويب) */
+        ["settings", ...TABLES].forEach(reload);
+        cb({ uid:session.user.id, email:session.user.email, role });
+      };
+      sb.auth.getSession().then(({ data }) => resolve(data.session));
+      sb.auth.onAuthStateChange((_e, session) => resolve(session));
+    },
+
+    async signIn(email, pass){
+      const { error } = await sb.auth.signInWithPassword({ email:email.trim(), password:pass });
+      if(error) throw error;
+    },
+    signOut: () => sb.auth.signOut(),
+
+    /* إنشاء حساب معلم عبر عميل ثانٍ حتى لا تُستبدل جلسة المشرف */
+    async createTeacherAccount(email, pass){
+      const tmp = createClient(SUPABASE_URL, SUPABASE_ANON, {
+        auth:{ storageKey:"tahfizi-signup", persistSession:false, autoRefreshToken:false, detectSessionInUrl:false }
+      });
+      const { data, error } = await tmp.auth.signUp({ email:email.trim(), password:pass });
+      if(error) throw error;
+      if(!data?.user?.id) throw new Error("\u0644\u0645 \u064a\u064f\u0646\u0634\u0623 \u0627\u0644\u062d\u0633\u0627\u0628");
+      return data.user.id;
+    },
+
+    async saveSettings(patch){
+      const { error } = await sb.from("program").upsert({ id:"main", ...toRow(patch) });
+      if(error) throw error;
+      reload("settings");
+    },
+    async put(col, id, data){
+      const { error } = await sb.from(col).upsert({ id, ...toRow(data) });
+      if(error) throw error;
+      reload(col);
+    },
+    /* تحديث صف موجود فعلًا فقط — لا يُنشئ صفًا جديدًا ناقص الحقول لو حُذف الأصل من مكان آخر */
+    /* تحديث صف موجود فعلًا فقط — لا يُنشئ صفًا جديدًا ناقص الحقول لو حُذف الأصل من مكان آخر.
+       ويتحقق أن التحديث أصاب صفًا حقيقيًا؛ Postgrest لا يُخطئ على تحديث 0 صف افتراضيًا. */
+    async patch(col, id, data){
+      const { data: rows, error } = await sb.from(col).update(toRow(data)).eq("id", id).select("id");
+      if(error) throw error;
+      if(!rows || !rows.length) throw new Error("العنصر لم يعد موجودًا — أعد تحميل الصفحة وحاول من جديد");
+      reload(col);
+    },
+    async remove(col, id){
+      const { error } = await sb.from(col).delete().eq("id", id);
+      if(error) throw error;
+      reload(col);
+    },
+    async setRecord(id, key, rec){
+      const { error } = await sb.rpc("set_record", { p_student:id, p_day:key, p_rec:rec });
+      if(error) throw error;
+      reload("students");
+    },
+    async setStreakOverride(id, value, reason){
+      const { error } = await sb.rpc("set_streak_override", { p_student:id, p_value:value, p_reason:reason });
+      if(error) throw error;
+      reload("students");
+    },
+    async replaceAll(d){
+      for(const t of ["students","circles","stages"]){
+        const { error } = await sb.from(t).delete().gte("sort", -9007199254740991);
+        if(error) throw error;
+      }
+      const { error: e0 } = await sb.from("program").upsert({ id:"main", ...toRow(d.settings) });
+      if(e0) throw e0;
+      for(const t of ["stages","circles","students"]){
+        if(!d[t]?.length) continue;
+        const { error } = await sb.from(t).insert(d[t].map(x => toRow(x)));
+        if(error) throw error;
+      }
+      ["settings", ...TABLES].forEach(reload);
+    }
+  };
+}
+
+function localStore(reason){
+  let d = { settings:{...DEFAULTS}, stages:[], circles:[], students:[], teachers:[] };
+  try{ const raw = JSON.parse(localStorage.getItem(LOCAL_KEY)); if(raw?.settings) d = { ...d, ...raw }; }catch{}
+  d.settings = { ...DEFAULTS, ...d.settings, points:{ ...DEF_POINTS, ...(d.settings?.points||{}) } };
+  let push = () => {}, authCb = () => {}, user = null;
+  const flush = () => { localStorage.setItem(LOCAL_KEY, JSON.stringify(d)); push(); };
+  return {
+    mode:"local", reason,
+    subscribe(cbs){
+      push = () => { cbs.settings({...d.settings}); cbs.stages([...d.stages]); cbs.circles([...d.circles]);
+                     cbs.students(d.students.map(s => ({...s}))); cbs.teachers([...d.teachers]); };
+      push();
+    },
+    onAuth(cb){ authCb = cb; cb(user); },
+    async signIn(){ user = { uid:"local-admin", email:"محلي", role:"admin" }; authCb(user); },
+    async signOut(){ user = null; authCb(null); },
+    async createTeacherAccount(){ return uid(); },
+    async saveSettings(p){ Object.assign(d.settings, p); flush(); },
+    async put(col,id,data){
+      const i = d[col].findIndex(x => x.id === id);
+      if(i >= 0) d[col][i] = { ...d[col][i], ...data, id }; else d[col].push({ id, ...data });
+      flush();
+    },
+    async patch(col,id,data){
+      const i = d[col].findIndex(x => x.id === id);
+      if(i >= 0) d[col][i] = { ...d[col][i], ...data, id };
+      flush();
+    },
+    async remove(col,id){ d[col] = d[col].filter(x => x.id !== id); flush(); },
+    async setRecord(id,key,rec){ const s = d.students.find(x => x.id === id); if(!s) return; (s.records ||= {})[key] = rec; flush(); },
+    async setStreakOverride(id, value, reason){
+      const s = d.students.find(x => x.id === id); if(!s) return;
+      s.streakOverride = { value, reason, cycle: d.settings.cycleStart || todayKey(), by:"المشرف (محلي)", at:new Date().toISOString() };
+      flush();
+    },
+    async replaceAll(inc){ d = { ...d, ...inc }; flush(); }
+  };
+}
+
+/* ═══════════ ٤) الحالة والحسابات ═══════════ */
+const state = {
+  settings:{...DEFAULTS}, stages:[], circles:[], students:[], teachers:[],
+  user:null, ready:false, currentStudent:null, resultsMode:"cycle", resultsStage:""
+};
+const byId = (arr,id) => arr.find(x => x.id === id);
+const PTS = () => ({ ...DEF_POINTS, ...(state.settings.points || {}) });
+const blank = () => ({ h:0, r:0, a:"", d:{ g:false, u:false } });
+function recOf(s,key){
+  const r = s.records?.[key];
+  return r ? { h:r.h||0, r:r.r||0, a:r.a||"", d:{ g:!!r.d?.g, u:!!r.d?.u } } : blank();
+}
+function dayPoints(rec){
+  if(rec.a === "excused") return 0; // يوم بعذر: بلا نقاط مهما سُجِّل فيه
+  const p = PTS();
+  let t = (rec.h||0)*2*p.half + (rec.r||0)*p.rev;
+  if(rec.a === "present") t += p.present;
+  else if(rec.a === "late") t += p.late;
+  if(rec.d?.g) t += p.gen;
+  if(rec.d?.u) t += p.uni;
+  return Math.round(t);
+}
+const qualifies = rec => (rec.h||0) > 0 && (rec.a === "present" || rec.a === "late");
+const isExcused = rec => rec.a === "excused";
+
+function cycleDays(){
+  const start = parseKey(state.settings.cycleStart || todayKey());
+  const end = new Date(); end.setHours(12,0,0,0);
+  const out = []; const d = new Date(start); let g = 0;
+  while(d <= end && g++ < 3000){ if(isSessionDay(d)) out.push(dayKey(d)); d.setDate(d.getDate()+1); }
+  return out;
+}
+function calc(s){
+  const days = cycleDays(), tk = todayKey();
+  let cyclePts = 0, streak = 0, best = 0, doneDays = 0;
+  for(const k of days){
+    const rec = recOf(s,k);
+    if(isExcused(rec)) continue; // يوم بعذر: لا يُحتسب نقاطًا ولا يكسر المسار ولا يُنقص منه
+    cyclePts += dayPoints(rec);
+    if(qualifies(rec)){ streak++; doneDays++; if(streak > best) best = streak; }
+    else if(k !== tk) streak = 0;
+  }
+  let total = 0;
+  for(const k of Object.keys(s.records || {})){
+    const rec = recOf(s,k);
+    if(!isExcused(rec)) total += dayPoints(rec);
+  }
+  const goal = state.settings.goal || DEFAULTS.goal;
+
+  /* تعديل يدوي للشعلة من المشرف — يبقى ساريًا لهذه الدورة فقط */
+  const ov = s.streakOverride;
+  if(ov && ov.cycle === (state.settings.cycleStart || todayKey())){
+    streak = ov.value; if(streak > best) best = streak;
+  }
+  return { cyclePts, total, streak, best, doneDays, eligible: best >= goal };
+}
+
+/* ═══════════ ٥) واجهة عامة ═══════════ */
+let toastT;
+function toast(m){ const e = $("toast"); e.textContent = m; e.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove("show"), 2800); }
+function confirmDialog(title, body, okLabel="تأكيد"){
+  return new Promise(res => {
+    const ov = $("dialog"), ok = $("dlgOk"), no = $("dlgCancel");
+    $("dlgTitle").textContent = title; $("dlgBody").textContent = body; ok.textContent = okLabel;
+    ov.classList.add("show");
+    const end = v => { ov.classList.remove("show"); ok.onclick = no.onclick = null; res(v); };
+    ok.onclick = () => end(true); no.onclick = () => end(false); ok.focus();
+  });
+}
+function setSync(cls, txt){
+  for(const id of ["syncA","syncT"]){
+    const c = $(id); if(!c) continue;
+    c.className = "sync " + cls; c.querySelector("span").textContent = txt;
+  }
+}
+async function withSync(label, fn){
+  setSync("busy", label);
+  try{ await fn(); setSync("ok","تم الحفظ"); return true; }
+  catch(e){ console.error(e); setSync("off","فشل الحفظ"); toast("تعذّر الحفظ: " + friendly(e)); return false; }
+}
+function friendly(e){
+  const m = String(e?.message || "").toLowerCase();
+  const c = String(e?.code || "");
+  if(c === "42501" || m.includes("row-level security") || m.includes("not allowed") || m.includes("permission denied"))
+    return "لا تملك صلاحية هذا الإجراء";
+  if(m.includes("invalid login credentials")) return "البريد أو كلمة المرور غير صحيحة";
+  if(m.includes("email not confirmed")) return "الحساب يحتاج تأكيد البريد — أطفئ Confirm email من إعدادات Supabase";
+  if(m.includes("already registered") || c === "23505") return "هذا البريد مستخدم في حساب آخر";
+  if(m.includes("password should be")) return "كلمة المرور قصيرة (٦ أحرف فأكثر)";
+  if(m.includes("signups not allowed")) return "فعّل التسجيل الذاتي في إعدادات Supabase";
+  if(m.includes("rate limit") || m.includes("too many")) return "محاولات كثيرة، انتظر قليلًا";
+  if(m.includes("failed to fetch") || m.includes("networkerror")) return "تعذّر الاتصال — تحقق من الإنترنت أو أن المشروع غير موقوف";
+  if(m.includes("jwt") || m.includes("expired")) return "انتهت الجلسة، سجّل الدخول مجددًا";
+  return e?.message || "خطأ غير معروف";
+}
+function show(id){
+  document.querySelectorAll(".scene").forEach(x => x.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo({ top:0, behavior:"smooth" });
+  if(id === "choose") renderChoose();
+  if(id === "admin") renderAdmin();
+  if(id === "teacher") renderTeacher();
+}
+function fillSelect(el, items, { placeholder, keep=true } = {}){
+  const prev = keep ? el.value : "";
+  el.innerHTML = "";
+  if(placeholder){ const o = document.createElement("option"); o.value = ""; o.textContent = placeholder; el.appendChild(o); }
+  for(const it of items){ const o = document.createElement("option"); o.value = it.id; o.textContent = it.label; el.appendChild(o); }
+  if(prev && items.some(i => i.id === prev)) el.value = prev;
+}
+const circleLabel = c => { const st = byId(state.stages, c.stageId); return c.name + (st ? ` — ${st.name}` : " — بلا مرحلة"); };
+const circleOptions = () => state.circles.map(c => ({ id:c.id, label:circleLabel(c) }));
+
+/* ═══════════ ٦) الرسم ═══════════ */
+function renderAll(){
+  renderHome();
+  if($("choose").classList.contains("active")) renderChoose();
+  if($("student").classList.contains("active") && state.currentStudent) renderStudent(state.currentStudent);
+  if($("admin").classList.contains("active")) renderAdmin();
+  if($("teacher").classList.contains("active")) renderTeacher();
+}
+
+function renderHome(){
+  const len = state.settings.cycleLength || DEFAULTS.cycleLength;
+  const elapsed = Math.min(len, cycleDays().length), left = Math.max(0, len - elapsed);
+  $("cycleTitle").textContent = left ? "الدورة الحالية مستمرة" : "اكتملت الدورة — جاهزون للسحب 🎉";
+  $("cycleDone").textContent = `مضى ${nf.format(elapsed)} من ${nf.format(len)} يوم حلقة`;
+  $("cycleLeft").textContent = left ? `باقي ${daysPhrase(left)}` : "جاهزون للسحب 🎉";
+  requestAnimationFrame(() => { $("cycleFill").style.width = (elapsed/len*100) + "%"; });
+
+  const box = $("winnersBox"), hist = state.settings.raffleHistory || [];
+  if(!hist.length){ box.innerHTML = '<div class="notice">سيظهر هنا فائز كل مرحلة بعد أول سحب.</div>'; return; }
+  const latest = new Map();
+  for(const w of hist) latest.set(w.stage, w);
+  box.innerHTML = [...latest.values()].map(w =>
+    `<div class="win"><small>${esc(w.stageName || "مرحلة")}</small><b>🎉 ${esc(w.name)}</b></div>`).join("");
+}
+
+function renderChoose(){
+  const box = $("studentList"), q = normalizeAr($("studentSearch").value);
+  if(!state.ready){ box.innerHTML = '<div class="skeleton" style="margin:14px 0"></div><div class="skeleton" style="margin:14px 0"></div>'; return; }
+  if(!state.students.length){ box.innerHTML = '<div class="notice" style="margin-top:12px">لم يُضف أي طالب بعد. يضيف المشرف الأسماء من لوحته.</div>'; return; }
+  const list = state.students.filter(s => !q || normalizeAr(s.name).includes(q));
+  if(!list.length){ box.innerHTML = '<div class="note" style="padding:18px;text-align:center">لا توجد أسماء مطابقة</div>'; return; }
+  box.innerHTML = "";
+  for(const s of list){
+    const c = byId(state.circles, s.circleId);
+    const b = document.createElement("button"); b.className = "student";
+    const wrap = document.createElement("div");
+    const nm = document.createElement("b"); nm.textContent = s.name;
+    const sub = document.createElement("small"); sub.textContent = c ? circleLabel(c) : "غير موزّع على حلقة";
+    wrap.append(nm, sub);
+    const go = document.createElement("span"); go.className = "go"; go.textContent = "ابدأ رحلتك";
+    b.append(wrap, go);
+    b.onclick = () => openStudent(s.id);
+    box.appendChild(b);
+  }
+}
+function openStudent(id){
+  const s = byId(state.students, id); if(!s) return;
+  const ov = $("welcome");
+  $("welcomeName").textContent = "أهلًا يا " + s.name + " 👋";
+  ov.classList.add("show");
+  setTimeout(() => { ov.classList.remove("show"); state.currentStudent = id; show("student"); renderStudent(id); }, 750);
+}
+function renderStudent(id){
+  const s = byId(state.students, id); if(!s){ show("choose"); return; }
+  const goal = state.settings.goal || DEFAULTS.goal, c = calc(s);
+  const pct = Math.min(100, c.streak/goal*100), left = Math.max(0, goal - c.streak);
+  const circ = byId(state.circles, s.circleId);
+
+  $("studentWhere").textContent = circ ? circleLabel(circ) : "غير موزّع على حلقة";
+  $("studentName").textContent = s.name;
+  $("trackNum").textContent = nf.format(c.streak);
+  $("trackGoal").textContent = "من " + nf.format(goal);
+  $("trackLeft").textContent = c.eligible ? "🎟️ تأهلت للسحب" : (left ? `باقي ${daysPhrase(left)} للتأهل` : "🎉 بلغت الهدف");
+  $("trackStatus").textContent = c.streak ? "🌱 مسارك مستمر" : "ابدأ اليوم 💪";
+  $("ring").style.background = `conic-gradient(var(--green) ${pct*3.6}deg,#e4ece7 ${pct*3.6}deg)`;
+  $("ptsCycle").textContent = nf.format(c.cyclePts);
+  $("ptsTotal").textContent = nf.format(c.total);
+  $("streakNum").textContent = nf.format(c.streak);
+  $("fire").classList.toggle("hot", c.streak >= 5);
+
+  const medals = [
+    ["🌱","البداية","٣ أيام منجزة", c.doneDays >= 3],
+    ["⚡","ثابت","مسار ٥ أيام", c.best >= 5],
+    ["🎁","مؤهل السحب",`مسار ${goal} أيام`, c.eligible],
+    ["🔥","المواظب","مسار ١٥ يومًا", c.best >= 15],
+    ["💎","جامع النقاط","٥٠٠٠ نقطة", c.total >= 5000],
+    ["🏆","نجم الحلقة","١٥٠٠٠ نقطة", c.total >= 15000]
+  ];
+  $("badges").innerHTML = medals.map(m =>
+    `<div class="badge ${m[3]?"on":""}"><span class="emoji">${m[0]}</span><b>${m[1]}</b><small>${m[2]}</small></div>`).join("");
+
+  const cells = []; const d = new Date(); d.setHours(12,0,0,0);
+  for(let i = 0; i < 14; i++){
+    const key = dayKey(d), rec = recOf(s,key), sess = isSessionDay(d), ok = qualifies(rec), exc = isExcused(rec);
+    const wd = WEEKDAY_AR[d.getDay()];
+    const tip = sess
+      ? (exc ? `${wd} · ${fmtHijriLong.format(d)}\nيوم بعذر — لا يُحتسب ولا يكسر المسار`
+             : `${wd} · ${fmtHijriLong.format(d)}\nحفظ: ${pagesPhrase(rec.h)} · مراجعة: ${pagesPhrase(rec.r)}\nالحضور: ${ATT_AR[rec.a] || "لم يُسجَّل"}\nالنقاط: ${nf.format(dayPoints(rec))}`)
+      : `${wd} · ${fmtHijriLong.format(d)} — يوم توقف`;
+    const cls = exc ? "" : (ok ? "ok" : (sess?"no":""));
+    const mark = exc ? "⏸" : (ok?"✓":(sess?"—":"راحة"));
+    cells.push(`<div class="day ${cls}" title="${esc(tip)}"><span class="wd">${wd}</span><b class="mark">${mark}</b><span class="hd">${fmtHijriDay.format(d)}</span></div>`);
+    d.setDate(d.getDate()-1);
+  }
+  $("history").innerHTML = cells.join("");
+}
+
+/* بطاقة تقييم طالب */
+function evalCard(s, key, editable){
+  const rec = recOf(s, key);
+  const el = document.createElement("div");
+  el.className = "ev" + (rec.a === "absent" ? " absent" : rec.a === "excused" ? " excused" : "");
+
+  const head = document.createElement("div"); head.className = "ev-head";
+  const nm = document.createElement("b"); nm.textContent = s.name;
+  const pts = document.createElement("span"); pts.className = "ev-pts";
+  head.append(nm, pts); el.appendChild(head);
+
+  const paintPts = () => { pts.textContent = nf.format(dayPoints(rec)) + " نقطة"; };
+  const commit = () => {
+    paintPts();
+    el.classList.toggle("absent", rec.a === "absent");
+    el.classList.toggle("excused", rec.a === "excused");
+    queueSave(s.id, key, rec);
+  };
+  paintPts();
+
+  const seg = document.createElement("div"); seg.className = "seg";
+  for(const [v,lbl] of [["present","حاضر"],["late","متأخر"],["absent","غائب"],["excused","معذور"]]){
+    const b = document.createElement("button");
+    b.dataset.v = v; b.textContent = lbl; b.disabled = !editable;
+    if(rec.a === v) b.classList.add("on");
+    b.onclick = () => {
+      rec.a = (rec.a === v) ? "" : v;
+      seg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === rec.a));
+      commit();
+    };
+    seg.appendChild(b);
+  }
+  el.appendChild(seg);
+
+  const mkStep = (label, field) => {
+    const w = document.createElement("div"); w.className = "step";
+    const l = document.createElement("span"); l.className = "lbl"; l.textContent = label;
+    const ctl = document.createElement("div"); ctl.className = "ctl";
+    const minus = document.createElement("button"); minus.textContent = "−"; minus.setAttribute("aria-label", "إنقاص " + label);
+    const val = document.createElement("b");
+    const plus = document.createElement("button"); plus.textContent = "+"; plus.setAttribute("aria-label", "زيادة " + label);
+    const paint = () => { val.textContent = pagesPhrase(rec[field]); };
+    const bump = n => { rec[field] = Math.min(MAX_PAGES, Math.max(0, +(((rec[field]||0) + n).toFixed(1)))); paint(); commit(); };
+    minus.onclick = () => bump(-0.5); plus.onclick = () => bump(0.5);
+    minus.disabled = plus.disabled = !editable;
+    paint(); ctl.append(minus, val, plus); w.append(l, ctl);
+    return w;
+  };
+  el.appendChild(mkStep("الحفظ","h"));
+  el.appendChild(mkStep("المراجعة","r"));
+
+  const chips = document.createElement("div"); chips.className = "chips";
+  for(const [f,lbl] of [["g","الانضباط العام"],["u","الزي"]]){
+    const b = document.createElement("button");
+    b.className = "chip" + (rec.d[f] ? " on" : ""); b.textContent = lbl; b.disabled = !editable;
+    b.onclick = () => { rec.d[f] = !rec.d[f]; b.classList.toggle("on", rec.d[f]); commit(); };
+    chips.appendChild(b);
+  }
+  el.appendChild(chips);
+  return el;
+}
+
+/* حفظ مؤجّل: لا نكتب مع كل ضغطة */
+const pending = new Map();
+function queueSave(id, key, rec){
+  const s = byId(state.students, id);
+  const snap = { h:rec.h, r:rec.r, a:rec.a, d:{ g:rec.d.g, u:rec.d.u } };
+  if(s) (s.records ||= {})[key] = snap;
+  refreshStats();
+  const k = id + "|" + key;
+  clearTimeout(pending.get(k));
+  setSync("busy","جارٍ الحفظ");
+  pending.set(k, setTimeout(async () => {
+    pending.delete(k);
+    await withSync("جارٍ الحفظ", () => store.setRecord(id, key, snap));
+  }, 600));
+}
+
+function renderEvalList({ rowsEl, circleId, dateEl, hijriEl, editable, stats, searchEl, lockNoteEl }){
+  const key = dateEl.value || todayKey();
+  const dObj = parseKey(key);
+  hijriEl.textContent = `${WEEKDAY_AR[dObj.getDay()]} · ${fmtHijriLong.format(dObj)}`;
+  rowsEl.innerHTML = "";
+
+  /* قفل المعلم: لا يعدّل إلا يوم الحلقة نفسه، ويُغلق عند منتصف ليله. المشرف بلا قفل. */
+  const locked = editable && state.user?.role !== "admin" && key !== todayKey();
+  if(lockNoteEl) lockNoteEl.textContent = locked ? "🔒 أُغلق تعديل هذا اليوم — التعديل بعد يومه للمشرف وحده." : "";
+  const canEdit = editable && !locked;
+
+  let list = state.students.filter(s => s.circleId === circleId);
+  const q = searchEl ? normalizeAr(searchEl.value) : "";
+  if(q) list = list.filter(s => normalizeAr(s.name).includes(q));
+
+  if(!isSessionDay(dObj)){
+    rowsEl.innerHTML = '<div class="notice" style="text-align:center;padding:22px">🌙 هذا اليوم خارج أيام الحلقة.<br><span style="font-weight:400">الخميس والجمعة والسبت أيام توقف، ولا يُسجَّل فيها شيء.</span></div>';
+    if(stats) setStats([], key);
+    return;
+  }
+  if(!circleId){ rowsEl.innerHTML = '<div class="notice" style="text-align:center;padding:22px">اختر حلقة لعرض طلابها.</div>'; if(stats) setStats([], key); return; }
+  if(!list.length){ rowsEl.innerHTML = '<div class="notice" style="text-align:center;padding:22px">لا يوجد طلاب مطابقون.</div>'; if(stats) setStats([], key); return; }
+  for(const s of list) rowsEl.appendChild(evalCard(s, key, canEdit));
+  if(stats) setStats(list, key);
+}
+function setStats(list, key){
+  let present = 0, hifz = 0, pts = 0;
+  for(const s of list){
+    const r = recOf(s, key);
+    if(r.a === "present" || r.a === "late") present++;
+    if((r.h||0) > 0) hifz++;
+    pts += dayPoints(r);
+  }
+  $("mTotal").textContent = nf.format(list.length); $("mPresent").textContent = nf.format(present);
+  $("mHifz").textContent = nf.format(hifz); $("mPts").textContent = nf.format(pts);
+}
+function refreshStats(){
+  if(!$("admin").classList.contains("active")) return;
+  const list = state.students.filter(s => s.circleId === $("aCircle").value);
+  setStats(list, $("aDate").value || todayKey());
+}
+
+function renderResults(target, { stageId, circleId, allowStagePick }){
+  const box = $(target); box.innerHTML = "";
+  const head = document.createElement("div"); head.className = "bar";
+  if(allowStagePick){
+    const lbl = document.createElement("b"); lbl.textContent = "المرحلة:";
+    const sel = document.createElement("select"); sel.className = "search"; sel.style.width = "auto"; sel.style.minWidth = "170px";
+    fillSelect(sel, state.stages.map(s => ({ id:s.id, label:s.name })), { placeholder:"كل المراحل", keep:false });
+    sel.value = state.resultsStage || "";
+    sel.onchange = () => { state.resultsStage = sel.value; renderResults(target, { stageId:sel.value, circleId, allowStagePick }); };
+    head.append(lbl, sel);
+  }
+  const tg = document.createElement("div"); tg.className = "toggle";
+  for(const [v,l] of [["cycle","نقاط الدورة"],["total","النقاط التراكمية"]]){
+    const b = document.createElement("button"); b.textContent = l;
+    if(state.resultsMode === v) b.classList.add("on");
+    b.onclick = () => { state.resultsMode = v; renderResults(target, { stageId, circleId, allowStagePick }); };
+    tg.appendChild(b);
+  }
+  head.appendChild(tg);
+  box.appendChild(head);
+
+  let list = state.students.slice();
+  if(circleId) list = list.filter(s => s.circleId === circleId);
+  if(stageId)  list = list.filter(s => s.stageId === stageId);
+  if(!list.length){ box.insertAdjacentHTML("beforeend", '<div class="notice">لا يوجد طلاب في هذا النطاق.</div>'); return; }
+
+  const rows = list.map(s => ({ s, c:calc(s) })).sort((a,b) =>
+    (state.resultsMode === "cycle" ? b.c.cyclePts - a.c.cyclePts : b.c.total - a.c.total)
+    || b.c.best - a.c.best || a.s.name.localeCompare(b.s.name, "ar"));
+
+  const wrap = document.createElement("div"); wrap.className = "rows"; wrap.style.marginTop = "12px";
+  rows.forEach((r,i) => {
+    const el = document.createElement("div");
+    el.className = "rank" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "");
+    const circ = byId(state.circles, r.s.circleId);
+    const pts = state.resultsMode === "cycle" ? r.c.cyclePts : r.c.total;
+    el.innerHTML =
+      `<div class="pos">${nf.format(i+1)}</div>` +
+      `<div><b>${esc(r.s.name)}</b><small>${esc(circ ? circ.name : "بلا حلقة")} · مسار التقدم ${nf.format(r.c.streak)}${r.c.eligible ? " · 🎟️ مؤهل" : ""}</small></div>` +
+      `<div class="pts"><b>${nf.format(pts)}</b> <small>نقطة</small></div>`;
+    wrap.appendChild(el);
+  });
+  box.appendChild(wrap);
+}
+
+function myCircles(){
+  const t = byId(state.teachers, state.user?.uid);
+  const ids = t?.circleIds || [];
+  return state.circles.filter(c => ids.includes(c.id));
+}
+function renderTeacher(){
+  const mine = myCircles();
+  const t = byId(state.teachers, state.user?.uid);
+  $("teacherTitle").textContent = t?.name ? "حلقات " + t.name : "لوحة المعلم";
+  fillSelect($("tCircle"), mine.map(c => ({ id:c.id, label:circleLabel(c) })));
+  if(!mine.length){
+    $("tRows").innerHTML = '<div class="notice warn">لم تُربط بأي حلقة بعد. راجع المشرف.</div>';
+    $("tResults").innerHTML = '<div class="notice warn">لا توجد حلقة مرتبطة بحسابك.</div>';
+    return;
+  }
+  if(!$("tCircle").value) $("tCircle").value = mine[0].id;
+  renderEvalList({ rowsEl:$("tRows"), circleId:$("tCircle").value, dateEl:$("tDate"), hijriEl:$("tHijri"), editable:true, searchEl:$("tSearch"), lockNoteEl:$("tLockNote") });
+  renderResults("tResults", { circleId:$("tCircle").value, allowStagePick:false });
+}
+
+function renderAdmin(){
+  fillSelect($("aCircle"), circleOptions());
+  fillSelect($("newCircleStage"), state.stages.map(s => ({ id:s.id, label:s.name })), { placeholder:"اختر المرحلة" });
+  fillSelect($("newStudentCircle"), circleOptions(), { placeholder:"اختر الحلقة" });
+  fillSelect($("filterCircle"), [{ id:"__all__", label:"كل الحلقات" }, ...circleOptions(), { id:"__none__", label:"غير الموزّعين" }]);
+  if(!$("filterCircle").value) $("filterCircle").value = "__all__";
+  if(!$("aCircle").value && state.circles.length) $("aCircle").value = state.circles[0].id;
+
+  renderEvalList({ rowsEl:$("aRows"), circleId:$("aCircle").value, dateEl:$("aDate"), hijriEl:$("aHijri"), editable:true, stats:true, searchEl:$("aSearch") });
+  renderResults("aResults", { stageId:state.resultsStage, allowStagePick:true });
+
+  const sl = $("stageList");
+  sl.innerHTML = state.stages.length ? "" : '<div class="notice">أضف أول مرحلة لتبدأ التنظيم.</div>';
+  for(const st of state.stages){
+    const row = document.createElement("div"); row.className = "row";
+    const nm = document.createElement("div"); nm.className = "row-name";
+    nm.innerHTML = `${esc(st.name)}<small>${nf.format(state.circles.filter(c=>c.stageId===st.id).length)} حلقة · ${nf.format(state.students.filter(s=>s.stageId===st.id).length)} طالب</small>`;
+    const del = document.createElement("button"); del.className = "btn danger"; del.style.padding = "9px 13px"; del.textContent = "حذف";
+    del.onclick = () => removeStage(st);
+    row.append(nm, del); sl.appendChild(row);
+  }
+
+  const cl = $("circleList");
+  cl.innerHTML = state.circles.length ? "" : '<div class="notice">أضف حلقة وأسندها إلى مرحلة.</div>';
+  for(const c of state.circles){
+    const t = state.teachers.find(x => (x.circleIds||[]).includes(c.id));
+    const row = document.createElement("div"); row.className = "row";
+    const nm = document.createElement("div"); nm.className = "row-name";
+    nm.innerHTML = `${esc(c.name)}<small>${esc(byId(state.stages,c.stageId)?.name || "بلا مرحلة")} · ${nf.format(state.students.filter(s=>s.circleId===c.id).length)} طالب · ${t ? "المعلم: "+esc(t.name) : "بلا معلم"}</small>`;
+    const del = document.createElement("button"); del.className = "btn danger"; del.style.padding = "9px 13px"; del.textContent = "حذف";
+    del.onclick = () => removeCircle(c);
+    row.append(nm, del); cl.appendChild(row);
+  }
+
+  const f = $("filterCircle").value;
+  let list = state.students;
+  if(f === "__none__") list = list.filter(s => !s.circleId || !byId(state.circles, s.circleId));
+  else if(f && f !== "__all__") list = list.filter(s => s.circleId === f);
+  const al = $("studentAdminList");
+  al.innerHTML = list.length ? "" : '<div class="notice">لا يوجد طلاب في هذا النطاق.</div>';
+  list.forEach((s,i) => {
+    const row = document.createElement("div"); row.className = "row wide";
+    const nm = document.createElement("div"); nm.className = "row-name";
+    nm.innerHTML = `${nf.format(i+1)}. ${esc(s.name)}<small>${nf.format(calc(s).total)} نقطة تراكمية</small>`;
+    const sel = document.createElement("select"); sel.className = "search"; sel.style.width = "auto"; sel.style.padding = "8px";
+    fillSelect(sel, circleOptions(), { placeholder:"بلا حلقة", keep:false });
+    sel.value = s.circleId || "";
+    sel.onchange = () => moveStudent(s, sel.value);
+    const del = document.createElement("button"); del.className = "btn danger"; del.style.padding = "9px 13px"; del.textContent = "حذف";
+    del.onclick = () => removeStudent(s);
+    const streakBtn = document.createElement("button");
+    streakBtn.className = "btn soft"; streakBtn.style.padding = "9px 13px"; streakBtn.textContent = "🔥 " + nf.format(calc(s).streak);
+    streakBtn.title = "تعديل مسار التقدم يدويًا";
+    streakBtn.onclick = () => openStreakDialog(s);
+    row.append(nm, sel, streakBtn, del); al.appendChild(row);
+  });
+
+  const tl = $("teacherList");
+  tl.innerHTML = state.teachers.length ? "" : '<div class="notice">لم يُنشأ أي حساب معلم بعد.</div>';
+  for(const t of state.teachers){
+    const row = document.createElement("div"); row.className = "row wide";
+    const names = (t.circleIds||[]).map(id => byId(state.circles,id)?.name).filter(Boolean);
+    const nm = document.createElement("div"); nm.className = "row-name";
+    nm.innerHTML = `${esc(t.name)}${names.length ? '<span class="badge-assigned">مسند</span>' : ""}<small>${esc(t.email||"")} · ${names.length ? esc(names.join("، ")) : "بلا حلقة"}</small>`;
+    const sel = document.createElement("select"); sel.className = "search"; sel.style.width = "auto"; sel.style.padding = "8px";
+    fillSelect(sel, circleOptions(), { placeholder:"أسند حلقة…", keep:false });
+    sel.onchange = () => { if(sel.value) linkTeacher(t, sel.value); sel.value = ""; };
+    const del = document.createElement("button"); del.className = "btn danger"; del.style.padding = "9px 13px"; del.textContent = "فصل";
+    del.onclick = () => unlinkTeacher(t);
+    const rm = document.createElement("button"); rm.className = "btn danger"; rm.style.padding = "9px 13px"; rm.textContent = "حذف";
+    rm.onclick = () => removeTeacher(t);
+    row.append(nm, sel, del, rm); tl.appendChild(row);
+  }
+
+  const set = (id,v) => { if(document.activeElement !== $(id)) $(id).value = v; };
+  set("setGoal", state.settings.goal ?? DEFAULTS.goal);
+  set("setLength", state.settings.cycleLength ?? DEFAULTS.cycleLength);
+  set("setStart", state.settings.cycleStart || todayKey());
+  const p = PTS();
+  set("pHalf",p.half); set("pRev",p.rev); set("pPresent",p.present); set("pLate",p.late); set("pGen",p.gen); set("pUni",p.uni);
+
+  const rb = $("raffleBox");
+  if(!state.stages.length){
+    rb.innerHTML = '<div class="notice">أضف مرحلة أولًا.</div>';
+  }else{
+    for(const el of [...rb.children]) if(!state.stages.some(st => "raffle-"+st.id === el.id)) el.remove();
+    const cycleStart = state.settings.cycleStart || todayKey();
+    const hist = state.settings.raffleHistory || [];
+    for(const st of state.stages){
+      if(raffleTimers[st.id]) continue; /* سحب قيد الدوران لهذه المرحلة — لا تلمس عنصره كي لا يُيتّم المؤقّت */
+      const ranked = state.students.filter(s => s.stageId === st.id).sort((a,b) => calc(b).total - calc(a).total);
+      const winners = hist.filter(w => w.stage === st.id && w.cycle === cycleStart);
+      const wonIds = new Set(winners.map(w => w.studentId));
+      const pool = ranked.filter(s => calc(s).eligible && !wonIds.has(s.id));
+
+      let box = document.getElementById("raffle-" + st.id);
+      if(!box){ box = document.createElement("div"); box.className = "card raffle-stage"; box.id = "raffle-" + st.id; rb.appendChild(box); }
+      box.innerHTML = "";
+
+      const nm = document.createElement("div"); nm.className = "row-name";
+      nm.innerHTML = `${esc(st.name)}<small>${winners.length ? "الفائزون: " + winners.map(w => esc(w.name)).join("، ") : "لم يُسحب أحد بعد هذه الدورة"}${ranked.length ? " · " + nf.format(ranked.length) + " طالبًا" : ""}</small>`;
+
+      const reel = document.createElement("div"); reel.className = "reel";
+      const reelName = document.createElement("b"); reelName.textContent = ranked.length ? ranked[0].name : "لا يوجد طلاب بعد";
+      reel.appendChild(reelName);
+
+      const btn = document.createElement("button"); btn.className = "btn gold"; btn.style.width = "100%";
+      btn.textContent = "▶ ابدأ"; btn.disabled = !pool.length;
+      btn.onclick = () => toggleRaffle(st, ranked, pool, reel, reelName, btn);
+
+      box.append(nm, reel, btn);
+    }
+  }
+}
+
+/* ═══════════ ٧) الإجراءات ═══════════ */
+async function addStage(){
+  const name = $("newStage").value.trim();
+  if(!name) return toast("اكتب اسم المرحلة");
+  if(state.stages.some(s => normalizeAr(s.name) === normalizeAr(name))) return toast("المرحلة موجودة");
+  if(await withSync("جارٍ الإضافة", () => store.put("stages", uid(), { name, order:Date.now() }))){ $("newStage").value = ""; toast("أُضيفت المرحلة"); }
+}
+async function removeStage(st){
+  if(state.circles.some(c => c.stageId === st.id)) return toast("احذف حلقات هذه المرحلة أولًا");
+  if(!await confirmDialog("حذف المرحلة", `سيُحذف «${st.name}». لا يمكن التراجع.`, "حذف")) return;
+  if(await withSync("جارٍ الحذف", () => store.remove("stages", st.id))) toast("حُذفت المرحلة");
+}
+async function addCircle(){
+  const name = $("newCircle").value.trim(), stageId = $("newCircleStage").value;
+  if(!name) return toast("اكتب اسم الحلقة");
+  if(!stageId) return toast("اختر المرحلة");
+  if(await withSync("جارٍ الإضافة", () => store.put("circles", uid(), { name, stageId, order:Date.now() }))){ $("newCircle").value = ""; toast("أُضيفت الحلقة"); }
+}
+async function removeCircle(c){
+  if(state.students.some(s => s.circleId === c.id)) return toast("انقل طلاب هذه الحلقة أولًا");
+  if(!await confirmDialog("حذف الحلقة", `سيُحذف «${c.name}». لا يمكن التراجع.`, "حذف")) return;
+  if(await withSync("جارٍ الحذف", () => store.remove("circles", c.id))) toast("حُذفت الحلقة");
+}
+async function addStudent(){
+  const name = $("newStudent").value.trim().replace(/\s+/g," "), circleId = $("newStudentCircle").value;
+  if(!name) return toast("اكتب اسم الطالب");
+  if(!circleId) return toast("اختر الحلقة");
+  if(state.students.some(s => normalizeAr(s.name) === normalizeAr(name) && s.circleId === circleId)) return toast("الاسم موجود في هذه الحلقة");
+  const stageId = byId(state.circles, circleId)?.stageId || "";
+  if(await withSync("جارٍ الإضافة", () => store.put("students", uid(), { name, circleId, stageId, order:Date.now(), records:{} }))){ $("newStudent").value = ""; toast("أُضيف " + name); }
+}
+async function moveStudent(s, circleId){
+  const stageId = byId(state.circles, circleId)?.stageId || "";
+  if(await withSync("جارٍ النقل", () => store.patch("students", s.id, { circleId, stageId }))) toast("نُقل الطالب");
+}
+async function removeStudent(s){
+  if(!await confirmDialog("حذف الطالب", `سيُحذف «${s.name}» وكل سجلّه ونقاطه نهائيًا.`, "حذف")) return;
+  if(await withSync("جارٍ الحذف", () => store.remove("students", s.id))) toast("حُذف الطالب");
+}
+async function addTeacher(){
+  const name = $("newTeacherName").value.trim(), email = $("newTeacherEmail").value.trim(), pass = $("newTeacherPass").value;
+  if(!name || !email || !pass) return toast("أكمل الاسم والبريد وكلمة المرور");
+  if(pass.length < 6) return toast("كلمة المرور ٦ أحرف فأكثر");
+  setSync("busy","جارٍ إنشاء الحساب");
+  try{
+    const id = await store.createTeacherAccount(email, pass);
+    await store.put("teachers", id, { name, email, circleIds:[] });
+    setSync("ok","تم الحفظ");
+    $("newTeacherName").value = $("newTeacherEmail").value = $("newTeacherPass").value = "";
+    toast("أُنشئ حساب " + name + " — أسند له حلقة الآن");
+  }catch(e){ console.error(e); setSync("off","فشل"); toast(friendly(e)); }
+}
+async function linkTeacher(t, circleId){
+  const ids = [...new Set([...(t.circleIds||[]), circleId])];
+  if(await withSync("جارٍ الإسناد", () => store.patch("teachers", t.id, { circleIds:ids }))) toast("أُسندت الحلقة");
+}
+async function unlinkTeacher(t){
+  if(!await confirmDialog("فصل المعلم", `سيُفصل «${t.name}» عن كل حلقاته ولن يستطيع التقييم. حسابه يبقى موجودًا.`, "افصل")) return;
+  if(await withSync("جارٍ الفصل", () => store.patch("teachers", t.id, { circleIds:[] }))) toast("فُصل المعلم");
+}
+async function removeTeacher(t){
+  if(!await confirmDialog("حذف المعلم", `سيُحذف «${t.name}» نهائيًا من التطبيق ويفقد صلاحيته فورًا. حساب دخوله (البريد وكلمة المرور) في Supabase يبقى موجودًا ولا يُحذف من هنا.`, "حذف")) return;
+  if(await withSync("جارٍ الحذف", () => store.remove("teachers", t.id))) toast("حُذف المعلم");
+}
+function openStreakDialog(s){
+  $("streakStudentName").textContent = s.name;
+  $("streakValue").value = calc(s).streak;
+  $("streakReason").value = "";
+  $("streakDialog").classList.add("show");
+  const close = () => $("streakDialog").classList.remove("show");
+  $("streakCancel").onclick = close;
+  $("streakOk").onclick = async () => {
+    const value = Math.max(0, parseInt($("streakValue").value, 10) || 0);
+    const reason = $("streakReason").value.trim();
+    if(!reason) return toast("اكتب سبب التعديل");
+    close();
+    if(await withSync("جارٍ الحفظ", () => store.setStreakOverride(s.id, value, reason)))
+      toast(`عُدِّل مسار ${s.name} إلى ${nf.format(value)}`);
+  };
+  $("streakValue").focus();
+}
+
+async function saveCycle(){
+  const goal = Math.max(1, parseInt($("setGoal").value,10) || DEFAULTS.goal);
+  const cycleLength = Math.max(1, parseInt($("setLength").value,10) || DEFAULTS.cycleLength);
+  const cycleStart = $("setStart").value || todayKey();
+  if(goal > cycleLength) return toast("مسار التأهل لا يتجاوز طول الدورة");
+  if(await withSync("جارٍ الحفظ", () => store.saveSettings({ goal, cycleLength, cycleStart }))) toast("حُفظت إعدادات الدورة");
+}
+async function savePoints(){
+  const num = id => Math.max(0, parseInt($(id).value,10) || 0);
+  const points = { half:num("pHalf"), rev:num("pRev"), present:num("pPresent"), late:num("pLate"), gen:num("pGen"), uni:num("pUni") };
+  if(await withSync("جارٍ الحفظ", () => store.saveSettings({ points }))) toast("حُفظت حسبة النقاط");
+}
+/* سحوبات قيد الدوران حاليًا: stage.id → معرّف setInterval */
+const raffleTimers = {};
+
+async function toggleRaffle(st, ranked, pool, reelEl, reelName, btn){
+  if(raffleTimers[st.id]){
+    /* ضغطة الإيقاف: يُحسم الفائز الآن عشوائيًا من المؤهّلين، بلا أي علاقة بالاسم
+       الظاهر على الشريط لحظة الضغط — العدالة لا تتأثر بتوقيت الإيقاف. */
+    clearInterval(raffleTimers[st.id]);
+    raffleTimers[st.id] = "settling"; /* يبقي حارس renderAdmin فعّالًا أثناء التهدئة والحفظ */
+    const w = pool[Math.floor(Math.random()*pool.length)];
+    reelName.textContent = w.name;
+    reelEl.classList.add("settle");
+    btn.textContent = "▶ ابدأ"; btn.disabled = true;
+    setTimeout(async () => {
+      const cycleStart = state.settings.cycleStart || todayKey();
+      const hist = state.settings.raffleHistory || [];
+      const entry = { stage:st.id, stageName:st.name, name:w.name, studentId:w.id, date:todayKey(), cycle:cycleStart };
+      /* يُحذف الحارس قبل الحفظ لا بعده: حفظ الوضع المحلي يُعيد الرسم بشكل متزامن أثناء
+         نفسه الاستدعاء (بلا await حقيقي)، فلو بقي الحارس حتى بعد await store.saveSettings
+         سيتجاهل ذلك التزامن الآني إعادة رسم هذه المرحلة ويبقى الصندوق عالقًا على حالته القديمة */
+      delete raffleTimers[st.id];
+      const ok = await withSync("جارٍ الحفظ", () => store.saveSettings({ raffleHistory:[...hist, entry] }));
+      if(ok) toast("🎉 فائز " + st.name + ": " + w.name);
+    }, 700);
+    return;
+  }
+  if(!await confirmDialog("سحب " + st.name, `ستدور قائمة طلاب المرحلة، واختيار الفائز عشوائي من ${pool.length} طالبًا مؤهلًا. اضغط «إيقاف» لإعلان الفائز، ويمكنك السحب أكثر من مرة.`, "ابدأ")) return;
+  let i = ranked.findIndex(s => s.name === reelName.textContent);
+  raffleTimers[st.id] = setInterval(() => {
+    i = (i + 1) % ranked.length;
+    reelName.textContent = ranked[i].name;
+  }, 90);
+  btn.textContent = "■ إيقاف";
+}
+async function newCycle(){
+  if(!await confirmDialog("بدء دورة جديدة", "تبدأ الدورة من اليوم، فيُصفَّر مسار التقدم ونقاط الدورة.\nالنقاط التراكمية وكل السجلات السابقة تبقى محفوظة.", "ابدأ")) return;
+  if(await withSync("جارٍ الحفظ", () => store.saveSettings({ cycleStart: todayKey() }))) toast("بدأت دورة جديدة");
+}
+function exportBackup(){
+  const d = { version:3, exportedAt:new Date().toISOString(), settings:state.settings,
+              stages:state.stages, circles:state.circles, students:state.students, teachers:state.teachers };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(d,null,2)], { type:"application/json" }));
+  a.download = `نسخة-البرنامج-التحفيزي-${todayKey()}.json`;
+  a.click(); URL.revokeObjectURL(a.href); toast("نُزّلت النسخة");
+}
+async function importBackup(file){
+  let d; try{ d = JSON.parse(await file.text()); }catch{ return toast("الملف غير صالح"); }
+  if(!d?.settings || !Array.isArray(d.students)) return toast("بنية الملف غير متوقعة");
+  if(!await confirmDialog("استيراد نسخة",
+      `سيُستبدل المحتوى الحالي ببيانات الملف (${nf.format(d.students.length)} طالبًا).\nحسابات المعلمين لا تتأثر.`, "استورد")) return;
+
+  /* أي معرّف غير صالح كـ UUID يُستبدل، مع إعادة ربط المراجع */
+  const map = new Map();
+  const fix = old => {
+    if(!old) return null;
+    if(isUuid(old)) return old;
+    if(!map.has(old)) map.set(old, uid());
+    return map.get(old);
+  };
+  const clean = {
+    settings:{ ...DEFAULTS, ...d.settings, points:{ ...DEF_POINTS, ...(d.settings.points||{}) } },
+    stages:  (d.stages  || []).map((x,i) => ({ id:fix(x.id) || uid(), name:String(x.name||"").trim(), order:x.order ?? i })).filter(x => x.name),
+    circles: (d.circles || []).map((x,i) => ({ id:fix(x.id) || uid(), name:String(x.name||"").trim(), stageId:fix(x.stageId), order:x.order ?? i })).filter(x => x.name),
+    students:d.students.map((x,i) => ({ id:fix(x.id) || uid(), name:String(x.name||"").trim(),
+                                        circleId:fix(x.circleId), stageId:fix(x.stageId), order:x.order ?? i, records:x.records || {} })).filter(x => x.name)
+  };
+  if(await withSync("جارٍ الاستيراد", () => store.replaceAll(clean))) toast("اكتمل الاستيراد");
+}
+
+/* ═══════════ ٨) الربط ═══════════ */
+document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => show(b.dataset.go));
+document.querySelectorAll("[data-logout]").forEach(b => b.onclick = async () => { await store.signOut(); show("home"); toast("سجّلت الخروج"); });
+document.querySelectorAll("[data-today]").forEach(b => b.onclick = () => { $(b.dataset.today).value = todayKey(); renderAll(); });
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  b.closest(".tabs").querySelectorAll("button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  b.closest(".scene").querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === b.dataset.tab));
+});
+$("btnStart").onclick = () => { $("studentSearch").value = ""; show("choose"); };
+$("btnStaffLogin").onclick = () => show(state.user ? (state.user.role === "teacher" ? "teacher" : "admin") : "login");
+$("studentSearch").oninput = renderChoose;
+$("aCircle").onchange = renderAdmin; $("aDate").onchange = renderAdmin; $("filterCircle").onchange = renderAdmin;
+$("tCircle").onchange = renderTeacher; $("tDate").onchange = renderTeacher;
+$("aSearch").oninput = renderAdmin; $("tSearch").oninput = renderTeacher;
+$("btnAddStage").onclick = addStage;     $("btnAddCircle").onclick = addCircle;
+$("btnAddStudent").onclick = addStudent; $("btnAddTeacher").onclick = addTeacher;
+$("btnSaveCycle").onclick = saveCycle;   $("btnSavePoints").onclick = savePoints;
+$("btnNewCycle").onclick = newCycle;     $("btnExport").onclick = exportBackup;
+$("btnImport").onclick = () => $("importFile").click();
+$("importFile").onchange = e => { if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value = ""; };
+$("btnLogin").onclick = doLogin;
+$("loginPass").onkeydown = e => { if(e.key === "Enter") doLogin(); };
+$("btnLoginCode").onclick = doLoginCode;
+$("loginCode").onkeydown = e => { if(e.key === "Enter") doLoginCode(); };
+$("btnLoginTeacher").onclick = doLoginTeacher;
+$("loginPassT").onkeydown = e => { if(e.key === "Enter") doLoginTeacher(); };
+$("loginModeAdmin").onclick = () => {
+  $("loginModeAdmin").classList.add("on"); $("loginModeTeacher").classList.remove("on");
+  $("loginPaneAdmin").style.display = ""; $("loginPaneTeacher").style.display = "none";
+  $("loginNote").textContent = "";
+};
+$("loginModeTeacher").onclick = () => {
+  $("loginModeTeacher").classList.add("on"); $("loginModeAdmin").classList.remove("on");
+  $("loginPaneTeacher").style.display = ""; $("loginPaneAdmin").style.display = "none";
+  $("loginNote").textContent = "";
+};
+$("toggleAdvanced").onclick = () => {
+  const el = $("loginAdvanced");
+  el.style.display = el.style.display === "none" ? "" : "none";
+};
+$("newStage").onkeydown = e => { if(e.key === "Enter") addStage(); };
+$("newCircle").onkeydown = e => { if(e.key === "Enter") addCircle(); };
+$("newStudent").onkeydown = e => { if(e.key === "Enter") addStudent(); };
+
+async function doLogin(){
+  const email = $("loginEmail").value, pass = $("loginPass").value;
+  if(store.mode === "local"){ await store.signIn(); $("loginPass").value = ""; toast("وضع تجريبي — لا توجد حماية"); return; }
+  if(!email || !pass) return toast("أدخل البريد وكلمة المرور");
+  $("btnLogin").disabled = true;
+  try{ await store.signIn(email, pass); $("loginPass").value = ""; $("loginNote").textContent = ""; }
+  catch(e){ $("loginNote").textContent = friendly(e); toast(friendly(e)); }
+  finally{ $("btnLogin").disabled = false; }
+}
+async function doLoginCode(){
+  const code = $("loginCode").value;
+  if(store.mode === "local"){ await store.signIn(); $("loginCode").value = ""; toast("وضع تجريبي — لا توجد حماية"); return; }
+  if(!code) return toast("أدخل رمز الدخول");
+  $("btnLoginCode").disabled = true;
+  try{ await store.signIn(ADMIN_EMAIL, code); $("loginCode").value = ""; $("loginNote").textContent = ""; }
+  catch(e){ $("loginNote").textContent = friendly(e); toast(friendly(e)); }
+  finally{ $("btnLoginCode").disabled = false; }
+}
+async function doLoginTeacher(){
+  const email = $("loginEmailT").value, pass = $("loginPassT").value;
+  if(store.mode === "local"){ await store.signIn(); toast("وضع تجريبي — لا توجد حماية"); return; }
+  if(!email || !pass) return toast("أدخل البريد وكلمة المرور");
+  $("btnLoginTeacher").disabled = true;
+  try{ await store.signIn(email, pass); $("loginPassT").value = ""; $("loginNote").textContent = ""; }
+  catch(e){ $("loginNote").textContent = friendly(e); toast(friendly(e)); }
+  finally{ $("btnLoginTeacher").disabled = false; }
+}
+function banner(kind, txt){ const b = $("banner"); b.className = "banner notice " + kind + " show"; b.textContent = txt; }
+
+(async function boot(){
+  $("aDate").value = $("tDate").value = todayKey();
+  store = await initStore();
+
+  if(store.mode === "local"){
+    banner(store.reason === "offline" ? "bad" : "warn",
+      store.reason === "offline"
+        ? "⚠️ تعذّر الاتصال بـ Supabase. قد يكون المشروع موقوفًا أو الشبكة مقطوعة — الموقع يعمل على هذا الجهاز فقط ولن تُزامن البيانات."
+        : "⚙️ وضع الإعداد: لم تُدخل بيانات Supabase بعد، فالبيانات محفوظة على هذا الجهاز فقط ولن يراها الطلاب والمعلمون. راجع دليل الإعداد.");
+    setSync("off","غير متصل");
+  } else setSync("ok","متصل");
+
+  store.onAuth(u => {
+    state.user = u;
+    if(!u){
+      if($("admin").classList.contains("active") || $("teacher").classList.contains("active")) show("home");
+      return;
+    }
+    if(u.role === "admin") show("admin");
+    else if(u.role === "teacher") show("teacher");
+    else { toast("حسابك غير مرتبط بصلاحية. راجع المشرف."); store.signOut(); }
+  });
+
+  store.subscribe({
+    settings: s => { state.settings = { ...DEFAULTS, ...s, points:{ ...DEF_POINTS, ...(s.points||{}) } };
+                     if(!state.settings.cycleStart) state.settings.cycleStart = todayKey();
+                     renderAll(); },
+    stages:   v => { state.stages = v.slice().sort((a,b) => (a.order||0)-(b.order||0)); renderAll(); },
+    circles:  v => { state.circles = v.slice().sort((a,b) => (a.order||0)-(b.order||0)); renderAll(); },
+    teachers: v => { state.teachers = v; renderAll(); },
+    students: v => { state.students = v.slice().sort((a,b) => (a.order||0)-(b.order||0)); state.ready = true; renderAll(); }
+  }, e => { console.error(e); setSync("off","انقطع الاتصال");
+            banner("bad","⚠️ تعذّر قراءة البيانات: " + friendly(e) + " — تحقق من أنك نفّذت ملف schema.sql في Supabase."); });
+
+  renderHome();
+})();
+</script>
+</body>
+</html>
