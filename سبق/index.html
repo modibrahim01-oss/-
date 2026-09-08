@@ -1193,8 +1193,12 @@ function renderAdmin(){
       if(raffleTimers[st.id]) continue; /* سحب قيد الدوران لهذه المرحلة — لا تلمس عنصره كي لا يُيتّم المؤقّت */
       const ranked = state.students.filter(s => s.stageId === st.id).sort((a,b) => calc(b).total - calc(a).total);
       const winners = hist.filter(w => w.stage === st.id && w.cycle === cycleStart);
-      const wonIds = new Set(winners.map(w => w.studentId));
-      const pool = ranked.filter(s => calc(s).eligible && !wonIds.has(s.id));
+      /* استبعاد الفائز السابق بالمعرّف، مع استبعاد احتياطي بالاسم للسطور القديمة
+         التي سُجّلت قبل إضافة حقل studentId (وإلا لظهر undefined في المجموعة
+         فلا يُستبعد أحد فعليًا، وقد يفوز نفس الطالب مرتين) */
+      const wonIds   = new Set(winners.filter(w => w.studentId).map(w => w.studentId));
+      const wonNames = new Set(winners.filter(w => !w.studentId).map(w => w.name));
+      const pool = ranked.filter(s => calc(s).eligible && !wonIds.has(s.id) && !wonNames.has(s.name));
 
       let box = document.getElementById("raffle-" + st.id);
       if(!box){ box = document.createElement("div"); box.className = "card raffle-stage"; box.id = "raffle-" + st.id; rb.appendChild(box); }
