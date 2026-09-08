@@ -9,5 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // مشروع trading/ مستقل بمكدّسه واختباراته — يُشغَّل من مجلده
+    exclude: ["node_modules/**", "trading/**"],
   },
 });
