@@ -126,7 +126,34 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
 #display .disp-head .info small{font-size:clamp(12px,1.2vw,17px);color:#cfe1cf;display:block;margin-top:3px;font-weight:700}
 #display .disp-close{background:rgba(0,0,0,.35);color:#fff;border-radius:14px;padding:8px 14px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.15)}
 #display .disp-close:hover{background:rgba(0,0,0,.55)}
-#display .ticker{flex:1 1 auto;position:relative;overflow:hidden}
+#display .ticker{flex:1 1 auto;position:relative;overflow:hidden;touch-action:pan-y;user-select:none;cursor:grab}
+#display .ticker:active{cursor:grabbing}
+#dispPaused{background:rgba(0,0,0,.55);color:#e7d9a6;padding:6px 12px;border-radius:10px;font-weight:800;font-size:13px;border:1px solid rgba(231,181,63,.4);margin-inline-end:6px;white-space:nowrap}
+
+/* نافذة سحب العجلة الدوّارة */
+#raffleWheel .dialog{max-width:min(640px,94vw);padding:20px;text-align:center}
+#raffleWheel h3{margin:0 0 12px;color:var(--primary)}
+.wheel-wrap{position:relative;width:clamp(300px,70vmin,540px);height:clamp(300px,70vmin,540px);margin:0 auto}
+.wheel-pointer{position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:0;height:0;
+ border-left:18px solid transparent;border-right:18px solid transparent;border-top:32px solid var(--danger);
+ filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));z-index:2}
+.wheel-svg{width:100%;height:100%;border-radius:50%;box-shadow:0 20px 55px rgba(23,61,49,.35),inset 0 0 0 8px #fff;
+ transform:rotate(0deg);will-change:transform;background:#fff}
+.wheel-svg.spinning{transition:transform 5.5s cubic-bezier(.22,.9,.25,1)}
+.wheel-svg path{stroke:#fff;stroke-width:1.5}
+.wheel-svg text{font-family:inherit;font-weight:800;pointer-events:none}
+.wheel-winner{margin-top:16px;padding:14px 18px;border-radius:16px;background:linear-gradient(135deg,#fff9e6,#fef1c8);
+ border:2px solid var(--gold);color:var(--primary);display:none}
+.wheel-winner.show{display:block;animation:winnerPop .6s cubic-bezier(.34,1.56,.64,1) both}
+.wheel-winner .kicker{color:var(--teal);font-size:12px;font-weight:800}
+.wheel-winner .name{font-size:clamp(20px,3.5vw,32px);font-weight:900;margin:4px 0;color:var(--primary)}
+.wheel-winner .meta{color:var(--muted);font-size:13px;font-weight:700}
+@keyframes winnerPop{0%{opacity:0;transform:scale(.7)}60%{transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+.wheel-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+.wheel-mute{background:#f2f5f2;border:1px solid var(--line);color:var(--primary);padding:8px 12px;border-radius:12px;font-weight:800}
+#raffleWheel .wheel-close{background:linear-gradient(135deg,var(--primary),#245b48);color:#fff;padding:10px 22px;border-radius:14px;font-weight:800;display:none}
+#raffleWheel.done .wheel-close{display:inline-block}
+.wheel-empty{padding:40px 20px;text-align:center;color:var(--muted);font-weight:700}
 #display .ticker-inner{display:flex;flex-direction:column;gap:clamp(10px,1.4vh,18px);padding:clamp(12px,2vh,26px) clamp(18px,3vw,44px);will-change:transform}
 #display .drow{display:grid;grid-template-columns:auto 1fr auto;gap:clamp(14px,1.8vw,28px);align-items:center;
  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:clamp(14px,1.4vw,22px);
@@ -500,6 +527,23 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
  <div class="acts"><button class="btn primary" id="dlgOk">تأكيد</button><button class="btn soft" id="dlgCancel">إلغاء</button></div>
 </div></div>
 
+<div class="overlay" id="raffleWheel"><div class="dialog" role="dialog" aria-modal="true">
+ <h3 id="wheelTitle">سحب</h3>
+ <div class="wheel-wrap">
+  <div class="wheel-pointer" aria-hidden="true"></div>
+  <svg class="wheel-svg" id="wheelSvg" viewBox="0 0 200 200" aria-label="عجلة السحب"></svg>
+ </div>
+ <div class="wheel-winner" id="wheelWinner">
+  <div class="kicker">🎉 الفائز</div>
+  <div class="name" id="wheelWinnerName"></div>
+  <div class="meta" id="wheelWinnerMeta"></div>
+ </div>
+ <div class="wheel-actions">
+  <button class="wheel-mute" id="wheelMute" aria-pressed="false">🔊 الصوت</button>
+  <button class="wheel-close" id="wheelClose">إغلاق</button>
+ </div>
+</div></div>
+
 <div class="overlay" id="streakDialog"><div class="dialog" role="dialog" aria-modal="true">
  <h3>تعديل مسار التقدم يدويًا</h3>
  <p id="streakStudentName" style="font-weight:800;color:var(--primary)"></p>
@@ -513,6 +557,7 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
  <div class="disp-head">
   <div class="brand"><img src="logo-abi-yusuf.png" alt=""><div class="brand-text"><b>سَبْق</b><small>مجمع أبي يوسف القرآني</small></div></div>
   <div class="info"><b id="dispTitle">لوحة النتائج</b><small id="dispSub"></small></div>
+  <span id="dispPaused" hidden>⏸️ متوقف</span>
   <button class="disp-close" id="dispClose">✕ خروج</button>
  </div>
  <div class="ticker" id="dispTicker">
@@ -1314,12 +1359,8 @@ function renderAdmin(){
     const cycleStart = state.settings.cycleStart || todayKey();
     const hist = state.settings.raffleHistory || [];
     for(const st of state.stages){
-      if(raffleTimers[st.id]) continue; /* سحب قيد الدوران لهذه المرحلة — لا تلمس عنصره كي لا يُيتّم المؤقّت */
       const ranked = state.students.filter(s => s.stageId === st.id).sort((a,b) => calc(b).total - calc(a).total);
       const winners = hist.filter(w => w.stage === st.id && w.cycle === cycleStart);
-      /* استبعاد الفائز السابق بالمعرّف، مع استبعاد احتياطي بالاسم للسطور القديمة
-         التي سُجّلت قبل إضافة حقل studentId (وإلا لظهر undefined في المجموعة
-         فلا يُستبعد أحد فعليًا، وقد يفوز نفس الطالب مرتين) */
       const wonIds   = new Set(winners.filter(w => w.studentId).map(w => w.studentId));
       const wonNames = new Set(winners.filter(w => !w.studentId).map(w => w.name));
       const pool = ranked.filter(s => calc(s).eligible && !wonIds.has(s.id) && !wonNames.has(s.name));
@@ -1329,17 +1370,13 @@ function renderAdmin(){
       box.innerHTML = "";
 
       const nm = document.createElement("div"); nm.className = "row-name";
-      nm.innerHTML = `${esc(st.name)}<small>${winners.length ? "الفائزون: " + winners.map(w => esc(w.name)).join("، ") : "لم يُسحب أحد بعد هذه الدورة"}${ranked.length ? " · " + nf.format(ranked.length) + " طالبًا" : ""}</small>`;
+      nm.innerHTML = `${esc(st.name)}<small>${winners.length ? "الفائزون: " + winners.map(w => esc(w.name)).join("، ") : "لم يُسحب أحد بعد هذه الدورة"} · ${pool.length ? nf.format(pool.length) + " مؤهّلًا" : "لا مؤهّل بعد"}</small>`;
 
-      const reel = document.createElement("div"); reel.className = "reel";
-      const reelName = document.createElement("b"); reelName.textContent = ranked.length ? ranked[0].name : "لا يوجد طلاب بعد";
-      reel.appendChild(reelName);
+      const btn = document.createElement("button"); btn.className = "btn gold"; btn.style.width = "100%"; btn.style.marginTop = "10px";
+      btn.textContent = "🎡 ابدأ السحب"; btn.disabled = !pool.length;
+      btn.onclick = () => startRaffleFor(st);
 
-      const btn = document.createElement("button"); btn.className = "btn gold"; btn.style.width = "100%";
-      btn.textContent = "▶ ابدأ"; btn.disabled = !pool.length;
-      btn.onclick = () => toggleRaffle(st, ranked, pool, reel, reelName, btn);
-
-      box.append(nm, reel, btn);
+      box.append(nm, btn);
     }
   }
 
@@ -1383,8 +1420,19 @@ async function removeHoliday(date){
   if(await withSync("جارٍ الحذف", () => store.saveSettings({ points }))) toast("حُذف يوم العطلة");
 }
 
-/* ═══════════ شاشة العرض للطلاب (تمرير مستمر) ═══════════ */
-const disp = { raf:0, y:0, ctx:null, contentH:0, viewH:0 };
+/* ═══════════ شاشة العرض للطلاب (تمرير مستمر مع تدخّل يدوي بالسحب) ═══════════ */
+const disp = { raf:0, y:0, ctx:null, contentH:0, viewH:0,
+                resumeTimer:0, dragging:false, dragStartY:0, dragBaseY:0 };
+const RESUME_MS = 5000;
+
+function setPausedIndicator(on){
+  const el = $("dispPaused"); if(el) el.hidden = !on;
+}
+function scheduleResume(){
+  clearTimeout(disp.resumeTimer);
+  disp.resumeTimer = setTimeout(() => { setPausedIndicator(false); startScroll(); }, RESUME_MS);
+}
+function wrapY(y){ return ((y % disp.contentH) + disp.contentH) % disp.contentH; }
 
 function openDisplay(ctx){
   disp.ctx = { ...ctx };
@@ -1394,6 +1442,9 @@ function openDisplay(ctx){
 }
 function closeDisplay(){
   cancelAnimationFrame(disp.raf); disp.raf = 0; disp.y = 0;
+  clearTimeout(disp.resumeTimer); disp.resumeTimer = 0;
+  disp.dragging = false;
+  setPausedIndicator(false);
   if(document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   const role = state.user?.role;
   show(role === "teacher" ? "teacher" : role === "admin" ? "admin" : "home");
@@ -1446,6 +1497,7 @@ function startScroll(){
   let last = performance.now();
   const step = now => {
     if(!$("display").classList.contains("active")) return;
+    if(disp.dragging){ /* أثناء السحب: لا تدفع الحركة */ last = now; disp.raf = requestAnimationFrame(step); return; }
     if(document.hidden){ last = now; disp.raf = requestAnimationFrame(step); return; }
     const dt = (now - last) / 1000; last = now;
     disp.y += SPEED * dt;
@@ -1454,6 +1506,45 @@ function startScroll(){
     disp.raf = requestAnimationFrame(step);
   };
   disp.raf = requestAnimationFrame(step);
+}
+
+/* تدخّل يدوي: لمس/سحب على الشاشة، وعجلة الفأرة على الحاسب */
+function bindDisplayTouch(){
+  const ticker = $("dispTicker"); if(!ticker) return;
+  ticker.addEventListener("pointerdown", e => {
+    if(disp.contentH <= disp.viewH) return;
+    disp.dragging = true;
+    disp.dragStartY = e.clientY;
+    disp.dragBaseY  = disp.y;
+    stopScroll();
+    clearTimeout(disp.resumeTimer);
+    setPausedIndicator(true);
+    ticker.setPointerCapture?.(e.pointerId);
+  });
+  ticker.addEventListener("pointermove", e => {
+    if(!disp.dragging) return;
+    disp.y = wrapY(disp.dragBaseY + (disp.dragStartY - e.clientY));
+    $("dispInner").style.transform = `translateY(-${disp.y}px)`;
+  });
+  const endDrag = e => {
+    if(!disp.dragging) return;
+    disp.dragging = false;
+    ticker.releasePointerCapture?.(e.pointerId);
+    scheduleResume();
+  };
+  ticker.addEventListener("pointerup",     endDrag);
+  ticker.addEventListener("pointercancel", endDrag);
+  /* عجلة الفأرة */
+  ticker.addEventListener("wheel", e => {
+    if(disp.contentH <= disp.viewH) return;
+    e.preventDefault();
+    stopScroll();
+    clearTimeout(disp.resumeTimer);
+    setPausedIndicator(true);
+    disp.y = wrapY(disp.y + e.deltaY);
+    $("dispInner").style.transform = `translateY(-${disp.y}px)`;
+    scheduleResume();
+  }, { passive:false });
 }
 
 /* ═══════════ ٧) الإجراءات ═══════════ */
@@ -1552,39 +1643,225 @@ async function savePoints(){
   const points = { half:num("pHalf"), rev:num("pRev"), present:num("pPresent"), late:num("pLate"), gen:num("pGen"), uni:num("pUni"), _holidays: getHolidays() };
   if(await withSync("جارٍ الحفظ", () => store.saveSettings({ points }))) toast("حُفظت حسبة النقاط");
 }
-/* سحوبات قيد الدوران حاليًا: stage.id → معرّف setInterval */
-const raffleTimers = {};
+/* ═══════════ عجلة السحب الدوّارة ═══════════ */
+const wheel = { audioCtx:null, spinRaf:0, lastTickAngle:0, currentSpin:null };
+const MUTE_KEY = "sabaq_wheel_muted";
+const isMuted = () => { try{ return localStorage.getItem(MUTE_KEY) === "1"; }catch{ return false; } };
+const setMuted = (v) => { try{ localStorage.setItem(MUTE_KEY, v ? "1" : "0"); }catch{} };
 
-async function toggleRaffle(st, ranked, pool, reelEl, reelName, btn){
-  if(raffleTimers[st.id]){
-    /* ضغطة الإيقاف: يُحسم الفائز الآن عشوائيًا من المؤهّلين، بلا أي علاقة بالاسم
-       الظاهر على الشريط لحظة الضغط — العدالة لا تتأثر بتوقيت الإيقاف. */
-    clearInterval(raffleTimers[st.id]);
-    raffleTimers[st.id] = "settling"; /* يبقي حارس renderAdmin فعّالًا أثناء التهدئة والحفظ */
-    const w = pool[Math.floor(Math.random()*pool.length)];
-    reelName.textContent = w.name;
-    reelEl.classList.add("settle");
-    btn.textContent = "▶ ابدأ"; btn.disabled = true;
-    setTimeout(async () => {
-      const cycleStart = state.settings.cycleStart || todayKey();
-      const hist = state.settings.raffleHistory || [];
-      const entry = { stage:st.id, stageName:st.name, name:w.name, studentId:w.id, date:todayKey(), cycle:cycleStart };
-      /* يُحذف الحارس قبل الحفظ لا بعده: حفظ الوضع المحلي يُعيد الرسم بشكل متزامن أثناء
-         نفسه الاستدعاء (بلا await حقيقي)، فلو بقي الحارس حتى بعد await store.saveSettings
-         سيتجاهل ذلك التزامن الآني إعادة رسم هذه المرحلة ويبقى الصندوق عالقًا على حالته القديمة */
-      delete raffleTimers[st.id];
-      const ok = await withSync("جارٍ الحفظ", () => store.saveSettings({ raffleHistory:[...hist, entry] }));
-      if(ok) toast("🎉 فائز " + st.name + ": " + w.name);
-    }, 700);
+function initAudio(){
+  if(wheel.audioCtx) return wheel.audioCtx;
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    wheel.audioCtx = new Ctx();
+  }catch{}
+  return wheel.audioCtx;
+}
+function playTick(){
+  if(isMuted()) return;
+  const ctx = initAudio(); if(!ctx) return;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "triangle"; osc.frequency.setValueAtTime(1200, t);
+  osc.frequency.exponentialRampToValueAtTime(800, t + 0.04);
+  gain.gain.setValueAtTime(0.12, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t); osc.stop(t + 0.05);
+}
+
+/* رسم SVG للعجلة بحسب pool. ألوان القطاعات من هوية سَبْق. */
+function drawWheelSVG(pool){
+  const svg = $("wheelSvg"); svg.innerHTML = "";
+  const N = pool.length;
+  if(!N) return;
+  const CX = 100, CY = 100, R = 100;
+  const colors = ["#173d31","#6f973e","#268494","#e7b53f","#245b48","#356528","#a68a2e","#2f6f7a"];
+  const fontSize = Math.max(5.5, Math.min(11, 22 - N * 0.35));
+  const NS = "http://www.w3.org/2000/svg";
+  for(let i=0; i<N; i++){
+    const a1 = (i / N) * 2 * Math.PI - Math.PI/2;   /* البداية من الأعلى */
+    const a2 = ((i+1) / N) * 2 * Math.PI - Math.PI/2;
+    const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1);
+    const x2 = CX + R * Math.cos(a2), y2 = CY + R * Math.sin(a2);
+    const largeArc = (a2 - a1) > Math.PI ? 1 : 0;
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`);
+    path.setAttribute("fill", colors[i % colors.length]);
+    path.setAttribute("data-index", String(i));
+    svg.appendChild(path);
+
+    /* اسم الطالب على القطاع */
+    const midA = (a1 + a2) / 2;
+    const tx = CX + (R * 0.62) * Math.cos(midA);
+    const ty = CY + (R * 0.62) * Math.sin(midA);
+    const rotDeg = midA * 180 / Math.PI;   /* اتجاه المحور القطري */
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("x", tx); t.setAttribute("y", ty);
+    t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "middle");
+    t.setAttribute("fill", "#fff"); t.setAttribute("font-size", String(fontSize));
+    t.setAttribute("transform", `rotate(${rotDeg} ${tx} ${ty})`);
+    /* تقصير للأسماء الطويلة جدًا لتفادي الفيضان */
+    const maxChars = Math.max(6, Math.floor(160 / N));
+    const name = pool[i].name.length > maxChars ? pool[i].name.slice(0, maxChars-1) + "…" : pool[i].name;
+    t.textContent = name;
+    svg.appendChild(t);
+  }
+}
+
+/* حلقة تتبّع الزاوية الحالية للعجلة أثناء الدوران وتُطلق طقطقة عند كل قطاع يمرّ. */
+function wheelTickerLoop(finalAngle, N, startTs){
+  const svg = $("wheelSvg");
+  const step = () => {
+    if(!wheel.currentSpin) return;
+    /* الزاوية الحالية = القيمة المحسوبة عبر cubic-bezier — نستخرجها من transform الفعلي */
+    const cs = getComputedStyle(svg).transform;
+    let angle = 0;
+    /* matrix(a,b,c,d,e,f) → angle = atan2(b,a) */
+    const m = cs.match(/matrix\(([-\d.,\s]+)\)/);
+    if(m){
+      const [a,b] = m[1].split(",").map(parseFloat);
+      angle = Math.atan2(b, a) * 180 / Math.PI;
+      if(angle < 0) angle += 360;
+      /* لكن لأننا ندور أكثر من 360°، نحسب الإجمالي التقريبي عبر عدد الدورات المتوقعة نسبيًا */
+    }
+    /* بدل ذلك: قسّم على القطاعات بمقارنة الفرق مع الزاوية السابقة */
+    const segAngle = 360 / N;
+    /* عدد القطاعات التي مرّت */
+    const diff = angle - wheel.lastTickAngle;
+    const normDiff = ((diff % 360) + 360) % 360;
+    if(normDiff >= segAngle){
+      playTick();
+      wheel.lastTickAngle = angle;
+    }
+    wheel.spinRaf = requestAnimationFrame(step);
+  };
+  wheel.lastTickAngle = 0;
+  wheel.spinRaf = requestAnimationFrame(step);
+}
+
+function stopWheelTicker(){ cancelAnimationFrame(wheel.spinRaf); wheel.spinRaf = 0; }
+
+/* افتح نافذة العجلة وابدأ السحب لمرحلة st ومجموعة مؤهّلين pool. */
+async function openWheel(st, pool){
+  const modal = $("raffleWheel");
+  modal.classList.remove("done");
+  $("wheelTitle").textContent = "سحب مرحلة " + st.name;
+  $("wheelWinner").classList.remove("show");
+  $("wheelWinnerName").textContent = "";
+  $("wheelWinnerMeta").textContent = "";
+  const svg = $("wheelSvg");
+  svg.classList.remove("spinning");
+  svg.style.transform = "rotate(0deg)";
+  updateMuteBtn();
+
+  if(!pool.length){
+    /* حالة حدية: لا مؤهّلين — أظهر رسالة وأغلق بيد المستخدم */
+    svg.innerHTML = "";
+    const nsText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    nsText.setAttribute("x","100"); nsText.setAttribute("y","100");
+    nsText.setAttribute("text-anchor","middle"); nsText.setAttribute("dominant-baseline","middle");
+    nsText.setAttribute("fill","#66786f"); nsText.setAttribute("font-size","10");
+    nsText.textContent = "لا يوجد مؤهّل";
+    svg.appendChild(nsText);
+    modal.classList.add("show","done");
     return;
   }
-  if(!await confirmDialog("سحب " + st.name, `ستدور قائمة طلاب المرحلة، واختيار الفائز عشوائي من ${pool.length} طالبًا مؤهلًا. اضغط «إيقاف» لإعلان الفائز، ويمكنك السحب أكثر من مرة.`, "ابدأ")) return;
-  let i = ranked.findIndex(s => s.name === reelName.textContent);
-  raffleTimers[st.id] = setInterval(() => {
-    i = (i + 1) % ranked.length;
-    reelName.textContent = ranked[i].name;
-  }, 90);
-  btn.textContent = "■ إيقاف";
+
+  drawWheelSVG(pool);
+  modal.classList.add("show");
+
+  /* الحالة الحدية: مؤهّل واحد فقط — أعلنه مباشرة بلا دوران عبثي. */
+  if(pool.length === 1){
+    setTimeout(() => announceWinner(st, pool[0]), 350);
+    return;
+  }
+
+  /* اختر الفائز واحسب الزاوية النهائية */
+  const winner = pool[Math.floor(Math.random() * pool.length)];
+  const winnerIdx = pool.indexOf(winner);
+  const segAngle = 360 / pool.length;
+  /* المؤشّر أعلى العجلة عند 0° (قبل الدوران). نريد أن يكون مركز قطاع الفائز عند 0°.
+     مركز القطاع الابتدائي i هو (i + 0.5) * segAngle مقاسًا من أعلى العجلة.
+     ندير العجلة عكسيًا حتى يوضع قطاعه فوق. مع 6 دورات كاملة لمنظر مقنع. */
+  const targetOffset = 360 - (winnerIdx + 0.5) * segAngle;
+  const finalAngle = 6 * 360 + targetOffset;
+
+  /* شغّل التحوّل مع transition — يبدأ بعد إطارَي rAF لضمان تطبيق transform:rotate(0) أولًا */
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    svg.classList.add("spinning");
+    svg.style.transform = `rotate(${finalAngle}deg)`;
+  }));
+
+  wheel.currentSpin = { winner, finalAngle };
+  initAudio();
+  wheelTickerLoop(finalAngle, pool.length);
+
+  /* عند انتهاء التحوّل — نفّذ إعلان الفائز والحفظ */
+  const onEnd = async (e) => {
+    if(e.propertyName !== "transform") return;
+    svg.removeEventListener("transitionend", onEnd);
+    stopWheelTicker();
+    /* أبرز قطاع الفائز */
+    const winnerPath = svg.querySelector(`path[data-index="${winnerIdx}"]`);
+    if(winnerPath){
+      winnerPath.setAttribute("stroke","#fff9e6");
+      winnerPath.setAttribute("stroke-width","3");
+      winnerPath.style.filter = "brightness(1.35) drop-shadow(0 0 6px #ffd76a)";
+    }
+    await announceWinner(st, winner);
+  };
+  svg.addEventListener("transitionend", onEnd);
+}
+
+async function announceWinner(st, winner){
+  $("wheelWinnerName").textContent = winner.name;
+  const c = calc(winner);
+  const circ = byId(state.circles, winner.circleId);
+  $("wheelWinnerMeta").textContent = `${circ ? circ.name + " · " : ""}${nf.format(c.total)} نقطة تراكمية`;
+  $("wheelWinner").classList.add("show");
+  $("raffleWheel").classList.add("done");
+  wheel.currentSpin = null;
+
+  const cycleStart = state.settings.cycleStart || todayKey();
+  const hist = state.settings.raffleHistory || [];
+  const entry = { stage:st.id, stageName:st.name, name:winner.name, studentId:winner.id, date:todayKey(), cycle:cycleStart };
+  const ok = await withSync("جارٍ الحفظ", () => store.saveSettings({ raffleHistory:[...hist, entry] }));
+  if(ok) toast("🎉 فائز " + st.name + ": " + winner.name);
+}
+
+function closeWheel(){
+  stopWheelTicker();
+  wheel.currentSpin = null;
+  $("raffleWheel").classList.remove("show","done");
+  $("wheelWinner").classList.remove("show");
+  const svg = $("wheelSvg");
+  svg.classList.remove("spinning");
+  svg.style.transform = "rotate(0deg)";
+}
+
+function updateMuteBtn(){
+  const btn = $("wheelMute"); if(!btn) return;
+  const muted = isMuted();
+  btn.textContent = muted ? "🔇 مكتوم" : "🔊 الصوت";
+  btn.setAttribute("aria-pressed", muted ? "true" : "false");
+}
+
+/* نقطة الدخول من زر «ابدأ» على بطاقة السحب */
+async function startRaffleFor(st){
+  const cycleStart = state.settings.cycleStart || todayKey();
+  const hist = state.settings.raffleHistory || [];
+  const ranked = state.students.filter(s => s.stageId === st.id).sort((a,b) => calc(b).total - calc(a).total);
+  const winners = hist.filter(w => w.stage === st.id && w.cycle === cycleStart);
+  const wonIds   = new Set(winners.filter(w => w.studentId).map(w => w.studentId));
+  const wonNames = new Set(winners.filter(w => !w.studentId).map(w => w.name));
+  const pool = ranked.filter(s => calc(s).eligible && !wonIds.has(s.id) && !wonNames.has(s.name));
+  if(!pool.length) return toast("لا يوجد مؤهّل لهذا السحب");
+  if(!await confirmDialog("سحب " + st.name,
+      `ستدور العجلة على ${pool.length} طالبًا مؤهلًا، ثم تتوقف تلقائيًا بعد ~٦ ثوانٍ على الفائز.`,
+      "ابدأ")) return;
+  await openWheel(st, pool);
 }
 async function newCycle(){
   if(!await confirmDialog("بدء دورة جديدة", "تبدأ الدورة من اليوم، فيُصفَّر مسار التقدم ونقاط الدورة.\nالنقاط التراكمية وكل السجلات السابقة تبقى محفوظة.", "ابدأ")) return;
@@ -1639,6 +1916,9 @@ document.querySelectorAll(".mini-toggle[data-collapse]").forEach(btn => {
   };
 });
 $("dispClose").onclick = closeDisplay;
+bindDisplayTouch();
+$("wheelClose").onclick = closeWheel;
+$("wheelMute").onclick = () => { setMuted(!isMuted()); updateMuteBtn(); };
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && $("display").classList.contains("active")) closeDisplay();
 });
