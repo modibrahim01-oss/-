@@ -105,6 +105,11 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
 .reel b{display:block;font-size:16px;color:var(--primary);transition:transform .15s,color .15s}
 .reel.settle b{color:var(--gold);transform:scale(1.08)}
 .badge-assigned{display:inline-block;padding:2px 9px;border-radius:99px;background:#e8f4e3;color:#356528;border:1px solid #b7d59b;font-size:10.5px;font-weight:800;margin-inline-start:6px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.section-head h3{margin:0}
+.mini-toggle{background:#f5f7f2;color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:11px;font-size:12px;font-weight:800;transition:.15s}
+.mini-toggle:hover{background:#e8ede4;color:var(--primary);transform:translateY(-1px)}
+.card.collapsed .section-body{display:none}
 
 /* شاشة عرض النتائج للطلاب */
 #display.scene.active{display:flex;flex-direction:column;max-width:none;min-height:100vh;margin:0;padding:0;
@@ -407,30 +412,34 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
  </div>
 
  <div class="pane" id="a-people">
-  <div class="card">
-   <h3>الطلاب</h3>
-   <div class="grid grid3">
-    <input id="newStudent" class="search" placeholder="اسم الطالب كاملًا">
-    <select id="newStudentCircle" class="search"></select>
-    <button class="btn primary" id="btnAddStudent">إضافة طالب</button>
+  <div class="card" id="cardStudents">
+   <div class="section-head"><h3>الطلاب</h3><button class="mini-toggle" data-collapse="cardStudents">إخفاء ▲</button></div>
+   <div class="section-body">
+    <div class="grid grid3">
+     <input id="newStudent" class="search" placeholder="اسم الطالب كاملًا">
+     <select id="newStudentCircle" class="search"></select>
+     <button class="btn primary" id="btnAddStudent">إضافة طالب</button>
+    </div>
+    <div class="bar" style="margin:14px 0 0">
+     <b>عرض:</b><select id="filterCircle" class="search" style="width:auto;min-width:170px"></select>
+    </div>
+    <div class="rows" style="margin-top:12px" id="studentAdminList"></div>
    </div>
-   <div class="bar" style="margin:14px 0 0">
-    <b>عرض:</b><select id="filterCircle" class="search" style="width:auto;min-width:170px"></select>
-   </div>
-   <div class="rows" style="margin-top:12px" id="studentAdminList"></div>
   </div>
-  <div class="card">
-   <h3>المعلمون</h3>
-   <p>ينشئ المشرف حساب المعلم هنا مباشرة، ثم يسند له حلقة أو أكثر.</p>
-   <div class="grid grid2">
-    <input id="newTeacherName" class="search" placeholder="اسم المعلم">
-    <input id="newTeacherEmail" class="search" type="email" placeholder="البريد الإلكتروني">
+  <div class="card" id="cardTeachers">
+   <div class="section-head"><h3>المعلمون</h3><button class="mini-toggle" data-collapse="cardTeachers">إخفاء ▲</button></div>
+   <div class="section-body">
+    <p>ينشئ المشرف حساب المعلم هنا مباشرة، ثم يسند له حلقة أو أكثر.</p>
+    <div class="grid grid2">
+     <input id="newTeacherName" class="search" placeholder="اسم المعلم">
+     <input id="newTeacherEmail" class="search" type="email" placeholder="البريد الإلكتروني">
+    </div>
+    <div class="grid grid2" style="margin-top:10px">
+     <input id="newTeacherPass" class="search" type="text" placeholder="كلمة مرور (٦ أحرف فأكثر)">
+     <button class="btn primary" id="btnAddTeacher">إنشاء حساب المعلم</button>
+    </div>
+    <div class="rows" style="margin-top:12px" id="teacherList"></div>
    </div>
-   <div class="grid grid2" style="margin-top:10px">
-    <input id="newTeacherPass" class="search" type="text" placeholder="كلمة مرور (٦ أحرف فأكثر)">
-    <button class="btn primary" id="btnAddTeacher">إنشاء حساب المعلم</button>
-   </div>
-   <div class="rows" style="margin-top:12px" id="teacherList"></div>
   </div>
  </div>
 
@@ -1554,6 +1563,13 @@ document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
   b.closest(".tabs").querySelectorAll("button").forEach(x => x.classList.remove("on"));
   b.classList.add("on");
   b.closest(".scene").querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === b.dataset.tab));
+});
+document.querySelectorAll(".mini-toggle[data-collapse]").forEach(btn => {
+  btn.onclick = () => {
+    const card = document.getElementById(btn.dataset.collapse);
+    const collapsed = card.classList.toggle("collapsed");
+    btn.textContent = collapsed ? "إظهار ▼" : "إخفاء ▲";
+  };
 });
 $("dispClose").onclick = closeDisplay;
 document.addEventListener("keydown", e => {
