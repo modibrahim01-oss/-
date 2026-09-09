@@ -14,6 +14,12 @@
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="logo-abi-yusuf.png">
 <link rel="apple-touch-icon" href="logo-abi-yusuf.png">
+<!-- تسريع أول اتصال بـSupabase وبمكتبة العميل قبل ما يحتاجهما الكود -->
+<link rel="preconnect" href="https://vpwrqkomkbuatnpaaews.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="https://vpwrqkomkbuatnpaaews.supabase.co">
+<link rel="preconnect" href="https://esm.sh" crossorigin>
+<link rel="dns-prefetch" href="https://esm.sh">
+<link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2">
 <style>
 :root{
  --bg:#e9efe1;--surface:#fdfdf8;--ink:#20382f;--muted:#5b6d63;--primary:#173d31;--green:#6f973e;
@@ -584,6 +590,21 @@ async function initStore(){
   }catch(e){ console.error("Supabase:", e); return localStore("offline"); }
 }
 
+/* كاش محلي: يعرض آخر بيانات فورًا عند فتح الصفحة، ثم يحدّثها من الشبكة في الخلفية.
+   نُخزّن فقط الجداول التي سياسة قراءتها عامة (settings/stages/circles/students) —
+   جدول teachers مقيّد بـRLS (يرى المعلم صفّه فقط والمشرف كل الصفوف)، فتخزينه محليًا
+   قد يُظهر بيانات معلم آخر لأنن جهاز مشترك أو لجلسة anon، فنستبعده من الكاش. */
+const CACHE_PREFIX = "sabaq_cache_v1_";
+const CACHEABLE = new Set(["settings","stages","circles","students"]);
+const cacheGet = which => {
+  if(!CACHEABLE.has(which)) return null;
+  try{ const raw = localStorage.getItem(CACHE_PREFIX + which); return raw ? JSON.parse(raw) : null; }catch{ return null; }
+};
+const cacheSet = (which, data) => {
+  if(!CACHEABLE.has(which)) return;
+  try{ localStorage.setItem(CACHE_PREFIX + which, JSON.stringify(data)); }catch{}
+};
+
 function supabaseStore(createClient){
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
   let reload = () => {};
@@ -603,10 +624,24 @@ function supabaseStore(createClient){
     mode:"cloud",
     subscribe(cbs, onErr){
       const load = async which => {
-        try{ cbs[which](await pull(which)); }
-        catch(e){ console.error(which, e); onErr?.(e); }
+        try{
+          const fresh = await pull(which);
+          cacheSet(which, fresh);
+          cbs[which](fresh);
+        }catch(e){
+          console.error(which, e);
+          /* لا نُظهر خطأ إذا الكاش قد رسم للمستخدم شيئًا مقبولًا فعلًا */
+          if(cacheGet(which) === null) onErr?.(e);
+        }
       };
       reload = load;
+      /* اعرض الكاش فورًا (رسم أول سريع)، ثم اسحب من الشبكة */
+      for(const which of ["settings", ...TABLES]){
+        const cached = cacheGet(which);
+        if(cached !== null){
+          try{ cbs[which](cached); }catch(e){ console.error("cache render", which, e); }
+        }
+      }
       ["settings", ...TABLES].forEach(load);
 
       const timers = {};
