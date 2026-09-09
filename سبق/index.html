@@ -100,6 +100,44 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
 .reel.settle b{color:var(--gold);transform:scale(1.08)}
 .badge-assigned{display:inline-block;padding:2px 9px;border-radius:99px;background:#e8f4e3;color:#356528;border:1px solid #b7d59b;font-size:10.5px;font-weight:800;margin-inline-start:6px}
 
+/* شاشة عرض النتائج للطلاب */
+#display.scene.active{display:flex;flex-direction:column;max-width:none;min-height:100vh;margin:0;padding:0;
+ background:linear-gradient(180deg,#0f2a22 0%,#173d31 45%,#1c4b3c 100%);color:#f8f7f0;position:fixed;inset:0;z-index:9999;overflow:hidden;animation:none}
+#display .disp-head{display:flex;align-items:center;justify-content:space-between;gap:16px;
+ padding:clamp(14px,2.2vh,26px) clamp(18px,3vw,44px);background:rgba(0,0,0,.18);
+ border-bottom:2px solid rgba(231,181,63,.4)}
+#display .disp-head .brand{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+#display .disp-head .brand img{width:clamp(44px,4vw,66px);height:clamp(44px,4vw,66px);border-radius:14px;background:#fff;padding:4px}
+#display .disp-head .brand-text b{font-size:clamp(18px,2vw,30px);color:#fff;display:block;line-height:1.1}
+#display .disp-head .brand-text small{font-size:clamp(11px,1.1vw,15px);color:#e7d9a6;display:block;margin-top:2px}
+#display .disp-head .info{text-align:center;flex:1 1 auto}
+#display .disp-head .info b{font-size:clamp(22px,2.6vw,40px);color:var(--gold);display:block;line-height:1.15}
+#display .disp-head .info small{font-size:clamp(12px,1.2vw,17px);color:#cfe1cf;display:block;margin-top:3px;font-weight:700}
+#display .disp-close{background:rgba(0,0,0,.35);color:#fff;border-radius:14px;padding:8px 14px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.15)}
+#display .disp-close:hover{background:rgba(0,0,0,.55)}
+#display .ticker{flex:1 1 auto;position:relative;overflow:hidden}
+#display .ticker-inner{display:flex;flex-direction:column;gap:clamp(10px,1.4vh,18px);padding:clamp(12px,2vh,26px) clamp(18px,3vw,44px);will-change:transform}
+#display .drow{display:grid;grid-template-columns:auto 1fr auto;gap:clamp(14px,1.8vw,28px);align-items:center;
+ background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:clamp(14px,1.4vw,22px);
+ padding:clamp(12px,1.6vh,22px) clamp(16px,2vw,28px)}
+#display .drow.top1{background:linear-gradient(90deg,rgba(231,181,63,.35),rgba(231,181,63,.15));border-color:rgba(231,181,63,.6)}
+#display .drow.top2{background:rgba(203,213,205,.18);border-color:rgba(203,213,205,.4)}
+#display .drow.top3{background:rgba(215,180,145,.18);border-color:rgba(215,180,145,.45)}
+#display .drow .pos{width:clamp(48px,4vw,72px);height:clamp(48px,4vw,72px);border-radius:clamp(12px,1.2vw,18px);
+ display:grid;place-items:center;font-weight:900;font-size:clamp(22px,2.4vw,38px);
+ background:rgba(255,255,255,.14);color:#fff}
+#display .drow.top1 .pos{background:linear-gradient(135deg,#f2c34c,var(--gold));color:#4d3910}
+#display .drow.top2 .pos{background:#dee5e0;color:#4a5b53}
+#display .drow.top3 .pos{background:#e6cfb5;color:#6b4a2a}
+#display .drow .who b{font-size:clamp(24px,2.8vw,48px);color:#fff;display:block;line-height:1.15}
+#display .drow .who small{font-size:clamp(13px,1.2vw,19px);color:#c9ddca;display:block;margin-top:4px;font-weight:700}
+#display .drow .pts{text-align:left;white-space:nowrap}
+#display .drow .pts b{color:var(--gold);font-size:clamp(28px,3vw,52px);font-weight:900;display:block;line-height:1}
+#display .drow .pts small{color:#cfe1cf;font-size:clamp(11px,1vw,16px);font-weight:700;display:block;margin-top:4px}
+#display .disp-empty{display:grid;place-items:center;flex:1;padding:40px;text-align:center;color:#e7d9a6;
+ font-size:clamp(22px,2.4vw,36px);font-weight:800}
+@media(prefers-reduced-motion:reduce){#display .ticker-inner{transition:none}}
+
 .ev{border:1px solid var(--line);border-radius:18px;background:#fff;padding:14px;display:grid;gap:11px}
 .ev.absent{background:#fdf6f4;border-color:#e8cbc3}
 .ev.excused{background:#eef8f9;border-color:#bfe1e5}
@@ -446,6 +484,16 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
  </div>
  <div class="acts" style="margin-top:14px"><button class="btn primary" id="streakOk">حفظ</button><button class="btn soft" id="streakCancel">إلغاء</button></div>
 </div></div>
+<section class="scene" id="display" aria-label="عرض النتائج للطلاب">
+ <div class="disp-head">
+  <div class="brand"><img src="logo-abi-yusuf.png" alt=""><div class="brand-text"><b>سَبْق</b><small>مجمع أبي يوسف القرآني</small></div></div>
+  <div class="info"><b id="dispTitle">لوحة النتائج</b><small id="dispSub"></small></div>
+  <button class="disp-close" id="dispClose">✕ خروج</button>
+ </div>
+ <div class="ticker" id="dispTicker">
+  <div class="ticker-inner" id="dispInner"></div>
+ </div>
+</section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
@@ -826,6 +874,7 @@ function renderAll(){
   if($("student").classList.contains("active") && state.currentStudent) renderStudent(state.currentStudent);
   if($("admin").classList.contains("active")) renderAdmin();
   if($("teacher").classList.contains("active")) renderTeacher();
+  if($("display").classList.contains("active")) renderDisplay();
 }
 
 function renderHome(){
@@ -1055,6 +1104,11 @@ function renderResults(target, { stageId, circleId, allowStagePick }){
     tg.appendChild(b);
   }
   head.appendChild(tg);
+  const dispBtn = document.createElement("button");
+  dispBtn.className = "btn primary"; dispBtn.style.padding = "9px 14px"; dispBtn.style.fontSize = "13px";
+  dispBtn.innerHTML = "🖥️ عرض للطلاب";
+  dispBtn.onclick = () => openDisplay({ stageId, circleId });
+  head.appendChild(dispBtn);
   box.appendChild(head);
 
   let list = state.students.slice();
@@ -1218,6 +1272,79 @@ function renderAdmin(){
       box.append(nm, reel, btn);
     }
   }
+}
+
+/* ═══════════ شاشة العرض للطلاب (تمرير مستمر) ═══════════ */
+const disp = { raf:0, y:0, ctx:null, contentH:0, viewH:0 };
+
+function openDisplay(ctx){
+  disp.ctx = { ...ctx };
+  show("display");
+  renderDisplay();
+  document.documentElement.requestFullscreen?.().catch(() => {});
+}
+function closeDisplay(){
+  cancelAnimationFrame(disp.raf); disp.raf = 0; disp.y = 0;
+  if(document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  const role = state.user?.role;
+  show(role === "teacher" ? "teacher" : role === "admin" ? "admin" : "home");
+}
+function renderDisplay(){
+  if(!disp.ctx) return;
+  const { stageId, circleId } = disp.ctx;
+  let list = state.students.slice();
+  if(circleId) list = list.filter(s => s.circleId === circleId);
+  if(stageId)  list = list.filter(s => s.stageId === stageId);
+  const rows = list.map(s => ({ s, c:calc(s) })).sort((a,b) =>
+    (state.resultsMode === "cycle" ? b.c.cyclePts - a.c.cyclePts : b.c.total - a.c.total)
+    || b.c.best - a.c.best || a.s.name.localeCompare(b.s.name, "ar"));
+
+  const stage = stageId ? byId(state.stages, stageId) : null;
+  const circle = circleId ? byId(state.circles, circleId) : null;
+  const scopeText = circle ? `${circle.name}` : (stage ? stage.name : "كل المراحل");
+  const modeText = state.resultsMode === "cycle" ? "نقاط الدورة" : "النقاط التراكمية";
+  $("dispTitle").textContent = scopeText;
+  $("dispSub").textContent = `${modeText} · ${fmtHijriLong.format(new Date())}`;
+
+  const inner = $("dispInner");
+  if(!rows.length){
+    inner.innerHTML = '<div class="disp-empty">لا نتائج بعد في هذا النطاق.</div>';
+    stopScroll(); return;
+  }
+  const buildHTML = (r,i) => {
+    const cls = "drow" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "");
+    const circ = byId(state.circles, r.s.circleId);
+    const pts = state.resultsMode === "cycle" ? r.c.cyclePts : r.c.total;
+    return `<div class="${cls}"><div class="pos">${nf.format(i+1)}</div>` +
+      `<div class="who"><b>${esc(r.s.name)}</b><small>${esc(circ ? circ.name : "بلا حلقة")} · مسار ${nf.format(r.c.streak)}${r.c.eligible ? " · 🎟️ مؤهل" : ""}</small></div>` +
+      `<div class="pts"><b>${nf.format(pts)}</b><small>نقطة</small></div></div>`;
+  };
+  /* نسختان: عند الوصول لنهاية النسخة الأولى نُصفّر بلا فجوة */
+  inner.innerHTML = rows.map(buildHTML).join("") + rows.map(buildHTML).join("");
+
+  requestAnimationFrame(() => {
+    disp.viewH = $("dispTicker").clientHeight;
+    disp.contentH = inner.scrollHeight / 2; /* ارتفاع النسخة الواحدة */
+    /* لو المحتوى يسع الشاشة كاملة، لا حاجة لتمرير */
+    if(disp.contentH <= disp.viewH){ stopScroll(); inner.style.transform = "translateY(0)"; return; }
+    startScroll();
+  });
+}
+function stopScroll(){ cancelAnimationFrame(disp.raf); disp.raf = 0; }
+function startScroll(){
+  stopScroll();
+  const SPEED = 55; /* بكسل/ثانية */
+  let last = performance.now();
+  const step = now => {
+    if(!$("display").classList.contains("active")) return;
+    if(document.hidden){ last = now; disp.raf = requestAnimationFrame(step); return; }
+    const dt = (now - last) / 1000; last = now;
+    disp.y += SPEED * dt;
+    if(disp.y >= disp.contentH) disp.y -= disp.contentH; /* لفّ نظيف: النسخة الثانية مطابقة للأولى */
+    $("dispInner").style.transform = `translateY(-${disp.y}px)`;
+    disp.raf = requestAnimationFrame(step);
+  };
+  disp.raf = requestAnimationFrame(step);
 }
 
 /* ═══════════ ٧) الإجراءات ═══════════ */
@@ -1392,6 +1519,14 @@ document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
   b.closest(".tabs").querySelectorAll("button").forEach(x => x.classList.remove("on"));
   b.classList.add("on");
   b.closest(".scene").querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === b.dataset.tab));
+});
+$("dispClose").onclick = closeDisplay;
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && $("display").classList.contains("active")) closeDisplay();
+});
+document.addEventListener("fullscreenchange", () => {
+  /* لو خرج المستخدم من كامل الشاشة بـEsc أو F11 وشاشة العرض ما زالت نشطة، اخرج بها كذلك */
+  if(!document.fullscreenElement && $("display").classList.contains("active")) closeDisplay();
 });
 $("btnStart").onclick = () => { $("studentSearch").value = ""; show("choose"); };
 $("btnStaffLogin").onclick = () => show(state.user ? (state.user.role === "teacher" ? "teacher" : "admin") : "login");
