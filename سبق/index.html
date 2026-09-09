@@ -467,6 +467,16 @@ input[type=date],input[type=number],input[type=email],input[type=password],input
    <div class="note">الغياب صفر دائمًا. تغيير القيم يعيد حساب كل النقاط السابقة تلقائيًا.</div>
   </div>
   <div class="card">
+   <h3>أيام العطل والإجازات</h3>
+   <div class="note">أعلن يومًا كاملًا عطلة (مطر، غبار، إجازة وزارية…). لا يُحسب في الدورة، لا يكسر مسار التقدم، ولا تُحتسب أي نقاط سُجّلت له.</div>
+   <div class="grid grid3" style="margin-top:12px">
+    <input type="date" id="holidayDate">
+    <input type="text" id="holidayReason" placeholder="السبب (اختياري)">
+    <button class="btn primary" id="btnAddHoliday">أضف يوم عطلة</button>
+   </div>
+   <div class="rows" id="holidayList" style="margin-top:14px"></div>
+  </div>
+  <div class="card">
    <h3>السحب — لكل مرحلة على حدة</h3>
    <div class="rows" id="raffleBox"></div>
    <button class="btn soft" style="margin-top:12px" id="btnNewCycle">بدء دورة جديدة</button>
@@ -822,11 +832,21 @@ function dayPoints(rec){
 const qualifies = rec => (rec.h||0) > 0 && (rec.a === "present" || rec.a === "late");
 const isExcused = rec => rec.a === "excused";
 
+/* أيام العطل الرسمية (مطر/غبار/إجازة وزارية) — تُخزَّن داخل points._holidays لتفادي
+   تغيير مخطط قاعدة البيانات. كل عطلة: { date: "YYYY-MM-DD", reason: "…" }.
+   اليوم المُعلن عطلة يُتخطّى في cycleDays و calc تمامًا كأنه يوم توقف. */
+const getHolidays = () => state.settings.points?._holidays || [];
+const isHoliday = k => getHolidays().some(h => h.date === k);
+const holidayReason = k => getHolidays().find(h => h.date === k)?.reason || "";
+
 function cycleDays(){
   const start = parseKey(state.settings.cycleStart || todayKey());
   const end = new Date(); end.setHours(12,0,0,0);
   const out = []; const d = new Date(start); let g = 0;
-  while(d <= end && g++ < 3000){ if(isSessionDay(d)) out.push(dayKey(d)); d.setDate(d.getDate()+1); }
+  while(d <= end && g++ < 3000){
+    if(isSessionDay(d) && !isHoliday(dayKey(d))) out.push(dayKey(d));
+    d.setDate(d.getDate()+1);
+  }
   return out;
 }
 function calc(s){
@@ -842,7 +862,7 @@ function calc(s){
   let total = 0;
   for(const k of Object.keys(s.records || {})){
     const rec = recOf(s,k);
-    if(!isExcused(rec)) total += dayPoints(rec);
+    if(!isExcused(rec) && !isHoliday(k)) total += dayPoints(rec);
   }
   const goal = state.settings.goal || DEFAULTS.goal;
 
@@ -1107,6 +1127,12 @@ function renderEvalList({ rowsEl, circleId, dateEl, hijriEl, editable, stats, se
     if(stats) setStats([], key);
     return;
   }
+  if(isHoliday(key)){
+    const reason = holidayReason(key);
+    rowsEl.innerHTML = `<div class="notice warn" style="text-align:center;padding:22px">🌧️ اليوم عطلة رسمية${reason ? " — " + esc(reason) : ""}<br><span style="font-weight:400">لا يُسجَّل فيه شيء ولا يُحسب في الدورة ولا يكسر مسار التقدم.</span></div>`;
+    if(stats) setStats([], key);
+    return;
+  }
   if(!circleId){ rowsEl.innerHTML = '<div class="notice" style="text-align:center;padding:22px">اختر حلقة لعرض طلابها.</div>'; if(stats) setStats([], key); return; }
   if(!list.length){ rowsEl.innerHTML = '<div class="notice" style="text-align:center;padding:22px">لا يوجد طلاب مطابقون.</div>'; if(stats) setStats([], key); return; }
   for(const s of list) rowsEl.appendChild(evalCard(s, key, canEdit));
@@ -1316,6 +1342,45 @@ function renderAdmin(){
       box.append(nm, reel, btn);
     }
   }
+
+  renderHolidays();
+}
+
+function renderHolidays(){
+  const box = $("holidayList"); if(!box) return;
+  box.innerHTML = "";
+  const list = getHolidays().slice().sort((a,b) => b.date.localeCompare(a.date));
+  if(!list.length){
+    box.innerHTML = '<div class="notice">لا توجد أيام عطلة معلَنة.</div>';
+    return;
+  }
+  for(const h of list){
+    const row = document.createElement("div"); row.className = "row";
+    const nm = document.createElement("div"); nm.className = "row-name";
+    nm.innerHTML = `${esc(h.date)}<small>${h.reason ? esc(h.reason) : "بلا سبب مذكور"}</small>`;
+    const del = document.createElement("button"); del.className = "btn danger"; del.style.padding = "9px 13px"; del.textContent = "حذف";
+    del.onclick = () => removeHoliday(h.date);
+    row.append(nm, del); box.appendChild(row);
+  }
+}
+
+async function addHoliday(){
+  const date = $("holidayDate").value;
+  const reason = $("holidayReason").value.trim();
+  if(!date) return toast("اختر التاريخ");
+  if(getHolidays().some(h => h.date === date)) return toast("هذا اليوم مُعلَن عطلة سلفًا");
+  const holidays = [...getHolidays(), { date, reason }];
+  const points = { ...state.settings.points, _holidays: holidays };
+  if(await withSync("جارٍ الحفظ", () => store.saveSettings({ points }))){
+    $("holidayDate").value = ""; $("holidayReason").value = "";
+    toast("أُضيف يوم العطلة");
+  }
+}
+async function removeHoliday(date){
+  if(!await confirmDialog("حذف يوم العطلة", `سيُلغى إعلان ${date} كعطلة. النقاط والسجلات السابقة لهذا اليوم ستعود لتُحتسب كأي يوم عادي.`, "حذف")) return;
+  const holidays = getHolidays().filter(h => h.date !== date);
+  const points = { ...state.settings.points, _holidays: holidays };
+  if(await withSync("جارٍ الحذف", () => store.saveSettings({ points }))) toast("حُذف يوم العطلة");
 }
 
 /* ═══════════ شاشة العرض للطلاب (تمرير مستمر) ═══════════ */
@@ -1482,7 +1547,9 @@ async function saveCycle(){
 }
 async function savePoints(){
   const num = id => Math.max(0, parseInt($(id).value,10) || 0);
-  const points = { half:num("pHalf"), rev:num("pRev"), present:num("pPresent"), late:num("pLate"), gen:num("pGen"), uni:num("pUni") };
+  /* حفاظ على _holidays المخزّنة داخل points (انظر CLAUDE.md — قسم العطل).
+     أي كتابة جديدة على points لازم تُبقي _holidays وإلا مُسحت العطل بصمت. */
+  const points = { half:num("pHalf"), rev:num("pRev"), present:num("pPresent"), late:num("pLate"), gen:num("pGen"), uni:num("pUni"), _holidays: getHolidays() };
   if(await withSync("جارٍ الحفظ", () => store.saveSettings({ points }))) toast("حُفظت حسبة النقاط");
 }
 /* سحوبات قيد الدوران حاليًا: stage.id → معرّف setInterval */
@@ -1588,6 +1655,7 @@ $("aSearch").oninput = renderAdmin; $("tSearch").oninput = renderTeacher;
 $("btnAddStage").onclick = addStage;     $("btnAddCircle").onclick = addCircle;
 $("btnAddStudent").onclick = addStudent; $("btnAddTeacher").onclick = addTeacher;
 $("btnSaveCycle").onclick = saveCycle;   $("btnSavePoints").onclick = savePoints;
+$("btnAddHoliday").onclick = addHoliday;
 $("btnNewCycle").onclick = newCycle;     $("btnExport").onclick = exportBackup;
 $("btnImport").onclick = () => $("importFile").click();
 $("importFile").onchange = e => { if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value = ""; };
