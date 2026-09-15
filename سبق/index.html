@@ -226,7 +226,7 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
  filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));z-index:2}
 .wheel-svg{width:100%;height:100%;border-radius:50%;box-shadow:0 20px 55px rgba(23,61,49,.35),inset 0 0 0 8px #fff;
  transform:rotate(0deg);will-change:transform;background:#fff}
-.wheel-svg.spinning{transition:transform 6s cubic-bezier(.22,.9,.25,1)}
+.wheel-svg.spinning{transition:transform 5s cubic-bezier(.22,.9,.25,1)}
 .wheel-svg path{stroke:#fff;stroke-width:1.5}
 .wheel-svg text{font-family:inherit;font-weight:800;pointer-events:none}
 .wheel-winner{margin-top:16px;padding:14px 18px;border-radius:16px;background:linear-gradient(135deg,#fff9e6,#fef1c8);
@@ -236,8 +236,7 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
 .wheel-winner .name{font-size:clamp(20px,3.5vw,32px);font-weight:900;margin:4px 0;color:var(--primary)}
 .wheel-winner .meta{color:var(--muted);font-size:13px;font-weight:700}
 @keyframes winnerPop{0%{opacity:0;transform:scale(.7)}60%{transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
-.wheel-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
-.wheel-mute{background:#f2f5f2;border:1px solid var(--line);color:var(--primary);padding:8px 12px;border-radius:12px;font-weight:800}
+.wheel-actions{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px}
 #raffleWheel .wheel-close{background:linear-gradient(135deg,var(--primary),#245b48);color:#fff;padding:10px 22px;border-radius:14px;font-weight:800;display:none}
 #raffleWheel.done .wheel-close{display:inline-block}
 .wheel-empty{padding:40px 20px;text-align:center;color:var(--muted);font-weight:700}
@@ -659,7 +658,6 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
   <div class="meta" id="wheelWinnerMeta"></div>
  </div>
  <div class="wheel-actions">
-  <button class="wheel-mute" id="wheelMute" aria-pressed="false">🔊 الصوت</button>
   <button class="wheel-close" id="wheelClose">إغلاق</button>
  </div>
 </div></div>
@@ -1765,31 +1763,7 @@ async function savePoints(){
   if(await withSync("جارٍ الحفظ", () => store.saveSettings({ points }))) toast("حُفظت حسبة النقاط");
 }
 /* ═══════════ عجلة السحب الدوّارة ═══════════ */
-const wheel = { audioCtx:null, spinRaf:0, lastTickAngle:0, currentSpin:null };
-const MUTE_KEY = "sabaq_wheel_muted";
-const isMuted = () => { try{ return localStorage.getItem(MUTE_KEY) === "1"; }catch{ return false; } };
-const setMuted = (v) => { try{ localStorage.setItem(MUTE_KEY, v ? "1" : "0"); }catch{} };
-
-function initAudio(){
-  if(wheel.audioCtx) return wheel.audioCtx;
-  try{
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    wheel.audioCtx = new Ctx();
-  }catch{}
-  return wheel.audioCtx;
-}
-function playTick(){
-  if(isMuted()) return;
-  const ctx = initAudio(); if(!ctx) return;
-  const t = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "square"; osc.frequency.setValueAtTime(280, t);
-  gain.gain.setValueAtTime(0.2, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(t); osc.stop(t + 0.03);
-}
+const wheel = { currentSpin:null };
 
 /* رسم SVG للعجلة بحسب pool. ألوان القطاعات من هوية سَبْق. */
 function drawWheelSVG(pool){
@@ -1829,39 +1803,6 @@ function drawWheelSVG(pool){
   }
 }
 
-/* حلقة تتبّع الزاوية الحالية للعجلة أثناء الدوران وتُطلق طقطقة عند كل قطاع يمرّ. */
-function wheelTickerLoop(finalAngle, N, startTs){
-  const svg = $("wheelSvg");
-  const step = () => {
-    if(!wheel.currentSpin) return;
-    /* الزاوية الحالية = القيمة المحسوبة عبر cubic-bezier — نستخرجها من transform الفعلي */
-    const cs = getComputedStyle(svg).transform;
-    let angle = 0;
-    /* matrix(a,b,c,d,e,f) → angle = atan2(b,a) */
-    const m = cs.match(/matrix\(([-\d.,\s]+)\)/);
-    if(m){
-      const [a,b] = m[1].split(",").map(parseFloat);
-      angle = Math.atan2(b, a) * 180 / Math.PI;
-      if(angle < 0) angle += 360;
-      /* لكن لأننا ندور أكثر من 360°، نحسب الإجمالي التقريبي عبر عدد الدورات المتوقعة نسبيًا */
-    }
-    /* بدل ذلك: قسّم على القطاعات بمقارنة الفرق مع الزاوية السابقة */
-    const segAngle = 360 / N;
-    /* عدد القطاعات التي مرّت */
-    const diff = angle - wheel.lastTickAngle;
-    const normDiff = ((diff % 360) + 360) % 360;
-    if(normDiff >= segAngle){
-      playTick();
-      wheel.lastTickAngle = angle;
-    }
-    wheel.spinRaf = requestAnimationFrame(step);
-  };
-  wheel.lastTickAngle = 0;
-  wheel.spinRaf = requestAnimationFrame(step);
-}
-
-function stopWheelTicker(){ cancelAnimationFrame(wheel.spinRaf); wheel.spinRaf = 0; }
-
 /* افتح نافذة العجلة وابدأ السحب لمرحلة st ومجموعة مؤهّلين pool. */
 async function openWheel(st, pool){
   const modal = $("raffleWheel");
@@ -1873,7 +1814,6 @@ async function openWheel(st, pool){
   const svg = $("wheelSvg");
   svg.classList.remove("spinning");
   svg.style.transform = "rotate(0deg)";
-  updateMuteBtn();
 
   if(!pool.length){
     /* حالة حدية: لا مؤهّلين — أظهر رسالة وأغلق بيد المستخدم */
@@ -1914,14 +1854,11 @@ async function openWheel(st, pool){
   }));
 
   wheel.currentSpin = { winner, finalAngle };
-  initAudio();
-  wheelTickerLoop(finalAngle, pool.length);
 
   /* عند انتهاء التحوّل — نفّذ إعلان الفائز والحفظ */
   const onEnd = async (e) => {
     if(e.propertyName !== "transform") return;
     svg.removeEventListener("transitionend", onEnd);
-    stopWheelTicker();
     /* أبرز قطاع الفائز */
     const winnerPath = svg.querySelector(`path[data-index="${winnerIdx}"]`);
     if(winnerPath){
@@ -1951,20 +1888,12 @@ async function announceWinner(st, winner){
 }
 
 function closeWheel(){
-  stopWheelTicker();
   wheel.currentSpin = null;
   $("raffleWheel").classList.remove("show","done");
   $("wheelWinner").classList.remove("show");
   const svg = $("wheelSvg");
   svg.classList.remove("spinning");
   svg.style.transform = "rotate(0deg)";
-}
-
-function updateMuteBtn(){
-  const btn = $("wheelMute"); if(!btn) return;
-  const muted = isMuted();
-  btn.textContent = muted ? "🔇 مكتوم" : "🔊 الصوت";
-  btn.setAttribute("aria-pressed", muted ? "true" : "false");
 }
 
 /* نقطة الدخول من زر «ابدأ» على بطاقة السحب */
@@ -1978,7 +1907,7 @@ async function startRaffleFor(st){
   const pool = ranked.filter(s => calc(s).eligible && !wonIds.has(s.id) && !wonNames.has(s.name));
   if(!pool.length) return toast("لا يوجد مؤهّل لهذا السحب");
   if(!await confirmDialog("سحب " + st.name,
-      `ستدور العجلة على ${pool.length} طالبًا مؤهلًا، ثم تتوقف تلقائيًا بعد ~٦ ثوانٍ على الفائز.`,
+      `ستدور العجلة على ${pool.length} طالبًا مؤهلًا، ثم تتوقف تلقائيًا بعد ~٥ ثوانٍ على الفائز.`,
       "ابدأ")) return;
   await openWheel(st, pool);
 }
@@ -2037,7 +1966,6 @@ document.querySelectorAll(".mini-toggle[data-collapse]").forEach(btn => {
 $("dispClose").onclick = closeDisplay;
 bindDisplayTouch();
 $("wheelClose").onclick = closeWheel;
-$("wheelMute").onclick = () => { setMuted(!isMuted()); updateMuteBtn(); };
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && $("display").classList.contains("active")) closeDisplay();
 });
