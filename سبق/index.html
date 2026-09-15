@@ -213,7 +213,7 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
 #display .disp-head .info small{font-size:clamp(12px,1.2vw,17px);color:#cfe1cf;display:block;margin-top:3px;font-weight:700}
 #display .disp-close{background:rgba(0,0,0,.35);color:#fff;border-radius:14px;padding:8px 14px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.15)}
 #display .disp-close:hover{background:rgba(0,0,0,.55)}
-#display .ticker{flex:1 1 auto;position:relative;overflow:hidden;touch-action:pan-y;user-select:none;cursor:grab}
+#display .ticker{flex:1 1 auto;position:relative;overflow:hidden;touch-action:none;overscroll-behavior:contain;user-select:none;cursor:grab}
 #display .ticker:active{cursor:grabbing}
 #dispPaused{background:rgba(0,0,0,.55);color:#e7d9a6;padding:6px 12px;border-radius:10px;font-weight:800;font-size:13px;border:1px solid rgba(231,181,63,.4);margin-inline-end:6px;white-space:nowrap}
 
@@ -226,7 +226,7 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
  filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));z-index:2}
 .wheel-svg{width:100%;height:100%;border-radius:50%;box-shadow:0 20px 55px rgba(23,61,49,.35),inset 0 0 0 8px #fff;
  transform:rotate(0deg);will-change:transform;background:#fff}
-.wheel-svg.spinning{transition:transform 5.5s cubic-bezier(.22,.9,.25,1)}
+.wheel-svg.spinning{transition:transform 6s cubic-bezier(.22,.9,.25,1)}
 .wheel-svg path{stroke:#fff;stroke-width:1.5}
 .wheel-svg text{font-family:inherit;font-weight:800;pointer-events:none}
 .wheel-winner{margin-top:16px;padding:14px 18px;border-radius:16px;background:linear-gradient(135deg,#fff9e6,#fef1c8);
@@ -1643,9 +1643,10 @@ function bindDisplayTouch(){
   });
   ticker.addEventListener("pointermove", e => {
     if(!disp.dragging) return;
+    e.preventDefault();
     disp.y = wrapY(disp.dragBaseY + (disp.dragStartY - e.clientY));
     $("dispInner").style.transform = `translateY(-${disp.y}px)`;
-  });
+  }, { passive:false });
   const endDrag = e => {
     if(!disp.dragging) return;
     disp.dragging = false;
@@ -1783,12 +1784,11 @@ function playTick(){
   const t = ctx.currentTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = "triangle"; osc.frequency.setValueAtTime(1200, t);
-  osc.frequency.exponentialRampToValueAtTime(800, t + 0.04);
-  gain.gain.setValueAtTime(0.12, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+  osc.type = "square"; osc.frequency.setValueAtTime(280, t);
+  gain.gain.setValueAtTime(0.2, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
   osc.connect(gain).connect(ctx.destination);
-  osc.start(t); osc.stop(t + 0.05);
+  osc.start(t); osc.stop(t + 0.03);
 }
 
 /* رسم SVG للعجلة بحسب pool. ألوان القطاعات من هوية سَبْق. */
@@ -1822,9 +1822,8 @@ function drawWheelSVG(pool){
     t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "middle");
     t.setAttribute("fill", "#fff"); t.setAttribute("font-size", String(fontSize));
     t.setAttribute("transform", `rotate(${rotDeg} ${tx} ${ty})`);
-    /* تقصير للأسماء الطويلة جدًا لتفادي الفيضان */
-    const maxChars = Math.max(6, Math.floor(160 / N));
-    const name = pool[i].name.length > maxChars ? pool[i].name.slice(0, maxChars-1) + "…" : pool[i].name;
+    /* الاسم الأول واسم العائلة فقط على القطاع — الاسم الكامل عند إعلان الفائز */
+    const name = pool[i].name.trim().split(/\s+/).slice(0, 2).join(" ");
     t.textContent = name;
     svg.appendChild(t);
   }
