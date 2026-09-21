@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ground: #f6f1e4;
+  --ground-warm: #efe8d3;
+  --surface: #ffffff;
+  --surface-alt: #fbf7ec;
+  --border: #e1d8bf;
+  --border-soft: #ede5ce;
+  --ink: #1b2f26;
+  --ink-soft: #4c5d53;
+  --ink-mute: #8b9188;
+  --brand: #2f6f4e;
+  --brand-deep: #1f4f37;
+  --brand-soft: #ddecd8;
+  --gold: #c89122;
+  --gold-soft: #f5e5b8;
+  --grape: #7c4b8b;
+  --grape-soft: #ecdff0;
+  --coral: #c2452d;
+  --coral-soft: #f5d9d0;
+  --sky: #5cb8e4;
+
+  --shadow-sm: 0 1px 2px rgba(27, 47, 38, 0.06);
+  --shadow: 0 2px 4px rgba(27, 47, 38, 0.06), 0 8px 20px rgba(27, 47, 38, 0.06);
+  --shadow-lg: 0 12px 40px rgba(27, 47, 38, 0.14);
+
+  /* next/font يعرّف المتغيّرين *-loaded في <html>؛ البدائل تحمي العرض لو
+     لم يُحمّل الخط بعد أو فشل جلبه. */
+  --font-display: var(--font-display-loaded), "Reem Kufi", system-ui, sans-serif;
+  --font-body: var(--font-body-loaded), "Tajawal", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #14201b;
+    --ground-warm: #182722;
+    --surface: #1d2e27;
+    --surface-alt: #24382f;
+    --border: #2e4238;
+    --border-soft: #263831;
+    --ink: #ede5ce;
+    --ink-soft: #b7b29a;
+    --ink-mute: #8b9188;
+    --brand: #6ab489;
+    --brand-deep: #4a9a6d;
+    --brand-soft: #23392e;
+    --gold: #e5b54a;
+    --gold-soft: #3a3020;
+    --grape: #b788c6;
+    --grape-soft: #38293b;
+    --coral: #e97561;
+    --coral-soft: #3b2621;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #14201b;
+  --ground-warm: #182722;
+  --surface: #1d2e27;
+  --surface-alt: #24382f;
+  --border: #2e4238;
+  --border-soft: #263831;
+  --ink: #ede5ce;
+  --ink-soft: #b7b29a;
+  --ink-mute: #8b9188;
+  --brand: #6ab489;
+  --brand-deep: #4a9a6d;
+  --brand-soft: #23392e;
+  --gold: #e5b54a;
+  --gold-soft: #3a3020;
+  --grape: #b788c6;
+  --grape-soft: #38293b;
+  --coral: #e97561;
+  --coral-soft: #3b2621;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+body {
+  margin: 0;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
