@@ -31,9 +31,10 @@ function envErrorResponse(missing: { name: string; label: string }[]) {
   <h1>سبّاق غير مهيّأ بعد</h1>
   <p>هذه المتغيّرات ناقصة في إعدادات النشر:</p>
   <ul>${rows}</ul>
-  <p class="hint">أضِفها في Vercel من <strong>Settings ← Environment Variables</strong>،
-  وتأكّد من مطابقة الاسم حرفًا بحرف، ثم أعد النشر. قيمها في لوحة Supabase تحت
-  <strong>Project Settings ← API</strong>.</p>
+  <p class="hint">أضِفها في Netlify من <strong>Site configuration ← Environment
+  variables</strong>، وتأكّد من مطابقة الاسم حرفًا بحرف، ثم
+  <strong>أعد النشر</strong> — المتغيّرات الجديدة لا تُطبَّق على نشر قائم.
+  قيمها في لوحة Supabase تحت <strong>Project Settings ← API</strong>.</p>
 </div></body></html>`;
 
   return new NextResponse(html, {
