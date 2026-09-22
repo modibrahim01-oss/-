@@ -58,10 +58,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       // في هذا العنصر: الاختلاف مقصود، وبدونه يعيد React الاتجاه إلى العربية.
       suppressHydrationWarning
     >
-      <head>
+      {/* لا <head> صريح: Netlify يحقن تعليقًا داخل head في كل صفحة، وعنصر
+          head يرسم React أبناءه يُطابَق عقدةً عقدة، فيصطدم بالتعليق الغريب
+          (خطأ #418) ويرمي HTML الخادم كلّه ليعيد رسم الصفحة في المتصفح. head
+          الذي يديره Next وحده يتسامح React مع ما يُحقَن فيه.
+          والسكربت في أول body ما زال قبل أي محتوى، فيسبق أول رسم كما كان. */}
+      <body>
         <script dangerouslySetInnerHTML={{ __html: SET_DIR }} />
-      </head>
-      <body>{children}</body>
+        {children}
+      </body>
     </html>
   );
 }
