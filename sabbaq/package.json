@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "./scripts/test-db.sh",
-    "shoot": "node scripts/shoot-farm.mjs"
+    "shoot": "node scripts/shoot-farm.mjs",
+    "preflight": "node scripts/preflight.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

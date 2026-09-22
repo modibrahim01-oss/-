@@ -37,6 +37,84 @@ psql -d "$DB" -v ON_ERROR_STOP=1 \
   | sed -n 's/.*NOTICE:  \(PASS\|FAIL\)  /  \1  /p'
 
 echo ""
+echo "▸ التحقّق من البيانات التجريبية"
+# البذر يحتاج حساب مدير — ننشئه عبر نفس مسار الإنتاج (trigger على auth.users)
+psql -q -d "$DB" -v ON_ERROR_STOP=1 -c "
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('99999999-9999-9999-9999-999999999999','seed-admin@test',
+   '{\"full_name_ar\":\"مدير البذر\",\"role\":\"admin\"}')
+on conflict (id) do nothing;"
+psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$HERE/supabase/seed/demo.sql" > /dev/null
+
+# البذر يكتب في points_ledger مباشرة، فلا بد أن يتطابق مع ما تحسبه الدالة —
+# وأن يبقى next_slot_index صحيحًا وإلا صادم أول منح حقيقي خانةً محجوزة
+# كل توكيد مقصور على طلاب البذر وعلى الفصل النشط. الملف السابق يُغلق فصلًا
+# ويصفّر العدّادات، فطلابه يحملون صفوفًا من فصل سابق بعدّاد صفر — وهو سلوك
+# صحيح يفسد أي مقارنة غير مقيّدة بالفصل.
+psql -q -d "$DB" -v ON_ERROR_STOP=1 <<'SQL'
+do $$
+declare
+  v_sem uuid;
+  v_s   uuid;
+  v_n   integer;
+  v_r   jsonb;
+begin
+  select id into v_sem from semesters where is_active;
+
+  perform assert((select count(*) from students where full_name like '[تجريبي]%') = 42,
+    'seed: 42 demo students');
+
+  perform assert((select count(*) from students s
+    left join (select student_id, count(*) c from points_ledger
+                where semester_id = v_sem group by student_id) l
+      on l.student_id = s.id
+    where s.full_name like '[تجريبي]%'
+      and s.next_slot_index <> coalesce(l.c, 0)) = 0,
+    'seed: next_slot_index matches each farm''s plant count');
+
+  -- التكرار يُقاس لكل (طالب، فصل): نفس الخانة في فصلين مختلفين مشروعة
+  perform assert((select count(*) from (
+      select l.student_id from points_ledger l
+        join students s on s.id = l.student_id
+       where s.full_name like '[تجريبي]%'
+       group by l.student_id, l.semester_id, l.grid_x, l.grid_y
+      having count(*) > 1) d) = 0,
+    'seed: no two plants share a coordinate within a semester');
+
+  perform assert((select count(*) from points_ledger l
+      join students s on s.id = l.student_id, lateral spiral_coord(l.slot_index) sp
+     where s.full_name like '[تجريبي]%'
+       and (l.grid_x <> sp.x or l.grid_y <> sp.y)) = 0,
+    'seed: every coordinate matches spiral_coord');
+
+  perform assert((select count(*) from points_ledger l
+      join students s on s.id = l.student_id
+     where s.full_name like '[تجريبي]%'
+       and l.points <> tier_points(l.tier)) = 0,
+    'seed: points match their tier');
+
+  perform assert((select count(*) from students s
+     where s.full_name like '[تجريبي]%' and s.next_slot_index = 0) = 2,
+    'seed: two farms left empty for the empty-state path');
+
+  -- منح حقيقي فوق أكبر مزرعة مبذورة: الحالة التي يكشفها عدّاد خاطئ
+  select s.id, s.next_slot_index into v_s, v_n
+    from students s
+    join (select student_id, count(*) c from points_ledger
+           where semester_id = v_sem group by student_id) l on l.student_id = s.id
+   where s.full_name like '[تجريبي]%'
+   order by l.c desc limit 1;
+
+  perform set_config('request.jwt.claim.sub',
+    '99999999-9999-9999-9999-999999999999', true);
+  v_r := award_points(v_s, 'red');
+  perform assert((v_r->>'slot_index')::int = v_n,
+    'seed: a real award continues the spiral instead of colliding');
+end;
+$$;
+SQL
+
+echo ""
 echo "▸ تحديث ملف تكافؤ الخوارزمية (SQL ↔ TypeScript)"
 mkdir -p "$HERE/tests/fixtures"
 psql -d "$DB" -tAF, \
