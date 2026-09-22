@@ -6,6 +6,7 @@ import {
   PALETTES,
   TILE,
   buildPlant,
+  detailFor,
   buildTerrain,
   gridToWorld,
   playHalfFor,
@@ -48,7 +49,7 @@ export default function FarmScene({
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   // آخر مجموعة نبتات مرسومة — نقارن بها لنُضيف الجديد فقط بدل إعادة البناء
-  const drawnRef = useRef<Map<number, THREE.Group>>(new Map());
+  const drawnRef = useRef<Map<number, THREE.Object3D>>(new Map());
   const apiRef = useRef<{
     zoomIn: () => void;
     zoomOut: () => void;
@@ -63,6 +64,11 @@ export default function FarmScene({
     const host: HTMLDivElement = hostRef.current;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // عدّاد كلفة الرسم لسكربت القياس. كائن حيّ يحدّثه three كل إطار، ومحجوب
+    // عن الإنتاج: كلفة النبتات لا يكشفها بناء ناجح ولا اختبار وحدة.
+    if (process.env.NODE_ENV !== "production") {
+      (window as unknown as { __farmInfo?: THREE.WebGLInfo }).__farmInfo = renderer.info;
+    }
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -81,6 +87,7 @@ export default function FarmScene({
       maxRing = Math.max(maxRing, Math.abs(p.grid_x), Math.abs(p.grid_y));
     }
     const playHalf = playHalfFor(maxRing);
+    const detail = detailFor(plants.length);
 
     const scene = new THREE.Scene();
     const disposeTerrain = buildTerrain(scene, dusk ? PALETTES.dusk : PALETTES.day, playHalf);
@@ -104,9 +111,12 @@ export default function FarmScene({
 
       for (const p of list) {
         if (drawn.has(p.slot_index)) continue;
-        const group = buildPlant(p.tier, p.slot_index);
+        const group = buildPlant(p.tier, p.slot_index, detail);
         const [x, y, z] = gridToWorld(p.grid_x, p.grid_y);
         group.position.set(x, y, z);
+        // buildPlant يعطي كل نبتة حجمًا مختلفًا قليلًا؛ يُحفَظ هنا لأن حركة
+        // النموّ تكتب على scale، فبدونه تعود كل نبتة إلى حجم واحد بعد نموّها
+        group.userData.baseScale = group.scale.x;
         scene.add(group);
         drawn.set(p.slot_index, group);
       }
@@ -119,13 +129,14 @@ export default function FarmScene({
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduced) return;
       const start = performance.now();
+      const base = (group.userData.baseScale as number) ?? 1;
       const step = () => {
         const t = Math.min(1, (performance.now() - start) / 550);
         const eased = 1 - (1 - t) ** 3;
         const s = eased * (1 + Math.sin(eased * Math.PI) * 0.15);
-        group.scale.setScalar(Math.max(0.01, s));
+        group.scale.setScalar(Math.max(0.01, s) * base);
         if (t < 1) requestAnimationFrame(step);
-        else group.scale.setScalar(1);
+        else group.scale.setScalar(base);
       };
       group.scale.setScalar(0.01);
       step();

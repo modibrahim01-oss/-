@@ -44,16 +44,34 @@ function demoPlants(count: number, seed = 42): Plant[] {
   return plants;
 }
 
+/** نبتة واحدة من كل فئة، متباعدة — الكاميرا تملأ بها الإطار فتُرى التفاصيل. */
+function showcasePlants(): Plant[] {
+  return TIER_LIST.map((spec, i) => ({
+    slot_index: i,
+    grid_x: (i % 2) * 3 - 1,
+    grid_y: Math.floor(i / 2) * 3 - 1,
+    tier: spec.tier,
+    points: spec.points,
+    awarded_at: new Date().toISOString(),
+  }));
+}
+
 export default async function FarmPreview({
   searchParams,
 }: {
-  searchParams: Promise<{ count?: string; dusk?: string; cinematic?: string }>;
+  searchParams: Promise<{
+    count?: string;
+    dusk?: string;
+    cinematic?: string;
+    showcase?: string;
+  }>;
 }) {
   if (process.env.NODE_ENV === "production") notFound();
 
   const params = await searchParams;
+  const showcase = params.showcase === "1";
   const count = Math.max(1, Math.min(2000, Number(params.count) || 120));
-  const plants = demoPlants(count);
+  const plants = showcase ? showcasePlants() : demoPlants(count);
 
   return (
     <div style={{ position: "fixed", inset: 0 }}>
@@ -76,7 +94,7 @@ export default async function FarmPreview({
           zIndex: 5,
         }}
       >
-        {count} plants · dev preview
+        {showcase ? "showcase · واحدة من كل فئة" : `${count} plants · dev preview`}
       </div>
     </div>
   );
