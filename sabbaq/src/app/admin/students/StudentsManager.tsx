@@ -8,6 +8,7 @@ import {
   importStudents,
   updateStudent,
 } from "@/lib/actions/admin";
+import { parseStudentSheet } from "@/lib/actions/import-sheet";
 import { formatNumber, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import type { Group, Student } from "@/lib/types";
@@ -272,6 +273,36 @@ const labelStyle: React.CSSProperties = {
   color: "var(--ink-soft)",
 };
 
+type SheetState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok"; rows: number; skippedHeader: boolean }
+  | { kind: "error"; code: string };
+
+/** رسالة مفهومة لكل سبب رفض، بدل ترك المدير أمام كلمة إنجليزية مجرّدة. */
+function sheetErrorText(locale: Locale, code: string): string {
+  const ar: Record<string, string> = {
+    forbidden: "هذا الإجراء للمدير وحده",
+    no_file: "لم يُختَر ملف",
+    empty_file: "الملف فارغ",
+    too_large: "الملف أكبر من ٥ ميغابايت",
+    unreadable: "تعذّرت قراءة الملف — تأكّد أنه ‎.xlsx وليس ‎.xls أو CSV",
+    no_sheet: "لا توجد أوراق في الملف",
+    no_rows: "لا صفوف فيها اسم في العمود الأول",
+  };
+  const en: Record<string, string> = {
+    forbidden: "Admins only",
+    no_file: "No file selected",
+    empty_file: "The file is empty",
+    too_large: "File is larger than 5 MB",
+    unreadable: "Could not read the file — make sure it is .xlsx, not .xls or CSV",
+    no_sheet: "The workbook has no sheets",
+    no_rows: "No rows with a name in the first column",
+  };
+  const table = locale === "ar" ? ar : en;
+  return table[code] ?? (locale === "ar" ? "تعذّر الاستيراد" : "Import failed");
+}
+
 /**
  * لصق صفوف من Excel: كل سطر «الاسم [tab|فاصلة] المجموعة [tab|فاصلة] الصف».
  * نعرض معاينة قبل الإدراج — لا يُكتب أي صف قبل أن يراجعها المدير.
@@ -289,6 +320,7 @@ function ImportBox({
 }) {
   const [raw, setRaw] = useState("");
   const [fallbackGroup, setFallbackGroup] = useState(groups[0]?.id ?? 1);
+  const [sheetState, setSheetState] = useState<SheetState>({ kind: "idle" });
 
   const parsed = useMemo(() => {
     const rows: { fullName: string; groupId: number; grade: string | null }[] = [];
@@ -334,9 +366,50 @@ function ImportBox({
     >
       <p style={{ fontSize: 12, color: "var(--ink-mute)", margin: 0 }}>
         {locale === "ar"
-          ? "الصق الصفوف من Excel: الاسم، المجموعة، الصف — سطر لكل طالب."
-          : "Paste rows from Excel: name, group, grade — one line per student."}
+          ? "ارفع ملف ‎.xlsx أو الصق الصفوف: الاسم، المجموعة، الصف — سطر لكل طالب."
+          : "Upload an .xlsx file or paste rows: name, group, grade — one line per student."}
       </p>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          id="student-sheet"
+          type="file"
+          accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setSheetState({ kind: "loading" });
+            const fd = new FormData();
+            fd.set("file", file);
+            const res = await parseStudentSheet(fd);
+            // الملف يصبح نصًّا في نفس المربّع، فيمرّ بالمعاينة ومطابقة
+            // المجموعات التي يمرّ بها اللصق — لا مسار ثانٍ بلا مراجعة
+            if (res.ok) {
+              setRaw(res.text);
+              setSheetState({ kind: "ok", rows: res.rows, skippedHeader: res.skippedHeader });
+            } else {
+              setSheetState({ kind: "error", code: res.error });
+            }
+            e.target.value = "";
+          }}
+          style={{ ...field, flex: "1 1 220px", padding: 7 }}
+        />
+        {sheetState.kind === "loading" && (
+          <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>{t(locale, "loading")}</span>
+        )}
+        {sheetState.kind === "ok" && (
+          <span style={{ fontSize: 12, color: "var(--brand-deep)", fontWeight: 600 }}>
+            ✓ {formatNumber(locale, sheetState.rows)} {t(locale, "students")}
+            {sheetState.skippedHeader && (locale === "ar" ? " · تُخطّيت الترويسة" : " · header skipped")}
+          </span>
+        )}
+        {sheetState.kind === "error" && (
+          <span role="alert" style={{ fontSize: 12, color: "var(--coral)", fontWeight: 600 }}>
+            {sheetErrorText(locale, sheetState.code)}
+          </span>
+        )}
+      </div>
+
       <textarea
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
