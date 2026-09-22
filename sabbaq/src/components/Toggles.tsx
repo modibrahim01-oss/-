@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LOCALE_COOKIE, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { setLocale, useLocale } from "@/lib/useLocale";
 
 const pillWrap: React.CSSProperties = {
   display: "inline-flex",
@@ -27,13 +28,15 @@ function pillButton(active: boolean): React.CSSProperties {
   };
 }
 
-export function LangToggle({ locale }: { locale: Locale }) {
+export function LangToggle() {
+  const locale = useLocale();
   const router = useRouter();
 
   function pick(next: Locale) {
     if (next === locale) return;
-    // سنة كاملة: شاشة المدرسة تُضبط مرة ولا يُعاد ضبطها كل فصل
-    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+    setLocale(next);
+    // الصفحات العامّة تبدّل نصوصها فورًا من الكوكي بلا طلب شبكة. التحديث
+    // هنا لصفحات الموظّفين وحدها: نصوصها تُرسم على الخادم فلا تتبدّل بدونه.
     router.refresh();
   }
 

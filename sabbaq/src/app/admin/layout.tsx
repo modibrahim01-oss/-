@@ -53,7 +53,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             >
               {t(locale, "supervisorPanel")}
             </Link>
-            <LangToggle locale={locale} />
+            <LangToggle />
             <ThemeToggle />
             <form action={signOut}>
               <button type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>

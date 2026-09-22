@@ -64,7 +64,7 @@ export default function LoginForm({ locale, next }: { locale: Locale; next?: str
 
       {state?.error && (
         <p role="alert" style={{ color: "var(--coral)", fontSize: 13, margin: 0 }}>
-          {t(locale, "loginFailed")}
+          {t(locale, state.error === "unavailable" ? "loginUnavailable" : "loginFailed")}
         </p>
       )}
 

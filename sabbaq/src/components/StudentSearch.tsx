@@ -3,30 +3,32 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeArabic } from "@/lib/arabic";
-import type { Locale } from "@/lib/i18n";
 import { formatNumber, t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import type { Group, StudentFarmSummary } from "@/lib/types";
+import { useLocale } from "@/lib/useLocale";
 
 /**
  * بحث الطلاب للصفحة العامة: اختيار المجموعة ثم إكمال تلقائي بالاسم.
  * يستعلم مباشرة بمفتاح anon — لا حاجة لجلسة، وهذا مقصود.
  */
-export default function StudentSearch({
-  locale,
-  groups,
-  initialGroupId,
-}: {
-  locale: Locale;
-  groups: Group[];
-  initialGroupId?: number;
-}) {
-  const [groupId, setGroupId] = useState<number | "all">(initialGroupId ?? "all");
+export default function StudentSearch({ groups }: { groups: Group[] }) {
+  const locale = useLocale();
+  const [groupId, setGroupId] = useState<number | "all">("all");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<StudentFarmSummary[]>([]);
   const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const supabase = useMemo(() => createClient(), []);
   const requestSeq = useRef(0);
+
+  // بطاقات المجموعات تربط إلى ‎/?group=N‎. يُقرأ المعامل هنا لا على الخادم:
+  // قراءة searchParams في الصفحة تجعلها ديناميكية فتفقد التخزين، والمرشّح
+  // عنصر متصفّح أصلًا فلا شيء يُكسب من حسمه على الخادم.
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("group");
+    const id = Number(raw);
+    if (Number.isInteger(id) && id > 0) setGroupId(id);
+  }, []);
 
   useEffect(() => {
     const trimmed = query.trim();

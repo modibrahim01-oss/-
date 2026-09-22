@@ -20,7 +20,7 @@ export default async function LoginPage({
         <div style={topbarInner}>
           <Brand locale={locale} />
           <div style={{ marginInlineStart: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            <LangToggle locale={locale} />
+            <LangToggle />
             <ThemeToggle />
           </div>
         </div>

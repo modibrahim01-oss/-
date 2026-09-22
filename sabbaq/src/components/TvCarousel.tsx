@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/Brand";
 import FarmScene from "@/components/FarmScene";
 import { formatNumber, t } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n";
 import type { Plant, StudentFarmSummary } from "@/lib/types";
+import { useLocale } from "@/lib/useLocale";
 
 const SLIDE_MS = 9000;
 // إعادة جلب البيانات كل خمس دقائق: الشاشة تبقى معلّقة أسابيع، ولا بد أن
@@ -14,14 +14,13 @@ const SLIDE_MS = 9000;
 const REFRESH_MS = 5 * 60 * 1000;
 
 export default function TvCarousel({
-  locale,
   roster,
   farms,
 }: {
-  locale: Locale;
   roster: StudentFarmSummary[];
   farms: Record<string, Plant[]>;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [clock, setClock] = useState("");

@@ -53,6 +53,7 @@ const dict = {
     loginTitle: "دخول المشرفين والإدارة",
     loginHint: "الطلاب والزوار لا يحتاجون حسابًا — أعرض المزارع من الصفحة الرئيسية.",
     loginFailed: "بيانات الدخول غير صحيحة",
+    loginUnavailable: "تعذّر الوصول إلى الخادم — راجع إعدادات الاتصال ثم أعد المحاولة",
 
     // المشرف
     supervisorPanel: "لوحة المشرف",
@@ -157,6 +158,7 @@ const dict = {
     loginTitle: "Staff sign-in",
     loginHint: "Students and visitors need no account — browse farms from the home page.",
     loginFailed: "Incorrect email or password",
+    loginUnavailable: "Could not reach the server — check the connection settings and try again",
 
     supervisorPanel: "Supervisor",
     yourDailyLimit: "Your daily limit",

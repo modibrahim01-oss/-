@@ -1,20 +1,21 @@
 import TvCarousel from "@/components/TvCarousel";
 import { toPlants } from "@/lib/farm";
-import { getLocale } from "@/lib/locale";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Plant, StudentFarmSummary } from "@/lib/types";
 
 /**
  * وضع العرض للشاشات الكبيرة. يجلب أفضل الطلاب ومزارعهم دفعة واحدة، ثم
  * يدوّر بينهم في المتصفح — شاشة معلّقة في ممر لا تعيد الاتصال كل ٦ ثوان.
+ *
+ * ولا يقرأ لغةً من كوكي: الشاشة تُعاد تحميلها بلا توقّف، وجعلها ديناميكية
+ * يعني رحلةً كاملة إلى دالة الخادم مع كل إعادة تحميل بلا مقابل.
  */
 export const revalidate = 60;
 
 const ROSTER_SIZE = 12;
 
 export default async function TvPage() {
-  const locale = await getLocale();
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: top } = await supabase
     .from("student_farms")
@@ -52,5 +53,5 @@ export default async function TvPage() {
     }
   }
 
-  return <TvCarousel locale={locale} roster={roster} farms={farms} />;
+  return <TvCarousel roster={roster} farms={farms} />;
 }

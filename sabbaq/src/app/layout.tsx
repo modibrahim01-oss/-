@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Reem_Kufi, Tajawal } from "next/font/google";
-import { dirOf } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, dirOf } from "@/lib/i18n";
 import "./globals.css";
 
 // خطوط مُستضافة ذاتيًا: لا طلب لجوجل وقت التشغيل ولا انزياح تخطيط عند
@@ -31,18 +30,32 @@ export const viewport: Viewport = {
   themeColor: "#2f6f4e",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // اللغة والاتجاه يتبعان كوكي اللغة. تثبيتهما على العربية كان يترك واجهة
-  // الإنجليزية كلها من اليمين لليسار وبلغة خاطئة لقارئات الشاشة، بينما كل
-  // صفحة تترجم نصوصها فعلًا. الصفحات تقرأ الكوكي أصلًا، فلا تخزين يُفقد هنا.
-  const locale = await getLocale();
+/**
+ * يضبط اللغة والاتجاه من الكوكي قبل أول رسم.
+ *
+ * لو تُرك الأمر لـ React لظهرت الصفحة للإنجليزي من اليمين لليسار ثم قفزت —
+ * وانزياح التخطيط بعد الرسم أسوأ من تأخير سطر واحد قبله. ويبقى التبديل
+ * مقروءًا لقارئات الشاشة لأن الوسمين يُضبطان على العنصر الجذر نفسه.
+ */
+const SET_DIR = `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)${LOCALE_COOKIE}=([^;]*)/);var l=m&&decodeURIComponent(m[1]);if(l==="en"){document.documentElement.lang="en";document.documentElement.dir="ltr"}}catch(e){}})()`;
 
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // العربية ثابتة في HTML المُرسَل من الخادم. قراءة الكوكي هنا كانت تجعل كل
+  // صفحة في التطبيق ديناميكية — بما فيها الصفحات العامّة التي لا تخصّ
+  // مستخدمًا بعينه — فتسقط كل إمكانية للتخزين على الحافة.
   return (
     <html
-      lang={locale}
-      dir={dirOf(locale)}
+      lang={DEFAULT_LOCALE}
+      dir={dirOf(DEFAULT_LOCALE)}
       className={`${display.variable} ${body.variable}`}
+      // السكربت أدناه يغيّر lang و dir قبل أن يبدأ React، فيرى React وسمين
+      // يخالفان ما أرسله الخادم ويحذّر من عدم تطابق. الكتم هنا مقصود ومحصور
+      // في هذا العنصر: الاختلاف مقصود، وبدونه يعيد React الاتجاه إلى العربية.
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SET_DIR }} />
+      </head>
       <body>{children}</body>
     </html>
   );
