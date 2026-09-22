@@ -95,7 +95,7 @@ export default async function FarmPage({ params }: { params: Promise<{ id: strin
                 <EmptyState title={t(locale, "emptyFarm")} hint={t(locale, "emptyFarmHint")} />
               </div>
             ) : (
-              <FarmScene plants={plants} className="farm-canvas" />
+              <FarmScene plants={plants} />
             )}
             {plants.length > 0 && (
               <div
@@ -159,7 +159,6 @@ export default async function FarmPage({ params }: { params: Promise<{ id: strin
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            .farm-canvas { position: absolute; inset: 0; }
             @media (max-width: 820px) {
               .farm-grid { grid-template-columns: minmax(0, 1fr) !important; }
               .farm-grid > div:first-child { min-height: 420px; }

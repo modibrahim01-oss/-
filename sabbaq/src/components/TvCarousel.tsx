@@ -88,13 +88,7 @@ export default function TvCarousel({
         overflow: "hidden",
       }}
     >
-      <FarmScene
-        key={current.student_id}
-        plants={plants}
-        cinematic
-        dusk
-        className="tv-scene"
-      />
+      <FarmScene key={current.student_id} plants={plants} cinematic dusk />
 
       <header
         style={{
@@ -182,7 +176,6 @@ export default function TvCarousel({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            .tv-scene { position: absolute; inset: 0; }
             @keyframes tvSlide { from { width: 0 } to { width: 100% } }
           `,
         }}

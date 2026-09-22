@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { PALETTES, PLAY_HALF, TILE, buildPlant, buildTerrain, gridToWorld } from "@/lib/plants";
+import {
+  PALETTES,
+  TILE,
+  buildPlant,
+  buildTerrain,
+  gridToWorld,
+  playHalfFor,
+} from "@/lib/plants";
 import type { Plant } from "@/lib/types";
 
 /**
@@ -17,7 +24,9 @@ import type { Plant } from "@/lib/types";
 const ISO_AZIM = Math.PI / 4;
 const ISO_ELEV = Math.PI / 6;
 const BASE_VIEW_HEIGHT = 13;
-const MIN_ZOOM = 0.45;
+// الحد الأدنى منخفض عمدًا: مزرعة فصل كامل تبلغ الطبقة ١٢+، وتأطيرها كاملة
+// على شاشة ضيّقة يحتاج تصغيرًا أبعد بكثير من الافتراضي.
+const MIN_ZOOM = 0.12;
 const MAX_ZOOM = 3;
 
 type Props = {
@@ -26,9 +35,17 @@ type Props = {
   cinematic?: boolean;
   dusk?: boolean;
   className?: string;
+  /** يُدمج فوق التموضع الافتراضي — الحاوية الأب يجب أن تكون مُموضَعة */
+  style?: CSSProperties;
 };
 
-export default function FarmScene({ plants, cinematic = false, dusk = false, className }: Props) {
+export default function FarmScene({
+  plants,
+  cinematic = false,
+  dusk = false,
+  className,
+  style,
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   // آخر مجموعة نبتات مرسومة — نقارن بها لنُضيف الجديد فقط بدل إعادة البناء
   const drawnRef = useRef<Map<number, THREE.Group>>(new Map());
@@ -57,8 +74,16 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
     renderer.domElement.style.touchAction = "none";
     renderer.domElement.style.cursor = cinematic ? "default" : "grab";
 
+    // امتداد المزرعة يحدّد حجم الملعب: السياج يحيط بأبعد نبتة بهامش ثابت
+    // بدل أن يقف عند حدّ ثابت يغرق المزارع الصغيرة في عشب فارغ.
+    let maxRing = 1;
+    for (const p of plants) {
+      maxRing = Math.max(maxRing, Math.abs(p.grid_x), Math.abs(p.grid_y));
+    }
+    const playHalf = playHalfFor(maxRing);
+
     const scene = new THREE.Scene();
-    buildTerrain(scene, dusk ? PALETTES.dusk : PALETTES.day);
+    buildTerrain(scene, dusk ? PALETTES.dusk : PALETTES.day, playHalf);
 
     const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
     let zoom = 1;
@@ -127,6 +152,32 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
       camera.lookAt(panX, 0, panZ);
     }
 
+    /**
+     * يؤطّر المزرعة كاملة عند الفتح.
+     *
+     * تكبير ثابت يصلح لعشرات النبتات ويفشل لمئاتها: طالب بعد فصل كامل كان
+     * سيفتح مزرعته فيرى زاوية منها فقط. المربع يدور ٤٥° في الإسقاط
+     * المتساوي القياس فيصير قطره هو العرض على الشاشة، وارتفاعه ذلك القطر
+     * مضروبًا في جيب زاوية الارتفاع.
+     */
+    function fitToPlants() {
+      // نؤطّر السياج لا النبتات: حجمه محسوب من امتدادها أصلًا، وتأطيره
+      // يُظهر الجزيرة كاملة بهامش عشب متّسق في كل المراحل.
+      const half = playHalf * TILE;
+      const diagonal = half * Math.SQRT2 * 2;
+      const neededH = diagonal * Math.sin(ISO_ELEV);
+      const aspect = host.clientWidth / Math.max(1, host.clientHeight);
+      // على الشاشة الطولية نسمح بقصّ طرفي الجزيرة — زاويتاها عشب بلا نبتات.
+      // بدون هذا يفرض عرضُ المعيّن ارتفاعَ عرضٍ مضاعفًا، فتنحصر المزرعة في
+      // شريط بربع ارتفاع الشاشة وسط سماء فارغة.
+      const widthAllowance = aspect < 1 ? 0.72 : 1;
+      const viewH =
+        Math.max(neededH, (diagonal * widthAllowance) / Math.max(0.2, aspect)) * 1.08;
+      zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, BASE_VIEW_HEIGHT / viewH));
+      panX = 0;
+      panZ = 0;
+    }
+
     function resize() {
       renderer.setSize(host.clientWidth, Math.max(1, host.clientHeight), false);
       applyCamera();
@@ -144,7 +195,7 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
       const sinE = Math.sin(ISO_ELEV);
       panX += dx * worldPerPx * sinA - (dy * worldPerPx * cosA) / sinE;
       panZ += -dx * worldPerPx * cosA - (dy * worldPerPx * sinA) / sinE;
-      const lim = PLAY_HALF * TILE * 0.95;
+      const lim = playHalf * TILE * 0.95;
       panX = Math.max(-lim, Math.min(lim, panX));
       panZ = Math.max(-lim, Math.min(lim, panZ));
       applyCamera();
@@ -214,7 +265,10 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
     observer.observe(host);
 
     placePlants(plants);
-    resize();
+    // الترتيب مقصود: التأطير يقرأ أبعاد الحاوية، فلا بد أن يسبقه setSize
+    renderer.setSize(host.clientWidth, Math.max(1, host.clientHeight), false);
+    fitToPlants();
+    applyCamera();
 
     let raf = 0;
     const loop = () => {
@@ -222,7 +276,9 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
         const t = performance.now();
         const azim = ISO_AZIM + Math.sin(t * 0.00007) * 0.16;
         const breathe = 1 + Math.sin(t * 0.00015) * 0.07;
-        const viewH = BASE_VIEW_HEIGHT / breathe;
+        // ينطلق من التكبير المؤطَّر لا من ثابت، وإلا عرضت الشاشة زاوية من
+        // مزرعة كبيرة بدل المزرعة كاملة
+        const viewH = BASE_VIEW_HEIGHT / zoom / breathe;
         const aspect = host.clientWidth / Math.max(1, host.clientHeight);
         camera.left = (-viewH * aspect) / 2;
         camera.right = (viewH * aspect) / 2;
@@ -245,10 +301,9 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
     apiRef.current = {
       zoomIn: () => setZoom(zoom * 1.25),
       zoomOut: () => setZoom(zoom * 0.8),
+      // «إعادة الضبط» تعني الرجوع لإطار المزرعة الكاملة، لا لتكبير ثابت
       reset: () => {
-        zoom = 1;
-        panX = 0;
-        panZ = 0;
+        fitToPlants();
         applyCamera();
       },
       sync: (next) => {
@@ -285,7 +340,10 @@ export default function FarmScene({ plants, cinematic = false, dusk = false, cla
   }, [plants]);
 
   return (
-    <div className={className} style={{ position: "relative" }}>
+    // يملأ أقرب سلف مُموضَع بدل أن يقيس نفسه بمحتواه. أبناؤه كلهم absolute،
+    // فلو كان الجذر في تدفّق عادي انهار ارتفاعه إلى صفر وظهر الـ canvas
+    // شريطًا بلا ارتفاع. `style` يأتي أخيرًا ليبقى للمستدعي حق التجاوز.
+    <div className={className} style={{ position: "absolute", inset: 0, ...style }}>
       <div ref={hostRef} style={{ position: "absolute", inset: 0 }} />
       {!cinematic && (
         <div

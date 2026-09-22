@@ -10,7 +10,17 @@ import type { Tier } from "./tiers";
  */
 
 export const TILE = 1.4; // وحدة الشبكة العالمية
-export const PLAY_HALF = 16; // نصف عرض الملعب بالبلاطات
+
+/**
+ * نصف عرض الملعب بالبلاطات، محسوبًا من امتداد المزرعة نفسها.
+ *
+ * ملعب ثابت الحجم يجعل مزرعة صغيرة بقعة تائهة وسط عشب فارغ، ومزرعة كبيرة
+ * محشورة في سياجها. الجدار هنا يتوسّع مع النمو: يبقى بهامش ثابت حول أبعد
+ * نبتة، فتبقى النسبة بين المزروع والفارغ مقروءة في كل المراحل.
+ */
+export function playHalfFor(maxRing: number): number {
+  return Math.max(6, maxRing + 3);
+}
 
 // الهندسات والموادّ تُنشأ مرة واحدة وتُشارَك بين كل النبتات. بدون هذا يصنع
 // كل نبتة موادّ خاصة بها، فينهار الأداء عند بضع مئات من النبتات.
@@ -272,15 +282,15 @@ export const PALETTES: Record<"day" | "dusk", ScenePalette> = {
 };
 
 /** يبني الأرضية والجدار الحجري والزخارف — كل ما ليس نبتة. */
-export function buildTerrain(scene: THREE.Scene, palette: ScenePalette) {
+export function buildTerrain(scene: THREE.Scene, palette: ScenePalette, playHalf: number) {
   scene.background = new THREE.Color(palette.sky);
 
   const grassA = new THREE.MeshStandardMaterial({ color: palette.grassA, roughness: 0.9 });
   const grassB = new THREE.MeshStandardMaterial({ color: palette.grassB, roughness: 0.9 });
   const tileGeo = new THREE.BoxGeometry(TILE, 0.1, TILE);
 
-  for (let ix = -PLAY_HALF; ix < PLAY_HALF; ix++) {
-    for (let iz = -PLAY_HALF; iz < PLAY_HALF; iz++) {
+  for (let ix = -playHalf; ix < playHalf; ix++) {
+    for (let iz = -playHalf; iz < playHalf; iz++) {
       const tile = new THREE.Mesh(tileGeo, ((ix + iz) & 1) === 0 ? grassA : grassB);
       tile.position.set(ix * TILE + TILE / 2, -0.05, iz * TILE + TILE / 2);
       tile.receiveShadow = true;
@@ -297,9 +307,9 @@ export function buildTerrain(scene: THREE.Scene, palette: ScenePalette) {
   const wallH = 0.55;
   const wallGeo = new THREE.BoxGeometry(TILE * 0.95, wallH, TILE * 0.95);
   const capGeo = new THREE.BoxGeometry(TILE * 0.75, 0.12, TILE * 0.75);
-  const edge = PLAY_HALF * TILE;
+  const edge = playHalf * TILE;
 
-  for (let i = -PLAY_HALF; i < PLAY_HALF; i++) {
+  for (let i = -playHalf; i < playHalf; i++) {
     const along = i * TILE + TILE / 2;
     for (const [x, z] of [
       [along, -edge],
