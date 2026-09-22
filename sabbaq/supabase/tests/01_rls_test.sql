@@ -8,7 +8,7 @@
 --  4. لا insert مباشر على points_ledger لأي مشرف
 --  5. العامّة (anon) تقرأ المزارع ولا تكتب شيئًا
 --  6. المدير معفى من الحد
---  7. النبتة الأولى في المركز، والتالية تتوسّع حلزونيًا
+--  7. كل فئة في ربعها، تبدأ من زاويته ولا تخرج منه
 --  8. مشرفان متزامنان لا يحصلان على نفس الخانة
 --
 -- التشغيل: psql -d sabbaq_test -v ON_ERROR_STOP=1 -f 01_rls_test.sql
@@ -251,13 +251,32 @@ begin
 end;
 $$;
 
--- ── 7. الخانة الأولى في المركز والتوسّع حلزوني ──────────────────────────
+-- ── 7. تخطيط الأرباع: كل فئة في ربعها، وتبدأ من زاويته ────────────────
 do $$
-declare v_x integer; v_y integer; v_slots integer[];
+declare v_slots integer[];
 begin
-  select grid_x, grid_y into v_x, v_y from points_ledger
-   where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and slot_index = 0;
-  perform assert(v_x = 0 and v_y = 0, '7a. first plant sits at the exact centre (0,0)');
+  -- أول نبتة من كل فئة في زاوية ربعها الملاصقة للمركز (±1,±1)
+  perform assert((select count(*) from (
+      select distinct on (tier) tier, grid_x, grid_y
+        from points_ledger
+       where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+       order by tier, slot_index) f
+     where (f.grid_x, f.grid_y) is distinct from (
+       case f.tier when 'green' then 1 when 'yellow' then -1
+                   when 'purple' then -1 else 1 end,
+       case f.tier when 'green' then 1 when 'yellow' then 1
+                   when 'purple' then -1 else -1 end)) = 0,
+    '7a. the first plant of each tier sits at its quadrant''s corner');
+
+  -- ولا نبتة خارج ربع فئتها ولا على المحورين
+  perform assert((select count(*) from points_ledger
+     where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+       and not (
+         (tier = 'green'  and grid_x > 0 and grid_y > 0) or
+         (tier = 'yellow' and grid_x < 0 and grid_y > 0) or
+         (tier = 'purple' and grid_x < 0 and grid_y < 0) or
+         (tier = 'red'    and grid_x > 0 and grid_y < 0))) = 0,
+    '7d. every plant lies inside its own tier''s quadrant');
 
   select array_agg(slot_index order by slot_index) into v_slots
     from points_ledger where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -322,6 +341,42 @@ begin
 end;
 $$;
 
+-- ── 9e. الخانة المسحوبة لا يعيد المنح التالي استعمالها ───────────────────
+-- الترتيب داخل الفئة يُعدّ شاملًا السحوبات؛ لو عُدّت الحيّة وحدها لوقع المنح
+-- التالي على خانة النبتة المسحوبة، والقيد يرفضه فيفشل المنح كله.
+do $$
+declare v_err text; v_tier point_tier; v_x integer; v_y integer; v_r jsonb;
+begin
+  select tier, grid_x, grid_y into v_tier, v_x, v_y from points_ledger
+   where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+     and revoked_at is not null
+   order by id limit 1;
+
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  v_r := award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', v_tier);
+  perform assert(
+    ((v_r->>'grid_x')::int, (v_r->>'grid_y')::int) is distinct from (v_x, v_y),
+    '9e. a revoked plant''s cell is never handed to the next award of its tier');
+end;
+$$;
+
+-- ── 9f. القيد يرفض نبتتين على خانة واحدة مهما كان مصدرهما ──────────────────
+do $$
+declare v_err text;
+begin
+  begin
+    update points_ledger set grid_x = 1, grid_y = 1
+     where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+       and (grid_x, grid_y) <> (1, 1);
+    v_err := null;
+  exception when unique_violation then
+    v_err := sqlerrm;
+  end;
+  perform assert(v_err is not null,
+    '9f. the database refuses two plants on the same cell');
+end;
+$$;
+
 -- ── 10. تعديل الحد: المدير فقط ──────────────────────────────────────────
 do $$
 declare v_err text;
@@ -378,7 +433,7 @@ begin
 end;
 $$;
 
--- ── 12. بعد التصفير: أول نبتة تعود للمركز ───────────────────────────────
+-- ── 12. بعد التصفير: أول نبتة تعود لزاوية ربعها ───────────────────────────────
 do $$
 declare v_err text; v_x integer; v_y integer; v_sem uuid;
 begin
@@ -389,8 +444,8 @@ begin
   select id into v_sem from semesters where is_active;
   select grid_x, grid_y into v_x, v_y from points_ledger
    where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and semester_id = v_sem;
-  perform assert(v_x = 0 and v_y = 0,
-    '12b. the new semester''s first plant is planted at the centre again');
+  perform assert(v_x = -1 and v_y = 1,
+    '12b. the new semester''s first flower starts again at its quadrant''s corner');
 end;
 $$;
 

@@ -23,7 +23,8 @@ for f in \
   "$HERE/supabase/migrations/0001_schema.sql" \
   "$HERE/supabase/migrations/0002_functions.sql" \
   "$HERE/supabase/migrations/0003_rls.sql" \
-  "$HERE/supabase/migrations/0004_seed.sql"
+  "$HERE/supabase/migrations/0004_seed.sql" \
+  "$HERE/supabase/migrations/0005_quadrant_layout.sql"
 do
   printf '  · %s\n' "$(basename "$f")"
   psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$f"
@@ -85,11 +86,17 @@ begin
       having count(*) > 1) d) = 0,
     'seed: no two plants share a coordinate within a semester');
 
-  perform assert((select count(*) from points_ledger l
-      join students s on s.id = l.student_id, lateral spiral_coord(l.slot_index) sp
-     where s.full_name like '[تجريبي]%'
-       and (l.grid_x <> sp.x or l.grid_y <> sp.y)) = 0,
-    'seed: every coordinate matches spiral_coord');
+  -- كل نبتة في موضعها من ترتيبها داخل فئتها — لا أرقام مخترعة في البذر
+  perform assert((select count(*) from (
+      select l.grid_x, l.grid_y, l.tier,
+             (row_number() over (partition by l.student_id, l.semester_id, l.tier
+                                 order by l.slot_index) - 1)::integer as rnk
+        from points_ledger l
+        join students s on s.id = l.student_id
+       where s.full_name like '[تجريبي]%') r,
+      lateral quadrant_coord(r.tier, r.rnk) q
+     where r.grid_x <> q.x or r.grid_y <> q.y) = 0,
+    'seed: every coordinate matches quadrant_coord');
 
   perform assert((select count(*) from points_ledger l
       join students s on s.id = l.student_id
@@ -113,18 +120,24 @@ begin
     '99999999-9999-9999-9999-999999999999', true);
   v_r := award_points(v_s, 'red');
   perform assert((v_r->>'slot_index')::int = v_n,
-    'seed: a real award continues the spiral instead of colliding');
+    'seed: a real award continues the slot sequence instead of colliding');
+  perform assert((v_r->>'grid_x')::int > 0 and (v_r->>'grid_y')::int < 0,
+    'seed: a real red award lands in the red quadrant');
 end;
 $$;
 SQL
 
 echo ""
-echo "▸ تحديث ملف تكافؤ الخوارزمية (SQL ↔ TypeScript)"
+echo "▸ تحديث ملف تكافؤ التخطيط (SQL ↔ TypeScript)"
 mkdir -p "$HERE/tests/fixtures"
 psql -d "$DB" -tAF, \
-  -c "select n, x, y from generate_series(0, 2999) n, lateral spiral_coord(n);" \
-  > "$HERE/tests/fixtures/sql-spiral.csv"
-printf '  · %s صف\n' "$(wc -l < "$HERE/tests/fixtures/sql-spiral.csv" | tr -d ' ')"
+  -c "select t, n, x, y
+        from unnest(enum_range(null::point_tier)) t,
+             generate_series(0, 999) n,
+             lateral quadrant_coord(t, n)
+       order by t, n;" \
+  > "$HERE/tests/fixtures/sql-quadrant.csv"
+printf '  · %s صف\n' "$(wc -l < "$HERE/tests/fixtures/sql-quadrant.csv" | tr -d ' ')"
 
 echo ""
 echo "✓ اختبارات قاعدة البيانات نجحت"

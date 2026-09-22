@@ -28,7 +28,7 @@ export default async function TvPage() {
 
   const farms: Record<string, Plant[]> = {};
   if (roster.length > 0) {
-    // التصفية بالفصل النشط إلزامية: خانات الحلزون تُعاد للصفر عند بدء فصل
+    // التصفية بالفصل النشط إلزامية: خانات البساتين تُعاد للصفر عند بدء فصل
     // جديد، فبدونها ترسم الشاشة نبتات الفصل الماضي فوق نبتات الفصل الحالي
     // على نفس الإحداثيات — وتخالف الأعداد التي يعرضها student_farms.
     const { data: ledger } = await supabase

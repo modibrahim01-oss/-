@@ -21,15 +21,20 @@
 
 من لوحة Supabase ← **SQL Editor** ← **New query**.
 
-نفّذ الملفات الأربعة **بهذا الترتيب**، كل ملف في استعلام منفصل، واضغط
+نفّذ الملفات الخمسة **بهذا الترتيب**، كل ملف في استعلام منفصل، واضغط
 `Run` بعد كل واحد وتأكّد من نجاحه قبل الانتقال للذي بعده:
 
 | # | الملف | ما يفعله |
 |---|---|---|
 | ١ | `supabase/migrations/0001_schema.sql` | ٩ جداول + الفهارس + القيود |
-| ٢ | `supabase/migrations/0002_functions.sql` | الخوارزمية الحلزونية، `award_points`، إدارة الفصول |
+| ٢ | `supabase/migrations/0002_functions.sql` | `award_points`، الصلاحيات، إدارة الفصول |
 | ٣ | `supabase/migrations/0003_rls.sql` | ٢٠ سياسة عزل + العرض العام `student_farms` |
 | ٤ | `supabase/migrations/0004_seed.sql` | المجموعات السبع، الحدود، الفصل الأول، trigger المصادقة |
+| ٥ | `supabase/migrations/0005_quadrant_layout.sql` | تخطيط الأرباع: كل فئة نبتات في بستانها |
+
+> **قاعدة قائمة نُفِّذت عليها 0001–0004 سابقًا؟** نفّذ `0005` وحده. يعيد رسم
+> المزارع القائمة بالتخطيط الجديد في معاملة واحدة، ولا يمسّ النقاط ولا
+> الترتيب — تتغيّر مواضع النبتات فقط.
 
 > **الترتيب ليس اختياريًا.** الملف ٢ يحتاج الأنواع المعرّفة في ١، والملف ٣
 > يحتاج الدوال المعرّفة في ٢.
@@ -42,7 +47,7 @@ select
   (select count(*) from daily_limits)        = 2  as limits_ok,
   (select count(*) from semesters where is_active) = 1 as semester_ok,
   to_regprocedure('award_points(uuid,point_tier)') is not null as rpc_ok,
-  (select x = 0 and y = 0 from spiral_coord(0))   as spiral_ok;
+  (select x = 1 and y = 1 from quadrant_coord('green', 0)) as layout_ok;
 ```
 
 ---
@@ -156,7 +161,7 @@ cd sabbaq
 NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run preflight
 ```
 
-يتأكّد من: وصول القاعدة، المجموعات السبع، وجود فصل نشط، عمل `spiral_coord`،
+يتأكّد من: وصول القاعدة، المجموعات السبع، وجود فصل نشط، عمل `quadrant_coord`،
 قابلية `student_farms` للقراءة العامة، ورفض الكتابة على الزائر.
 
 ### بيانات تجريبية (موصى به)

@@ -79,15 +79,21 @@ async function run() {
   const { error: ledgerErr } = await db.from("points_ledger").select("id").limit(1);
   record(!ledgerErr, "points_ledger مقروء للعامّة", ledgerErr?.message ?? "نعم");
 
-  // ── الخوارزمية الحلزونية ──
-  const { data: origin, error: spiralErr } = await db.rpc("spiral_coord", { n: 0 });
-  const centred = Array.isArray(origin)
-    ? origin[0]?.x === 0 && origin[0]?.y === 0
-    : origin?.x === 0 && origin?.y === 0;
+  // ── تخطيط الأرباع: غيابه يعني أن 0005 لم يُنفَّذ ──
+  const { data: corner, error: layoutErr } = await db.rpc("quadrant_coord", {
+    p_tier: "green",
+    n: 0,
+  });
+  const cell = Array.isArray(corner) ? corner[0] : corner;
+  const atCorner = cell?.x === 1 && cell?.y === 1;
   record(
-    !spiralErr && centred,
-    "spiral_coord(0) = المركز",
-    spiralErr ? spiralErr.message : centred ? "(0,0)" : JSON.stringify(origin),
+    !layoutErr && atCorner,
+    "quadrant_coord('green', 0) = زاوية الربع",
+    layoutErr
+      ? `${layoutErr.message} — نفّذ supabase/migrations/0005_quadrant_layout.sql`
+      : atCorner
+        ? "(1,1)"
+        : JSON.stringify(corner),
   );
 
   // ── وجود award_points: نستدعيه بمعرّف وهمي بلا جلسة، والمتوقّع رفض

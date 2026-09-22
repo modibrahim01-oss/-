@@ -16,8 +16,8 @@ export type AwardOutcome =
   | { ok: false; reason: "invalid" | "limit" | "scope" | "no_semester" | "unknown" };
 
 /**
- * منح نقاط. لا يحسب شيئًا بنفسه: كل التحقق (الصلاحية، الحد اليومي، حجز خانة
- * الحلزون) يجري داخل award_points في قاعدة البيانات، ذرّيًا. لو مرّر العميل
+ * منح نقاط. لا يحسب شيئًا بنفسه: كل التحقق (الصلاحية، الحد اليومي، حجز
+ * خانة النبتة) يجري داخل award_points في قاعدة البيانات، ذرّيًا. لو مرّر العميل
  * فئة أو معرّفًا مزوّرًا، الخادم يرفض.
  */
 export async function awardPoints(studentId: string, tier: string): Promise<AwardOutcome> {

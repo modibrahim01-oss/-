@@ -22,6 +22,7 @@ declare
   v_tier     point_tier;
   v_x        integer;
   v_y        integer;
+  v_rank     jsonb;
   v_names    text[] := array[
     'محمد الأحمد','عبدالله الغامدي','يوسف السبيعي','خالد القحطاني',
     'راكان العتيبي','ماجد الشمري','سالم الدوسري','فهد الحربي',
@@ -78,6 +79,9 @@ begin
       else floor(10 + (i - 6) * 7.5)::integer
     end;
 
+    -- ترتيب كل نبتة داخل فئتها هو ما يحدّد موضعها، كما في award_points
+    v_rank := '{"green":0,"yellow":0,"purple":0,"red":0}';
+
     for j in 0 .. v_plants - 1 loop
       -- توزيع واقعي: الأخضر هو الغالب والأحمر نادر
       rnd := (j * 7919 + i * 104729) % 1000 / 1000.0;
@@ -90,7 +94,10 @@ begin
 
       -- الإحداثيات من نفس الدالة التي يستخدمها award_points، فالمزارع
       -- التجريبية مبنيّة بالقاعدة ذاتها لا بأرقام مخترعة
-      select s.x, s.y into v_x, v_y from spiral_coord(j) s;
+      select q.x, q.y into v_x, v_y
+        from quadrant_coord(v_tier, (v_rank->>v_tier::text)::integer) q;
+      v_rank := jsonb_set(v_rank, array[v_tier::text],
+                          to_jsonb((v_rank->>v_tier::text)::integer + 1));
 
       insert into points_ledger (
         student_id, supervisor_id, semester_id, points, tier,
