@@ -1,30 +1,55 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Brand } from "@/components/Brand";
 import FarmScene from "@/components/FarmScene";
 import TierLegend from "@/components/TierLegend";
 import { LangToggle, ThemeToggle } from "@/components/Toggles";
 import { EmptyState, Stat, topbar, topbarInner } from "@/components/ui";
 import { countByTier } from "@/lib/farm";
-import { formatNumber, t } from "@/lib/i18n";
-import type { Plant, StudentFarmSummary } from "@/lib/types";
+import { type FarmData, farmChanged, loadFarm } from "@/lib/farm-data";
+import { createRestClient } from "@/lib/supabase/rest";
+import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import { useLocale } from "@/lib/useLocale";
 
 /**
- * واجهة صفحة المزرعة. النبتات والإحصاءات تُحسب على الخادم وتصل جاهزة،
- * واللغة وحدها تُقرأ هنا — فتبقى الصفحة قابلة للتخزين على الحافة.
+ * واجهة صفحة المزرعة. النبتات والإحصاءات تصل من الخادم جاهزة فتُرسم فورًا،
+ * ثم تُعاد قراءتها من المتصفح لتلحق بما فات النسخةَ المخزَّنة.
  */
-export default function FarmView({
-  farm,
-  plants,
-  rank,
-}: {
-  farm: StudentFarmSummary;
-  plants: Plant[];
-  rank: number;
-}) {
+export default function FarmView({ id, initial }: { id: string; initial: FarmData }) {
   const locale = useLocale();
+  const [data, setData] = useState(initial);
+  const { farm, plants, rank } = data;
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createRestClient();
+
+    async function refresh() {
+      try {
+        const next = await loadFarm(supabase, id);
+        // نستبدل فقط إن تغيّر ما يُرى: مصفوفة نبتات جديدة بنفس المحتوى
+        // تجعل المشهد يعيد المقارنة بلا داعٍ
+        if (!cancelled && next) setData((prev) => (farmChanged(prev, next) ? next : prev));
+      } catch {
+        // تعذّر الاتصال: النسخة المعروضة صحيحة حتى لحظة تخزينها، فلا نستبدلها
+        // برسالة خطأ — الطالب يرى مزرعته ولو متأخرة دقائق
+      }
+    }
+
+    // عند الفتح، وكلما عاد الطالب إلى التبويب بعد أن تركه مفتوحًا
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    void refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [id]);
+
   const counts = countByTier(plants);
   const groupName = locale === "ar" ? farm.group_name_ar : farm.group_name_en;
 
@@ -68,7 +93,8 @@ export default function FarmView({
           }}
           className="farm-grid"
         >
-          <div style={{ position: "relative", minHeight: 520, background: "#5cb8e4" }}>
+          {/* لون السماء نفسه الذي يرسمه المشهد، فلا يومض إطار بلون آخر قبل أول رسم */}
+          <div className="farm-stage" style={{ position: "relative", background: "var(--sky)" }}>
             {plants.length === 0 ? (
               <div style={{ padding: 32, display: "grid", placeItems: "center", height: "100%" }}>
                 <EmptyState title={t(locale, "emptyFarm")} hint={t(locale, "emptyFarmHint")} />
@@ -78,6 +104,7 @@ export default function FarmView({
             )}
             {plants.length > 0 && (
               <div
+                className="farm-hint"
                 style={{
                   position: "absolute",
                   bottom: 12,
@@ -91,7 +118,8 @@ export default function FarmView({
                   border: "1px solid var(--border-soft)",
                 }}
               >
-                {t(locale, "dragToPan")}
+                <span className="hint-mouse">{t(locale, "dragToPan")}</span>
+                <span className="hint-touch">{t(locale, "dragToPanTouch")}</span>
               </div>
             )}
           </div>
@@ -110,7 +138,7 @@ export default function FarmView({
               <h1 style={{ margin: "0 0 4px", fontSize: 21 }}>{farm.full_name}</h1>
               <div style={{ color: "var(--ink-mute)", fontSize: 13 }}>
                 {groupName}
-                {farm.grade ? ` · ${farm.grade}` : ""}
+                {farm.grade ? ` · ${localizeDigits(locale, farm.grade)}` : ""}
               </div>
             </div>
 
@@ -138,9 +166,20 @@ export default function FarmView({
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            .farm-stage { min-height: 520px; }
+            .hint-touch { display: none; }
+            @media (hover: none) and (pointer: coarse) {
+              .hint-mouse { display: none; }
+              .hint-touch { display: inline; }
+            }
             @media (max-width: 820px) {
               .farm-grid { grid-template-columns: minmax(0, 1fr) !important; }
-              .farm-grid > div:first-child { min-height: 420px; }
+              /* المزرعة معيّنٌ عرضه ضعف ارتفاعه، والعرض هو ما يحدّ حجمها على
+                 الجوّال: إطار طوليّ كان يضيف سماءً فارغة لا أكثر */
+              .farm-stage { min-height: 0; aspect-ratio: 6 / 5; }
+              /* على الشاشة الضيّقة يغطّي التلميح طرف السور، والإيماءات هناك
+                 مألوفة بلا شرح */
+              .farm-hint { display: none; }
               .farm-grid > aside { border-inline-start: 0 !important; border-top: 1px solid var(--border-soft); }
             }
           `,

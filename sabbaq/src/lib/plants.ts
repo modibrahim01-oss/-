@@ -13,15 +13,62 @@ import type { Tier } from "./tiers";
 
 export const TILE = 1.4; // وحدة الشبكة العالمية
 
+/** حدود الساحة بالخانات، شاملةً طرفيها. */
+export type FieldBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+
 /**
- * نصف عرض الملعب بالبلاطات، محسوبًا من امتداد المزرعة نفسها.
+ * هامش العشب بين أبعد نبتة والسور، بالخانات.
  *
- * ملعب ثابت الحجم يجعل مزرعة صغيرة بقعة تائهة وسط عشب فارغ، ومزرعة كبيرة
- * محشورة في سياجها. الجدار هنا يتوسّع مع النمو: يبقى بهامش ثابت حول أبعد
- * نبتة، فتبقى النسبة بين المزروع والفارغ مقروءة في كل المراحل.
+ * ساحة ثابتة الحجم كانت تجعل مزرعة صغيرة بقعةً تائهة وسط عشب فارغ: ١٨ نبتة
+ * في ساحة ١٤×١٤ على الموقع الحيّ، فبدت النبتات حبّات لا تُميَّز. السور الآن
+ * يحيط بالنبتات بهامش ثابت من كل جهة على حدة، فتبقى النبتات هي المشهد.
  */
-export function playHalfFor(maxRing: number): number {
-  return Math.max(6, maxRing + 3);
+const FIELD_MARGIN = 2;
+
+/**
+ * أصغر ساحة: ثلاث خانات حول المركز في كل اتجاه.
+ *
+ * حتى المزرعة ذات النبتة الواحدة تُظهر الأرباع الأربعة كلها، فيرى الطالب
+ * أين ستنمو بقية بساتينه — والمركز يبقى في منتصف السور.
+ */
+const FIELD_MIN = 3;
+
+/**
+ * حدود الساحة من خانات النبتات.
+ *
+ * الحدود تتبع كل جهة منفردة لا أبعد نبتة في أي اتجاه: البساتين تنمو بأحجام
+ * مختلفة، فمزرعة بستانها الأحمر كبير تمتدّ ساحتها نحوه وحده بدل أن تتّسع في
+ * الجهات الأربع وتترك ثلاثة أرباعها عشبًا فارغًا.
+ */
+export function fieldBoundsFor(cells: readonly { x: number; y: number }[]): FieldBounds {
+  let minX = -FIELD_MIN;
+  let maxX = FIELD_MIN;
+  let minZ = -FIELD_MIN;
+  let maxZ = FIELD_MIN;
+  for (const c of cells) {
+    minX = Math.min(minX, c.x - FIELD_MARGIN);
+    maxX = Math.max(maxX, c.x + FIELD_MARGIN);
+    minZ = Math.min(minZ, c.y - FIELD_MARGIN);
+    maxZ = Math.max(maxZ, c.y + FIELD_MARGIN);
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
+/** ارتفاع السور، يحتاجه التأطير ليُدخل السور كاملًا في الإطار. */
+export const WALL_HEIGHT = 0.67;
+
+/**
+ * الصندوق العالمي الذي يحيط بالساحة والسور، دون النبتات.
+ *
+ * السور يقوم على خطّ الحدّ نفسه فيبرز نصف كتلة خارج الساحة؛ الصندوق يشمل
+ * ذلك البروز، وإلا قُصّت حافة السور الخارجية في التأطير.
+ */
+export function fieldBox(b: FieldBounds): THREE.Box3 {
+  const overhang = TILE * 0.5;
+  return new THREE.Box3(
+    new THREE.Vector3(b.minX * TILE - overhang, -0.1, b.minZ * TILE - overhang),
+    new THREE.Vector3((b.maxX + 1) * TILE + overhang, WALL_HEIGHT, (b.maxZ + 1) * TILE + overhang),
+  );
 }
 
 // هندسات وموادّ الزخارف وحدها. نماذج النبتات انتقلت إلى plant-models.ts
@@ -67,11 +114,26 @@ export function detailFor(plantCount: number): Detail {
 }
 
 /**
+ * أقصى إزاحة للنبتة عن مركز خانتها، كنسبة من البلاطة.
+ *
+ * تخطيط الأرباع يُبقي النبتة في مكانها طول الفصل ويجعل حجم كل بستان مقياسًا
+ * مرئيًّا للإنجاز — وهذا ما نحتفظ به. لكنه يضع كل نبتة في مركز خانتها
+ * بالضبط، فتصطفّ صفوفًا مستوية كأنها مطبوعة بآلة.
+ *
+ * ٠٫١٨ من البلاطة يكسر الاصطفاف ولا يُخرج النبتة من خانتها: أكبر منه يجعل
+ * الجارتين تتداخلان فيضيع تمييز كل نبتة على حدة.
+ */
+const JITTER = 0.18;
+
+/**
  * تبني نبتة واحدة: شبكة واحدة بهندسة مدموجة.
  *
- * كانت مجموعةً من ٦–١١ شبكة، فستمئة نبتة تعني آلاف نداءات الرسم. `slotIndex`
- * يحدّد الصيغة والدوران فتبدو المزرعة طبيعية بدل صفوف متطابقة، ويبقى ثابتًا
- * بين التحميلات لأن نفس الخانة تعطي نفس البذرة.
+ * كانت مجموعةً من ٦–١١ شبكة، فستمئة نبتة تعني آلاف نداءات الرسم.
+ *
+ * كل ما يميّز النبتة — صيغتها ودورانها وحجمها وإزاحتها — مشتقّ من `slotIndex`
+ * وحده، فنفس الخانة تعطي نفس النبتة في كل تحميل. لو كان أيٌّ منها عشوائيًّا
+ * وقت التشغيل لقفزت مزرعة الطالب في كل مرة يفتحها، ولانتقلت النبتات على شاشة
+ * الممرّ مع كل دورة عرض.
  */
 export function buildPlant(tier: Tier, slotIndex: number, detail: Detail = "hi"): THREE.Mesh {
   const m = new THREE.Mesh(plantGeometry(tier, variantFor(slotIndex), detail), plantMaterial);
@@ -82,6 +144,8 @@ export function buildPlant(tier: Tier, slotIndex: number, detail: Detail = "hi")
   m.rotation.y = rng() * Math.PI * 2;
   // تفاوت طفيف في الحجم: نبتات متطابقة الحجم تفضح أنها منسوخة
   m.scale.setScalar(0.92 + rng() * 0.16);
+  m.position.x = (rng() - 0.5) * 2 * JITTER * TILE;
+  m.position.z = (rng() - 0.5) * 2 * JITTER * TILE;
   return m;
 }
 
@@ -115,9 +179,14 @@ export type ScenePalette = {
   wallCap: number;
 };
 
+/**
+ * لوحة فاتحة مبهجة: البرنامج تحفيزي فيه فرح ومنافسة، والعشب الزيتوني الغامق
+ * والسور البنّي القاتم كانا ينقلان عكس ذلك. والفرق بين مربّعي العشب خُفِّف —
+ * التبادل الحادّ كان يشتّت النظر عن النبتات نفسها.
+ */
 export const PALETTES: Record<"day" | "dusk", ScenePalette> = {
-  day: { sky: 0x5cb8e4, grassA: 0x7ed26a, grassB: 0x6bc55b, wall: 0x8b6f47, wallCap: 0xc79b65 },
-  dusk: { sky: 0x2a5b7a, grassA: 0x3f8250, grassB: 0x357045, wall: 0x4a3c28, wallCap: 0x6b573c },
+  day: { sky: 0x86d5f5, grassA: 0x9ade6f, grassB: 0x8ed663, wall: 0xc79355, wallCap: 0xe0b478 },
+  dusk: { sky: 0x3d7ea3, grassA: 0x5aa86a, grassB: 0x519f62, wall: 0x7a5a38, wallCap: 0x99764c },
 };
 
 /**
@@ -131,7 +200,8 @@ export const PALETTES: Record<"day" | "dusk", ScenePalette> = {
 export function buildTerrain(
   scene: THREE.Scene,
   palette: ScenePalette,
-  playHalf: number,
+  bounds: FieldBounds,
+  occupied: ReadonlySet<string> = new Set(),
 ): () => void {
   scene.background = new THREE.Color(palette.sky);
 
@@ -175,8 +245,8 @@ export function buildTerrain(
 
   const tilesA: [number, number, number][] = [];
   const tilesB: [number, number, number][] = [];
-  for (let ix = -playHalf; ix < playHalf; ix++) {
-    for (let iz = -playHalf; iz < playHalf; iz++) {
+  for (let ix = bounds.minX; ix <= bounds.maxX; ix++) {
+    for (let iz = bounds.minZ; iz <= bounds.maxZ; iz++) {
       const spot: [number, number, number] = [ix * TILE + TILE / 2, -0.05, iz * TILE + TILE / 2];
       (((ix + iz) & 1) === 0 ? tilesA : tilesB).push(spot);
     }
@@ -194,33 +264,38 @@ export function buildTerrain(
   const capMat = own(
     new THREE.MeshStandardMaterial({ color: palette.wallCap, roughness: 0.85 }),
   );
-  const wallH = 0.55;
+  const wallH = WALL_HEIGHT - 0.12;
   const wallGeo = own(new THREE.BoxGeometry(TILE * 0.95, wallH, TILE * 0.95));
   const capGeo = own(new THREE.BoxGeometry(TILE * 0.75, 0.12, TILE * 0.75));
-  const edge = playHalf * TILE;
+  const x0 = bounds.minX * TILE;
+  const x1 = (bounds.maxX + 1) * TILE;
+  const z0 = bounds.minZ * TILE;
+  const z1 = (bounds.maxZ + 1) * TILE;
 
   const blocks: [number, number, number][] = [];
   const caps: [number, number, number][] = [];
-  for (let i = -playHalf; i < playHalf; i++) {
-    const along = i * TILE + TILE / 2;
-    for (const [x, z] of [
-      [along, -edge],
-      [along, edge],
-      [-edge, along],
-      [edge, along],
-    ] as const) {
-      blocks.push([x, wallH / 2 - 0.05, z]);
-      caps.push([x, wallH + 0.01, z]);
-    }
+  const addWall = (x: number, z: number) => {
+    blocks.push([x, wallH / 2 - 0.05, z]);
+    caps.push([x, wallH + 0.01, z]);
+  };
+  for (let ix = bounds.minX; ix <= bounds.maxX; ix++) {
+    const along = ix * TILE + TILE / 2;
+    addWall(along, z0);
+    addWall(along, z1);
+  }
+  for (let iz = bounds.minZ; iz <= bounds.maxZ; iz++) {
+    const along = iz * TILE + TILE / 2;
+    addWall(x0, along);
+    addWall(x1, along);
   }
   grid(wallGeo, wallMat, blocks, { cast: true, receive: true });
   grid(capGeo, capMat, caps, { cast: true });
 
   for (const [x, z] of [
-    [-edge, -edge],
-    [edge, -edge],
-    [-edge, edge],
-    [edge, edge],
+    [x0, z0],
+    [x1, z0],
+    [x0, z1],
+    [x1, z1],
   ] as const) {
     const r = buildDecor("rock");
     r.position.set(x, 0.05, z);
@@ -228,25 +303,55 @@ export function buildTerrain(
     scene.add(r);
   }
 
+  /**
+   * الزخارف على الشريط الملاصق للسور وحده، وفي الخانات الخالية منه فقط.
+   *
+   * كانت تُنثر في حلقة حول المركز فتقع أحيانًا تحت نبتة، وحشيشة تخترق شجرة
+   * تفضح أن المشهد مركّب. والشريط الملاصق للسور هو أبعد ما يبلغه نموّ
+   * البساتين قبل أن يتّسع السور نفسه.
+   */
   const rng = seeded(11);
   const kinds = ["tuft", "tuft", "tuft", "pebble", "rock"] as const;
-  for (let i = 0; i < 44; i++) {
-    const d = buildDecor(kinds[Math.floor(rng() * kinds.length)]);
-    const angle = rng() * Math.PI * 2;
-    const radius = edge * (0.62 + rng() * 0.32);
-    d.position.set(Math.cos(angle) * radius, 0.02, Math.sin(angle) * radius);
-    scene.add(d);
+  for (let ix = bounds.minX; ix <= bounds.maxX; ix++) {
+    for (let iz = bounds.minZ; iz <= bounds.maxZ; iz++) {
+      const onBand =
+        ix === bounds.minX || ix === bounds.maxX || iz === bounds.minZ || iz === bounds.maxZ;
+      // الرقم العشوائي يُسحب لكل خانة ولو تُخطّيت، فلا يتغيّر نثر الزخارف
+      // كلّه لأن نبتة جديدة شغلت خانة واحدة
+      const roll = rng();
+      const pick = rng();
+      const jx = rng();
+      const jz = rng();
+      if (!onBand || occupied.has(`${ix},${iz}`) || roll > 0.38) continue;
+      const d = buildDecor(kinds[Math.floor(pick * kinds.length)]);
+      d.position.set(
+        ix * TILE + TILE / 2 + (jx - 0.5) * TILE * 0.5,
+        0.02,
+        iz * TILE + TILE / 2 + (jz - 0.5) * TILE * 0.5,
+      );
+      scene.add(d);
+    }
   }
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  scene.add(new THREE.HemisphereLight(0xc7e9ff, 0x6b5a3a, 0.35));
+  // إضاءة محيطة أقلّ وشمس أقوى: الإضاءة المسطّحة السابقة كانت تغسل الأوراق
+  // فتبدو النبتة قصاصةً ملصقة. الفارق بين المضيء والمظلّل هو ما يعطي العمق.
+  scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+  scene.add(new THREE.HemisphereLight(0xdaf0ff, 0x7a6b4a, 0.3));
 
   // الضوء الموجَّه يملك خريطة ظلّ على كرت الرسم — dispose يحرّرها
-  const sun = own(new THREE.DirectionalLight(0xfff2c8, 0.95));
-  sun.position.set(-14, 26, 10);
+  const sun = own(new THREE.DirectionalLight(0xfff6da, 1.25));
+  // الشمس وخريطة ظلّها تتبعان مركز الساحة لا الأصل: الساحة لم تعد متناظرة
+  // حوله، وخريطة ظلّ ثابتة حول الأصل كانت تُسقط ظلال البستان الأبعد
+  const cx = (x0 + x1) / 2;
+  const cz = (z0 + z1) / 2;
+  sun.position.set(cx - 14, 26, cz + 10);
+  sun.target.position.set(cx, 0, cz);
+  scene.add(sun.target);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  const s = 22;
+  // نصف قطر الساحة بهامش لميل الشمس؛ ساحة صغيرة تنال بذلك ظلالًا أحدّ
+  // لأن الخريطة نفسها تُفرَد على مساحة أصغر
+  const s = Math.hypot(x1 - x0, z1 - z0) / 2 + 3;
   sun.shadow.camera.left = -s;
   sun.shadow.camera.right = s;
   sun.shadow.camera.top = s;

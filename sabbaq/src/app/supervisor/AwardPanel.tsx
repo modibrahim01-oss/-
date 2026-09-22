@@ -413,7 +413,8 @@ export default function AwardPanel({
                       fontSize: 30,
                       fontWeight: 700,
                       lineHeight: 1,
-                      color: spec.tier === "green" ? "var(--ink)" : spec.color,
+                      // spec.ink لا spec.color: المشبع لا يُقرأ نصًّا (الأصفر ١٫٥٥:١ على أبيض)
+                      color: spec.ink,
                     }}
                   >
                     +{formatNumber(locale, spec.points)}
@@ -489,7 +490,7 @@ export default function AwardPanel({
                       style={{
                         fontFamily: "var(--font-display)",
                         fontWeight: 700,
-                        color: spec?.color,
+                        color: spec?.ink,
                       }}
                     >
                       +{formatNumber(locale, r.points)}

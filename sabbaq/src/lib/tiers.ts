@@ -13,6 +13,14 @@ export type TierSpec = {
   color: string;
   /** لون داكن للتظليل والتفاصيل */
   shade: string;
+  /**
+   * لون اللون نفسه حين يُكتَب نصًّا.
+   *
+   * `color` مشبع ليطابق النبتة على الشبكة، وهو لهذا لا يصلح نصًّا: الأصفر
+   * عليه تباين ١٫٥٥:١ على أبيض — غير مقروء عمليًا. هذا الحقل نسخته الداكنة
+   * التي تتجاوز ٤٫٥:١، وهو ما تستعمله الواجهة في كل موضع نصّ.
+   */
+  ink: string;
   labelAr: string;
   labelEn: string;
   /** شكل النبتة على المزرعة — كل فئة كائن مختلف تمامًا */
@@ -23,8 +31,9 @@ export const TIER_SPECS: Record<Tier, TierSpec> = {
   green: {
     tier: "green",
     points: 10,
-    color: "#66C13B",
-    shade: "#4A9E28",
+    color: "#7BD44E",
+    shade: "#52A832",
+    ink: "#38821F",
     labelAr: "شجيرة",
     labelEn: "Bush",
     plant: "bush",
@@ -32,8 +41,9 @@ export const TIER_SPECS: Record<Tier, TierSpec> = {
   yellow: {
     tier: "yellow",
     points: 20,
-    color: "#FFC833",
-    shade: "#FFA218",
+    color: "#FFD23F",
+    shade: "#FFB01F",
+    ink: "#8A6410",
     labelAr: "زهور",
     labelEn: "Tulips",
     plant: "tulips",
@@ -41,8 +51,9 @@ export const TIER_SPECS: Record<Tier, TierSpec> = {
   purple: {
     tier: "purple",
     points: 30,
-    color: "#A65EBB",
-    shade: "#7C4B8B",
+    color: "#BB6EE0",
+    shade: "#9A4FC4",
+    ink: "#74408F",
     labelAr: "فطر",
     labelEn: "Mushroom",
     plant: "mushroom",
@@ -50,8 +61,9 @@ export const TIER_SPECS: Record<Tier, TierSpec> = {
   red: {
     tier: "red",
     points: 50,
-    color: "#E73B2F",
-    shade: "#A82418",
+    color: "#FF4436",
+    shade: "#D12A1C",
+    ink: "#A82418",
     labelAr: "شجرة مثمرة",
     labelEn: "Fruit tree",
     plant: "fruitTree",

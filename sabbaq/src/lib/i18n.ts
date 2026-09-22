@@ -29,6 +29,12 @@ const dict = {
     search: "بحث",
     groups: "المجموعات",
     students: "طالب",
+    everyPointPlants: "كل نقطة تُغرَس نبتةً في مزرعتك",
+    leaders: "المتصدّرون",
+    leadersHint: "أعلى النقاط في هذا الفصل",
+    noLeadersYet: "لم تُمنَح نقاط بعد — أول نقطة تفتح لوحة الصدارة",
+    groupRace: "سباق المجموعات",
+    leadingGroup: "في الصدارة",
     noResults: "لا توجد نتائج مطابقة",
     startTyping: "اكتب حرفين على الأقل للبحث",
     viewFarm: "اعرض المزرعة",
@@ -40,8 +46,9 @@ const dict = {
     points: "نقطة",
     legend: "دليل النبتات",
     dragToPan: "اسحب للتحرّك · عجلة الفأرة للتكبير",
+    dragToPanTouch: "اسحب للتحرّك · قرّب بإصبعين للتكبير",
     emptyFarm: "لم تُغرَس أي نبتة بعد",
-    emptyFarmHint: "أول نقطة يمنحها المشرف ستُغرَس في مركز المزرعة.",
+    emptyFarmHint: "أول نقطة يمنحها المشرف ستُغرَس في بستان فئتها.",
     rankInGroup: "الترتيب في المجموعة",
     backToSearch: "رجوع للبحث",
 
@@ -136,6 +143,12 @@ const dict = {
     search: "Search",
     groups: "Groups",
     students: "students",
+    everyPointPlants: "Every point plants something in your farm",
+    leaders: "Leaders",
+    leadersHint: "Highest points this semester",
+    noLeadersYet: "No points yet — the first award opens the leaderboard",
+    groupRace: "Group race",
+    leadingGroup: "Leading",
     noResults: "No matching students",
     startTyping: "Type at least two characters",
     viewFarm: "View farm",
@@ -146,8 +159,9 @@ const dict = {
     points: "pts",
     legend: "Plant legend",
     dragToPan: "Drag to pan · scroll to zoom",
+    dragToPanTouch: "Drag to pan · pinch to zoom",
     emptyFarm: "No plants yet",
-    emptyFarmHint: "The first point a supervisor awards will be planted at the centre.",
+    emptyFarmHint: "The first point a supervisor awards will be planted in its tier's grove.",
     rankInGroup: "Rank in group",
     backToSearch: "Back to search",
 
@@ -251,4 +265,15 @@ export function roleLabel(locale: Locale, role: keyof typeof ROLE_KEYS): string 
 /** أرقام عربية-هندية للعربية، لاتينية للإنجليزية. */
 export function formatNumber(locale: Locale, n: number): string {
   return n.toLocaleString(locale === "ar" ? "ar-SA-u-nu-arab" : "en-US");
+}
+
+/**
+ * أرقام نصّ حرّ بخطّ اللغة: «الصف 5» تصير «الصف ٥» في الواجهة العربية.
+ *
+ * حقول مثل الصف تُكتب بأي أرقام يختارها المدخِل، وخلطها بجانب أرقام مُنسَّقة
+ * كان يُظهر «قبس · 5» بجانب «٦٧٠».
+ */
+export function localizeDigits(locale: Locale, text: string): string {
+  if (locale !== "ar") return text;
+  return text.replace(/[0-9]/g, (d) => String.fromCharCode(0x0660 + Number(d)));
 }

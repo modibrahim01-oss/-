@@ -4,12 +4,12 @@ import { type CSSProperties, useEffect, useRef } from "react";
 import * as THREE from "three";
 import {
   PALETTES,
-  TILE,
   buildPlant,
   detailFor,
   buildTerrain,
+  fieldBoundsFor,
+  fieldBox,
   gridToWorld,
-  playHalfFor,
 } from "@/lib/plants";
 import type { Plant } from "@/lib/types";
 
@@ -25,10 +25,27 @@ import type { Plant } from "@/lib/types";
 const ISO_AZIM = Math.PI / 4;
 const ISO_ELEV = Math.PI / 6;
 const BASE_VIEW_HEIGHT = 13;
-// الحد الأدنى منخفض عمدًا: مزرعة فصل كامل تبلغ الطبقة ١٢+، وتأطيرها كاملة
+// الحد الأدنى منخفض عمدًا: مزرعة فصل كامل تمتدّ ثلاثين خانة، وتأطيرها كاملة
 // على شاشة ضيّقة يحتاج تصغيرًا أبعد بكثير من الافتراضي.
-const MIN_ZOOM = 0.12;
+const MIN_ZOOM = 0.08;
 const MAX_ZOOM = 3;
+
+/**
+ * محورا الشاشة في العالم: يمين الكاميرا وأعلاها.
+ *
+ * الزاوية ثابتة فيُحسبان مرّة واحدة. إسقاط أي نقطة عليهما يعطي موضعها على
+ * الشاشة، وهو ما يجعل التأطير حسابًا دقيقًا لا تقديرًا بالقطر والجيب.
+ */
+function screenAxes(azim: number) {
+  const toCamera = new THREE.Vector3(
+    Math.cos(azim) * Math.cos(ISO_ELEV),
+    Math.sin(ISO_ELEV),
+    Math.sin(azim) * Math.cos(ISO_ELEV),
+  );
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), toCamera).normalize();
+  const up = new THREE.Vector3().crossVectors(toCamera, right);
+  return { toCamera, right, up };
+}
 
 type Props = {
   plants: Plant[];
@@ -80,22 +97,30 @@ export default function FarmScene({
     renderer.domElement.style.touchAction = "none";
     renderer.domElement.style.cursor = cinematic ? "default" : "grab";
 
-    // امتداد المزرعة يحدّد حجم الملعب: السياج يحيط بأبعد نبتة بهامش ثابت
-    // بدل أن يقف عند حدّ ثابت يغرق المزارع الصغيرة في عشب فارغ.
-    let maxRing = 1;
-    for (const p of plants) {
-      maxRing = Math.max(maxRing, Math.abs(p.grid_x), Math.abs(p.grid_y));
-    }
-    const playHalf = playHalfFor(maxRing);
+    // امتداد المزرعة يحدّد الساحة: السور يحيط بالنبتات بهامش ثابت من كل
+    // جهة على حدة، فلا تغرق مزرعة صغيرة في عشب فارغ.
+    const cells = plants.map((p) => ({ x: p.grid_x, y: p.grid_y }));
+    const bounds = fieldBoundsFor(cells);
+    const occupied = new Set(cells.map((c) => `${c.x},${c.y}`));
     const detail = detailFor(plants.length);
 
     const scene = new THREE.Scene();
-    const disposeTerrain = buildTerrain(scene, dusk ? PALETTES.dusk : PALETTES.day, playHalf);
+    const disposeTerrain = buildTerrain(
+      scene,
+      dusk ? PALETTES.dusk : PALETTES.day,
+      bounds,
+      occupied,
+    );
 
     const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
     let zoom = 1;
+    // نقطة النظر: مركز المشهد المؤطَّر، لا الأصل — المزرعة لم تعد متناظرة
+    // حوله، فبستان كبير في جهة واحدة كان سيُدفع خارج الإطار
     let panX = 0;
+    let panY = 0;
     let panZ = 0;
+    const axes = screenAxes(ISO_AZIM);
+    const field = fieldBox(bounds);
 
     const drawn = drawnRef.current;
 
@@ -113,7 +138,9 @@ export default function FarmScene({
         if (drawn.has(p.slot_index)) continue;
         const group = buildPlant(p.tier, p.slot_index, detail);
         const [x, y, z] = gridToWorld(p.grid_x, p.grid_y);
-        group.position.set(x, y, z);
+        // جمع لا إسناد: buildPlant يضع إزاحة النبتة داخل خانتها، و set كان
+        // يمحوها فتعود المزرعة صفوفًا مستوية
+        group.position.add(new THREE.Vector3(x, y, z));
         // buildPlant يعطي كل نبتة حجمًا مختلفًا قليلًا؛ يُحفَظ هنا لأن حركة
         // النموّ تكتب على scale، فبدونه تعود كل نبتة إلى حجم واحد بعد نموّها
         group.userData.baseScale = group.scale.x;
@@ -156,37 +183,60 @@ export default function FarmScene({
 
       const dist = 50;
       camera.position.set(
-        panX + Math.cos(ISO_AZIM) * Math.cos(ISO_ELEV) * dist,
-        Math.sin(ISO_ELEV) * dist,
-        panZ + Math.sin(ISO_AZIM) * Math.cos(ISO_ELEV) * dist,
+        panX + axes.toCamera.x * dist,
+        panY + axes.toCamera.y * dist,
+        panZ + axes.toCamera.z * dist,
       );
-      camera.lookAt(panX, 0, panZ);
+      camera.lookAt(panX, panY, panZ);
     }
 
     /**
-     * يؤطّر المزرعة كاملة عند الفتح.
+     * يؤطّر المزرعة كاملة عند الفتح: السور والنبتات، بلا قصّ ولا فراغ زائد.
      *
-     * تكبير ثابت يصلح لعشرات النبتات ويفشل لمئاتها: طالب بعد فصل كامل كان
-     * سيفتح مزرعته فيرى زاوية منها فقط. المربع يدور ٤٥° في الإسقاط
-     * المتساوي القياس فيصير قطره هو العرض على الشاشة، وارتفاعه ذلك القطر
-     * مضروبًا في جيب زاوية الارتفاع.
+     * يُسقط زوايا الصندوق المحيط بالمشهد على محوري الشاشة ويأخذ امتدادها
+     * الفعلي — لا تقديرًا بالقطر. التقدير السابق كان يسمح بقصّ طرفي السور على
+     * الشاشة الطولية، فظهر السور مقطوعًا على الجوّال كأن المزرعة معطوبة.
+     *
+     * الصندوق متناظر مركزيًا، فإسقاطه متناظر حول إسقاط مركزه: توجيه الكاميرا
+     * إلى مركز الصندوق يضع المشهد في منتصف الإطار بالضبط.
      */
     function fitToPlants() {
-      // نؤطّر السياج لا النبتات: حجمه محسوب من امتدادها أصلًا، وتأطيره
-      // يُظهر الجزيرة كاملة بهامش عشب متّسق في كل المراحل.
-      const half = playHalf * TILE;
-      const diagonal = half * Math.SQRT2 * 2;
-      const neededH = diagonal * Math.sin(ISO_ELEV);
+      const box = field.clone();
+      for (const group of drawn.values()) {
+        group.updateMatrixWorld(true);
+        box.expandByObject(group);
+      }
+
+      let minR = Infinity;
+      let maxR = -Infinity;
+      let minU = Infinity;
+      let maxU = -Infinity;
+      const corner = new THREE.Vector3();
+      for (let i = 0; i < 8; i++) {
+        corner.set(
+          i & 1 ? box.max.x : box.min.x,
+          i & 2 ? box.max.y : box.min.y,
+          i & 4 ? box.max.z : box.min.z,
+        );
+        const r = corner.dot(axes.right);
+        const u = corner.dot(axes.up);
+        minR = Math.min(minR, r);
+        maxR = Math.max(maxR, r);
+        minU = Math.min(minU, u);
+        maxU = Math.max(maxU, u);
+      }
+
+      const center = box.getCenter(new THREE.Vector3());
+      panX = center.x;
+      panY = center.y;
+      panZ = center.z;
+
+      // هامش العرض أوسع: الكاميرا تتمايل فيه وتتنفّس تكبيرًا، وبطاقتا الاسم
+      // ولوحة الصدارة تشغلان زاويتين من الشاشة
+      const pad = cinematic ? 1.3 : 1.06;
       const aspect = host.clientWidth / Math.max(1, host.clientHeight);
-      // على الشاشة الطولية نسمح بقصّ طرفي الجزيرة — زاويتاها عشب بلا نبتات.
-      // بدون هذا يفرض عرضُ المعيّن ارتفاعَ عرضٍ مضاعفًا، فتنحصر المزرعة في
-      // شريط بربع ارتفاع الشاشة وسط سماء فارغة.
-      const widthAllowance = aspect < 1 ? 0.72 : 1;
-      const viewH =
-        Math.max(neededH, (diagonal * widthAllowance) / Math.max(0.2, aspect)) * 1.08;
+      const viewH = Math.max(maxU - minU, (maxR - minR) / Math.max(0.2, aspect)) * pad;
       zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, BASE_VIEW_HEIGHT / viewH));
-      panX = 0;
-      panZ = 0;
     }
 
     function resize() {
@@ -206,9 +256,9 @@ export default function FarmScene({
       const sinE = Math.sin(ISO_ELEV);
       panX += dx * worldPerPx * sinA - (dy * worldPerPx * cosA) / sinE;
       panZ += -dx * worldPerPx * cosA - (dy * worldPerPx * sinA) / sinE;
-      const lim = playHalf * TILE * 0.95;
-      panX = Math.max(-lim, Math.min(lim, panX));
-      panZ = Math.max(-lim, Math.min(lim, panZ));
+      // السحب محصور في الساحة: لا يُترك المستخدم يحدّق في سماء فارغة
+      panX = Math.max(field.min.x, Math.min(field.max.x, panX));
+      panZ = Math.max(field.min.z, Math.min(field.max.z, panZ));
       applyCamera();
     }
 
@@ -297,12 +347,13 @@ export default function FarmScene({
         camera.bottom = -viewH / 2;
         camera.updateProjectionMatrix();
         const dist = 50;
+        // يدور حول مركز المشهد المؤطَّر لا حول الأصل
         camera.position.set(
-          Math.cos(azim) * Math.cos(ISO_ELEV) * dist,
-          Math.sin(ISO_ELEV) * dist,
-          Math.sin(azim) * Math.cos(ISO_ELEV) * dist,
+          panX + Math.cos(azim) * Math.cos(ISO_ELEV) * dist,
+          panY + Math.sin(ISO_ELEV) * dist,
+          panZ + Math.sin(azim) * Math.cos(ISO_ELEV) * dist,
         );
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(panX, panY, panZ);
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(loop);
