@@ -635,6 +635,15 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
    </div>
    <input type="file" id="importFile" accept="application/json,.json" hidden>
   </div>
+  <div class="card">
+   <h3>تغيير رمز الدخول</h3>
+   <p class="note">يغيّر رمز دخول الحساب الذي دخلت به الآن. اكتب الرمز الجديد لمن يحتاج معرفته بعد التغيير — لن يظهر لك مرة أخرى.</p>
+   <div class="grid" style="gap:10px">
+    <input id="newAdminPass" class="search" type="password" autocomplete="new-password" placeholder="الرمز الجديد (٦ أحرف فأكثر)">
+    <input id="newAdminPass2" class="search" type="password" autocomplete="new-password" placeholder="تأكيد الرمز الجديد">
+   </div>
+   <button class="btn primary" style="margin-top:12px" id="btnChangeAdminPass">تغيير الرمز</button>
+  </div>
  </div>
 </section>
 
@@ -867,6 +876,10 @@ function supabaseStore(createClient){
       const { error } = await sb.auth.signInWithPassword({ email:email.trim(), password:pass });
       if(error) throw error;
     },
+    async changePassword(newPass){
+      const { error } = await sb.auth.updateUser({ password:newPass });
+      if(error) throw error;
+    },
     signOut: () => sb.auth.signOut(),
 
     /* إنشاء حساب معلم عبر عميل ثانٍ حتى لا تُستبدل جلسة المشرف */
@@ -946,6 +959,7 @@ function localStore(reason){
     },
     onAuth(cb){ authCb = cb; cb(user); },
     async signIn(){ user = { uid:"local-admin", email:"محلي", role:"admin" }; authCb(user); },
+    async changePassword(){ throw new Error("غير متاح في الوضع المحلي"); },
     async signOut(){ user = null; authCb(null); },
     async createTeacherAccount(){ return uid(); },
     async saveSettings(p){ Object.assign(d.settings, p); flush(); },
@@ -1762,6 +1776,18 @@ async function savePoints(){
   const points = { half:num("pHalf"), rev:num("pRev"), present:num("pPresent"), late:num("pLate"), gen:num("pGen"), uni:num("pUni"), _holidays: getHolidays() };
   if(await withSync("جارٍ الحفظ", () => store.saveSettings({ points }))) toast("حُفظت حسبة النقاط");
 }
+async function changeAdminPassword(){
+  const p1 = $("newAdminPass").value, p2 = $("newAdminPass2").value;
+  if(p1.length < 6) return toast("الرمز يجب أن يكون ٦ أحرف على الأقل");
+  if(p1 !== p2) return toast("الرمزان غير متطابقين");
+  if(store.mode === "local") return toast("غير متاح في الوضع المحلي — لا يوجد حساب فعلي هنا");
+  if(!await confirmDialog("تغيير رمز الدخول",
+      "سيتغيّر رمز دخولك من الآن. تأكد أنك حفظته في مكان آمن قبل المتابعة.", "غيّر")) return;
+  if(await withSync("جارٍ التغيير", () => store.changePassword(p1))){
+    $("newAdminPass").value = ""; $("newAdminPass2").value = "";
+    toast("تغيّر رمز الدخول بنجاح");
+  }
+}
 /* ═══════════ عجلة السحب الدوّارة ═══════════ */
 const wheel = { currentSpin:null };
 
@@ -1982,6 +2008,7 @@ $("aSearch").oninput = renderAdmin; $("tSearch").oninput = renderTeacher;
 $("btnAddStage").onclick = addStage;     $("btnAddCircle").onclick = addCircle;
 $("btnAddStudent").onclick = addStudent; $("btnAddTeacher").onclick = addTeacher;
 $("btnSaveCycle").onclick = saveCycle;   $("btnSavePoints").onclick = savePoints;
+$("btnChangeAdminPass").onclick = changeAdminPassword;
 $("btnAddHoliday").onclick = addHoliday;
 $("btnNewCycle").onclick = newCycle;     $("btnExport").onclick = exportBackup;
 $("btnImport").onclick = () => $("importFile").click();
