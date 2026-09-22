@@ -185,7 +185,8 @@ export type ScenePalette = {
  * التبادل الحادّ كان يشتّت النظر عن النبتات نفسها.
  */
 export const PALETTES: Record<"day" | "dusk", ScenePalette> = {
-  day: { sky: 0x86d5f5, grassA: 0x9ade6f, grassB: 0x8ed663, wall: 0xc79355, wallCap: 0xe0b478 },
+  // سماء فاقعة تطابق --scene-sky، وعشب ليمونيّ، وسور خشبيّ برتقاليّ دافئ
+  day: { sky: 0x6fd3fb, grassA: 0x9ef25c, grassB: 0x8fea4c, wall: 0xf7a24f, wallCap: 0xffd27f },
   dusk: { sky: 0x3d7ea3, grassA: 0x5aa86a, grassB: 0x519f62, wall: 0x7a5a38, wallCap: 0x99764c },
 };
 
@@ -335,11 +336,12 @@ export function buildTerrain(
 
   // إضاءة محيطة أقلّ وشمس أقوى: الإضاءة المسطّحة السابقة كانت تغسل الأوراق
   // فتبدو النبتة قصاصةً ملصقة. الفارق بين المضيء والمظلّل هو ما يعطي العمق.
-  scene.add(new THREE.AmbientLight(0xffffff, 0.42));
-  scene.add(new THREE.HemisphereLight(0xdaf0ff, 0x7a6b4a, 0.3));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  // الأرض المرتدّة خضراء فاتحة لا بنّية: الظلال تبقى ملوّنة مشرقة لا طينية
+  scene.add(new THREE.HemisphereLight(0xe3f6ff, 0x9fd67a, 0.45));
 
   // الضوء الموجَّه يملك خريطة ظلّ على كرت الرسم — dispose يحرّرها
-  const sun = own(new THREE.DirectionalLight(0xfff6da, 1.25));
+  const sun = own(new THREE.DirectionalLight(0xfff4d2, 1.35));
   // الشمس وخريطة ظلّها تتبعان مركز الساحة لا الأصل: الساحة لم تعد متناظرة
   // حوله، وخريطة ظلّ ثابتة حول الأصل كانت تُسقط ظلال البستان الأبعد
   const cx = (x0 + x1) / 2;

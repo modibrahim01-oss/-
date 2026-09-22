@@ -5,14 +5,17 @@ import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 
-const ITEMS: { href: string; key: TranslationKey; icon: React.ReactNode }[] = [
+/** لكل قسم لونه: التنقّل يُحفظ بالألوان قبل الكلمات. */
+const ITEMS: { href: string; key: TranslationKey; hue: string; icon: React.ReactNode }[] = [
   {
     href: "/admin",
+    hue: "var(--sky)",
     key: "overview",
     icon: <path d="M3 12l9-9 9 9M5 10v10h14V10" />,
   },
   {
     href: "/admin/students",
+    hue: "var(--lime)",
     key: "manageStudents",
     icon: (
       <>
@@ -23,6 +26,7 @@ const ITEMS: { href: string; key: TranslationKey; icon: React.ReactNode }[] = [
   },
   {
     href: "/admin/supervisors",
+    hue: "var(--grape-fill)",
     key: "manageSupervisors",
     icon: (
       <>
@@ -34,6 +38,7 @@ const ITEMS: { href: string; key: TranslationKey; icon: React.ReactNode }[] = [
   },
   {
     href: "/admin/limits",
+    hue: "var(--tangerine)",
     key: "dailyLimits",
     icon: (
       <>
@@ -44,6 +49,7 @@ const ITEMS: { href: string; key: TranslationKey; icon: React.ReactNode }[] = [
   },
   {
     href: "/admin/semesters",
+    hue: "var(--berry)",
     key: "semesters",
     icon: (
       <>
@@ -58,14 +64,7 @@ export default function AdminNav({ locale }: { locale: Locale }) {
   const pathname = usePathname();
 
   return (
-    <nav
-      style={{
-        padding: 10,
-        border: "1px solid var(--border-soft)",
-        borderRadius: 14,
-        background: "var(--surface-alt)",
-      }}
-    >
+    <nav className="pop" style={{ padding: 10, borderRadius: 22, background: "var(--surface)", display: "grid", gap: 6 }}>
       {ITEMS.map((item) => {
         // "/admin" يطابق نفسه فقط، وإلا بقي مُفعّلًا على كل صفحات اللوحة
         const active =
@@ -74,36 +73,45 @@ export default function AdminNav({ locale }: { locale: Locale }) {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? "page" : undefined}
+            className="nav-item"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "10px 12px",
-              borderRadius: 8,
-              fontSize: 14,
-              marginBottom: 2,
+              padding: "7px 10px",
+              borderRadius: 14,
+              fontSize: 15,
+              fontWeight: 700,
               textDecoration: "none",
-              background: active ? "var(--ink)" : "transparent",
-              color: active ? "var(--ground)" : "var(--ink-soft)",
-              fontWeight: active ? 600 : 400,
+              border: `2.5px solid ${active ? "var(--outline)" : "transparent"}`,
+              boxShadow: active ? "0 3px 0 var(--outline)" : "none",
+              background: active ? "var(--sun)" : "transparent",
+              color: active ? "var(--on-fill)" : "var(--ink)",
             }}
           >
-            <svg
+            <span
               aria-hidden
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              style={{ opacity: active ? 1 : 0.7, flexShrink: 0 }}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                display: "grid",
+                placeItems: "center",
+                background: item.hue,
+                border: "2px solid var(--outline)",
+                flexShrink: 0,
+              }}
             >
-              {item.icon}
-            </svg>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--on-fill)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                {item.icon}
+              </svg>
+            </span>
             {t(locale, item.key)}
           </Link>
         );
       })}
+      <style dangerouslySetInnerHTML={{ __html: `.nav-item:hover:not([aria-current]) { background: var(--surface-alt) !important; }` }} />
     </nav>
   );
 }

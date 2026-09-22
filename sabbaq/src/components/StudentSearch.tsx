@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeArabic } from "@/lib/arabic";
-import { formatNumber, t } from "@/lib/i18n";
+import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import type { Group, StudentFarmSummary } from "@/lib/types";
 import { useLocale } from "@/lib/useLocale";
@@ -12,6 +12,9 @@ import { useLocale } from "@/lib/useLocale";
  * بحث الطلاب للصفحة العامة: اختيار المجموعة ثم إكمال تلقائي بالاسم.
  * يستعلم مباشرة بمفتاح anon — لا حاجة لجلسة، وهذا مقصود.
  */
+/** قرص الحرف الأول لكل نتيجة: ألوان الهوية بالتناوب، فتتمايز النتائج بنظرة. */
+const AVATAR_FILLS = ["var(--sun)", "var(--sky)", "var(--lime)", "var(--berry)", "var(--grape-fill)", "var(--tangerine)", "var(--mint)"];
+
 export default function StudentSearch({ groups }: { groups: Group[] }) {
   const locale = useLocale();
   const [groupId, setGroupId] = useState<number | "all">("all");
@@ -79,7 +82,8 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
       <style
         dangerouslySetInnerHTML={{
           __html: `.search-bar { border-radius: 999px; }
-            @media (max-width: 520px) { .search-bar { border-radius: 18px; } }`,
+            .search-bar:focus-within { outline: 3px solid var(--sky); outline-offset: 3px; }
+            @media (max-width: 520px) { .search-bar { border-radius: 22px; } }`,
         }}
       />
       {/* حبّة دائرية في سطر واحد؛ حين تنكسر إلى سطرين على الجوّال يصير نصف
@@ -91,9 +95,10 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
           gap: 8,
           background: "var(--surface)",
           padding: 6,
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-sm)",
-          maxWidth: 520,
+          border: "3px solid var(--outline)",
+          boxShadow: "var(--pop-lg)",
+          maxWidth: 560,
+          alignItems: "center",
           margin: "0 auto",
           flexWrap: "wrap",
         }}
@@ -105,12 +110,12 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
           aria-label={t(locale, "group")}
           style={{
             font: "inherit",
-            border: 0,
-            background: "transparent",
-            color: "var(--ink)",
-            padding: "10px 14px",
-            outline: 0,
-            fontWeight: 600,
+            border: "2.5px solid var(--outline)",
+            borderRadius: 999,
+            background: "var(--sun)",
+            color: "var(--on-fill)",
+            padding: "8px 14px",
+            fontWeight: 700,
             cursor: "pointer",
           }}
         >
@@ -121,29 +126,39 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
             </option>
           ))}
         </select>
-        <input
-          id="student-query"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t(locale, "searchByName")}
-          aria-label={t(locale, "searchByName")}
-          style={{
-            font: "inherit",
-            border: 0,
-            background: "transparent",
-            color: "var(--ink)",
-            padding: "10px 14px",
-            outline: 0,
-            flex: 1,
-            minWidth: 140,
-          }}
-        />
+        {/* العدسة والحقل معًا: حين ينكسر الشريط على الجوّال ينتقلان سطرًا واحدًا */}
+        <span style={{ display: "flex", alignItems: "center", flex: "1 1 200px", minWidth: 0 }}>
+          <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.6" strokeLinecap="round" style={{ marginInlineStart: 8, flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="M16 16l4.5 4.5" />
+          </svg>
+          <input
+            id="student-query"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t(locale, "searchByName")}
+            aria-label={t(locale, "searchByName")}
+            style={{
+              font: "inherit",
+              fontSize: 17,
+              fontWeight: 500,
+              border: 0,
+              background: "transparent",
+              color: "var(--ink)",
+              padding: "10px 8px",
+              // الحلقة على الشريط كلّه (focus-within) لا على الحقل وحده
+              outline: 0,
+              flex: 1,
+              minWidth: 0,
+            }}
+          />
+        </span>
       </div>
 
       <div style={{ marginTop: 20, maxWidth: 620, marginInline: "auto" }}>
         {showHint && (
-          <p style={{ textAlign: "center", color: "var(--ink-mute)", fontSize: 14 }}>
+          <p style={{ textAlign: "center", color: "var(--on-fill)", fontWeight: 700, fontSize: 14, opacity: 0.75 }}>
             {t(locale, "startTyping")}
           </p>
         )}
@@ -157,48 +172,52 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
             {t(locale, "noResults")}
           </p>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {rows.map((r) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {rows.map((r, i) => (
             <Link
               key={r.student_id}
               href={`/farm/${r.student_id}`}
+              className="pop lift pop-in"
               style={{
                 display: "grid",
-                gridTemplateColumns: "40px 1fr auto auto",
+                gridTemplateColumns: "44px 1fr auto auto",
                 gap: 12,
                 alignItems: "center",
-                padding: "11px 14px",
-                borderRadius: 10,
-                border: "1px solid var(--border-soft)",
+                padding: "10px 14px",
+                borderRadius: 18,
                 background: "var(--surface)",
                 textDecoration: "none",
                 color: "var(--ink)",
+                textAlign: "start",
+                animationDelay: `${Math.min(i, 6) * 40}ms`,
               }}
             >
               <span
                 aria-hidden
                 style={{
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, var(--brand-soft), var(--gold-soft))",
+                  background: AVATAR_FILLS[i % AVATAR_FILLS.length],
+                  border: "2.5px solid var(--outline)",
                   display: "grid",
                   placeItems: "center",
                   fontWeight: 700,
-                  color: "var(--brand-deep)",
+                  fontSize: 19,
+                  color: "var(--on-fill)",
                   fontFamily: "var(--font-display)",
                 }}
               >
                 {r.full_name.trim().charAt(0)}
               </span>
               <span>
-                <span style={{ fontWeight: 600, display: "block" }}>{r.full_name}</span>
+                <span style={{ fontWeight: 700, fontSize: 16, display: "block" }}>{r.full_name}</span>
                 <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>
                   {locale === "ar" ? r.group_name_ar : r.group_name_en}
-                  {r.grade ? ` · ${r.grade}` : ""}
+                  {r.grade ? ` · ${localizeDigits(locale, r.grade)}` : ""}
                 </span>
               </span>
-              <span className="tabular" style={{ fontWeight: 700, color: "var(--brand-deep)" }}>
+              <span className="tabular" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "var(--brand-deep)" }}>
                 {formatNumber(locale, r.total_points)}
                 <span
                   style={{ fontWeight: 500, color: "var(--ink-mute)", marginInlineStart: 4, fontSize: 12 }}
@@ -212,8 +231,8 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
                 height="16"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ink-mute)"
-                strokeWidth="2"
+                stroke="var(--ink)"
+                strokeWidth="2.6"
                 style={{ transform: locale === "ar" ? "scaleX(-1)" : undefined }}
               >
                 <path d="M9 6l6 6-6 6" />

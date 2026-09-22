@@ -419,7 +419,7 @@ export default function FarmScene({
             insetInlineStart: 12,
             display: "flex",
             flexDirection: "column",
-            gap: 6,
+            gap: 9,
           }}
         >
           <SceneButton label="+" onClick={() => apiRef.current?.zoomIn()} title="تكبير" />
@@ -448,19 +448,20 @@ function SceneButton({
       onClick={onClick}
       title={title}
       aria-label={title}
+      className="press"
       style={{
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        border: "1px solid var(--border)",
-        background: "var(--surface)",
-        color: "var(--ink)",
-        fontSize: small ? 14 : 18,
+        width: 40,
+        height: 40,
+        borderRadius: 13,
+        border: "2.5px solid var(--outline)",
+        background: small ? "var(--sun)" : "var(--surface)",
+        color: small ? "var(--on-fill)" : "var(--ink)",
+        fontSize: small ? 16 : 22,
         fontWeight: 700,
         cursor: "pointer",
         display: "grid",
         placeItems: "center",
-        boxShadow: "var(--shadow-sm)",
+        boxShadow: "var(--pop)",
       }}
     >
       {label}

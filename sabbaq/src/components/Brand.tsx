@@ -8,13 +8,15 @@ export function BrandMark({ size = 34 }: { size?: number }) {
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.29,
-        background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%)",
+        borderRadius: size * 0.32,
+        background: "linear-gradient(145deg, var(--lime) 0%, var(--mint) 100%)",
+        border: `${Math.max(2, size * 0.07)}px solid var(--outline)`,
+        boxShadow: `0 ${Math.max(2, size * 0.09)}px 0 var(--outline)`,
         display: "grid",
         placeItems: "center",
-        color: "#fbf7ec",
-        boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
+        color: "var(--on-fill)",
         flexShrink: 0,
+        transform: "rotate(-6deg)",
       }}
     >
       <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 24 24" fill="currentColor">
@@ -38,14 +40,14 @@ export function Brand({ locale, href = "/" }: { locale: Locale; href?: string })
     >
       <BrandMark />
       <span>
-        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 25 }}>
           {t(locale, "appName")}
         </span>
         <span
           style={{
-            color: "var(--ink-mute)",
+            color: "var(--ink-soft)",
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 700,
             marginInlineStart: 6,
           }}
         >

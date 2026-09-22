@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Badge, Card, Td, Th, buttonStyle } from "@/components/ui";
+import { Badge, buttonStyle, Card, field, Td, Th } from "@/components/ui";
 import {
   createStudent,
   deactivateStudent,
@@ -9,20 +9,10 @@ import {
   updateStudent,
 } from "@/lib/actions/admin";
 import { parseStudentSheet } from "@/lib/actions/import-sheet";
-import { formatNumber, t } from "@/lib/i18n";
+import { formatNumber, t, localizeDigits } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import type { Group, Student } from "@/lib/types";
 
-const field: React.CSSProperties = {
-  font: "inherit",
-  padding: "9px 12px",
-  borderRadius: 9,
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-  color: "var(--ink)",
-  outline: 0,
-  minWidth: 0,
-};
 
 type Row = Pick<Student, "id" | "full_name" | "group_id" | "grade">;
 
@@ -106,7 +96,7 @@ export default function StudentsManager({
             <span style={labelStyle}>{t(locale, "grade")}</span>
             <input name="grade" style={{ ...field, width: "100%" }} />
           </label>
-          <button type="submit" disabled={pending} style={buttonStyle("primary")}>
+          <button className="press" type="submit" disabled={pending} style={buttonStyle("primary")}>
             {t(locale, "save")}
           </button>
           <button
@@ -215,7 +205,7 @@ export default function StudentsManager({
                           placeholder={t(locale, "grade")}
                           style={{ ...field, flex: "1 1 110px" }}
                         />
-                        <button type="submit" disabled={pending} style={buttonStyle("primary")}>
+                        <button className="press" type="submit" disabled={pending} style={buttonStyle("primary")}>
                           {t(locale, "save")}
                         </button>
                         <button type="button" onClick={() => setEditing(null)} style={buttonStyle()}>
@@ -230,7 +220,7 @@ export default function StudentsManager({
                     <Td>
                       <Badge>{groupName(s.group_id)}</Badge>
                     </Td>
-                    <Td muted>{s.grade ?? "—"}</Td>
+                    <Td muted>{s.grade ? localizeDigits(locale, s.grade) : "—"}</Td>
                     <Td>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button
@@ -244,7 +234,7 @@ export default function StudentsManager({
                           action={(fd) => run(() => deactivateStudent(fd), t(locale, "saved"))}
                         >
                           <input type="hidden" name="id" value={s.id} />
-                          <button
+                          <button className="press"
                             type="submit"
                             disabled={pending}
                             style={{ ...buttonStyle("danger"), padding: "5px 10px", fontSize: 12 }}

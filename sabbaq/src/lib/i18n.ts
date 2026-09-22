@@ -35,6 +35,8 @@ const dict = {
     noLeadersYet: "لم تُمنَح نقاط بعد — أول نقطة تفتح لوحة الصدارة",
     groupRace: "سباق المجموعات",
     leadingGroup: "في الصدارة",
+    yourSpot: "مكانك هنا؟",
+    heroKicker: "كل نقطة… نبتة!",
     noResults: "لا توجد نتائج مطابقة",
     startTyping: "اكتب حرفين على الأقل للبحث",
     viewFarm: "اعرض المزرعة",
@@ -51,6 +53,8 @@ const dict = {
     emptyFarmHint: "أول نقطة يمنحها المشرف ستُغرَس في بستان فئتها.",
     rankInGroup: "الترتيب في المجموعة",
     backToSearch: "رجوع للبحث",
+    newPlants: "نبتات جديدة نمت للتو!",
+    typesCollected: "الأنواع المجموعة",
 
     // الدخول
     login: "تسجيل الدخول",
@@ -149,6 +153,8 @@ const dict = {
     noLeadersYet: "No points yet — the first award opens the leaderboard",
     groupRace: "Group race",
     leadingGroup: "Leading",
+    yourSpot: "Your spot?",
+    heroKicker: "Every point is a plant!",
     noResults: "No matching students",
     startTyping: "Type at least two characters",
     viewFarm: "View farm",
@@ -164,6 +170,8 @@ const dict = {
     emptyFarmHint: "The first point a supervisor awards will be planted in its tier's grove.",
     rankInGroup: "Rank in group",
     backToSearch: "Back to search",
+    newPlants: "New plants just grew!",
+    typesCollected: "Types collected",
 
     login: "Sign in",
     logout: "Sign out",

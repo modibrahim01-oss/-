@@ -1,28 +1,19 @@
 "use client";
 
 import { useActionState } from "react";
-import { buttonStyle } from "@/components/ui";
+import { buttonStyle, field } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { signIn } from "./actions";
 
-const field: React.CSSProperties = {
-  font: "inherit",
-  width: "100%",
-  padding: "11px 14px",
-  borderRadius: 10,
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-  color: "var(--ink)",
-  outline: 0,
-};
+const loginField: React.CSSProperties = { ...field, width: "100%", padding: "12px 14px" };
 
 const label: React.CSSProperties = {
   display: "block",
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: 14,
+  fontWeight: 700,
   marginBottom: 6,
-  color: "var(--ink-soft)",
+  color: "var(--ink)",
 };
 
 export default function LoginForm({ locale, next }: { locale: Locale; next?: string }) {
@@ -43,7 +34,7 @@ export default function LoginForm({ locale, next }: { locale: Locale; next?: str
           required
           autoComplete="email"
           dir="ltr"
-          style={field}
+          style={loginField}
         />
       </div>
 
@@ -58,22 +49,36 @@ export default function LoginForm({ locale, next }: { locale: Locale; next?: str
           required
           autoComplete="current-password"
           dir="ltr"
-          style={field}
+          style={loginField}
         />
       </div>
 
       {state?.error && (
-        <p role="alert" style={{ color: "var(--coral)", fontSize: 13, margin: 0 }}>
+        <p
+          role="alert"
+          style={{
+            color: "var(--coral)",
+            background: "var(--coral-soft)",
+            border: "2px solid var(--coral)",
+            borderRadius: 12,
+            padding: "8px 12px",
+            fontSize: 14,
+            fontWeight: 700,
+            margin: 0,
+          }}
+        >
           {t(locale, state.error === "unavailable" ? "loginUnavailable" : "loginFailed")}
         </p>
       )}
 
-      <button
+      <button className="press"
         type="submit"
         disabled={pending}
         style={{
           ...buttonStyle("primary"),
           justifyContent: "center",
+          fontSize: 17,
+          padding: "12px 18px",
           opacity: pending ? 0.6 : 1,
         }}
       >

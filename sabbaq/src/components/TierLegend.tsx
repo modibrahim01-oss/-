@@ -3,50 +3,82 @@ import { formatNumber, t } from "@/lib/i18n";
 import { TIER_LIST } from "@/lib/tiers";
 import type { Tier } from "@/lib/tiers";
 
-/** أيقونة صغيرة تعكس شكل النبتة المجسّمة في المزرعة. */
+/**
+ * رسم النبتة بأسلوب الهوية: حشو فاقع وحدّ نيليّ غليظ، على كومة تراب.
+ *
+ * الرسمة نفسها في كل مقاس — من دليل النبتات الصغير إلى واجهة الصفحة
+ * الرئيسية — والحدّ يُرسم بعرض ثابت نسبةً إلى إطار ٦٤ فيبقى مقروءًا صغيرًا.
+ */
 export function PlantIcon({ tier, size = 22 }: { tier: Tier; size?: number }) {
+  const O = "var(--outline)";
+  const W = 2.6;
+  const mound = <ellipse cx="32" cy="56" rx="19" ry="5.5" fill="#E38A3E" stroke={O} strokeWidth={W} />;
+
   const shapes: Record<Tier, React.ReactNode> = {
     green: (
       <>
-        <circle cx="8" cy="14" r="5" fill="#4A9E28" />
-        <circle cx="16" cy="14" r="5.5" fill="#66C13B" />
-        <circle cx="12" cy="9" r="4.5" fill="#66C13B" />
-        <circle cx="12" cy="7" r="1.4" fill="#E23B2F" />
+        {mound}
+        <circle cx="20" cy="41" r="11" fill="#52A832" stroke={O} strokeWidth={W} />
+        <circle cx="44" cy="41" r="11" fill="#52A832" stroke={O} strokeWidth={W} />
+        <circle cx="32" cy="31" r="14" fill="#7BD44E" stroke={O} strokeWidth={W} />
+        <path d="M25 26c2-3 6-4 9-3" stroke="#C8F5A8" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+        <circle cx="26" cy="37" r="3.2" fill="#FF4436" stroke={O} strokeWidth="1.8" />
+        <circle cx="38" cy="33" r="3.2" fill="#FF4436" stroke={O} strokeWidth="1.8" />
+        <circle cx="45" cy="44" r="3" fill="#FF4436" stroke={O} strokeWidth="1.8" />
       </>
     ),
     yellow: (
       <>
-        <path d="M11.2 22h1.6V12h-1.6z" fill="#3B8A28" />
-        <path d="M6 22h1.4v-7H6zM16.6 22H18v-8h-1.4z" fill="#3B8A28" />
-        <path d="M12 3l3.4 6.2H8.6z" fill="#FFA218" />
-        <path d="M6.7 8l2.6 5H4.1z" fill="#FFC833" />
-        <path d="M17.3 7l2.6 6h-5.2z" fill="#FFC833" />
+        {mound}
+        <path d="M32 55V26M20 55V32M44 55V30" stroke="#2F8A2A" strokeWidth="3.2" strokeLinecap="round" />
+        <path d="M32 46c-6-1-10-5-11-10 6 0 10 4 11 10zM32 42c6-1 10-5 11-10-6 0-10 4-11 10z" fill="#5CC23B" stroke={O} strokeWidth="2" strokeLinejoin="round" />
+        {[
+          [32, 20, "#FFD23F"],
+          [20, 27, "#FFB01F"],
+          [44, 25, "#FFB01F"],
+        ].map(([x, y, c]) => (
+          <path
+            key={`${x}`}
+            d={`M${Number(x) - 7} ${Number(y) - 3}l3.5 3 3.5-6 3.5 6 3.5-3v6c0 5-3.2 8-7 8s-7-3-7-8z`}
+            fill={String(c)}
+            stroke={O}
+            strokeWidth={W}
+            strokeLinejoin="round"
+          />
+        ))}
       </>
     ),
     purple: (
       <>
-        <path d="M10 13h4v9h-4z" fill="#F5EAD1" />
-        <path d="M3.5 13a8.5 8.5 0 0 1 17 0z" fill="#A65EBB" />
-        <circle cx="9" cy="10" r="1.3" fill="#fff" />
-        <circle cx="14.5" cy="9" r="1.1" fill="#fff" />
-        <circle cx="12" cy="6.5" r="0.9" fill="#fff" />
+        {mound}
+        <path d="M27 54c0-7 1-13 2-17h8c1 4 2 10 2 17z" fill="#FFF3DC" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <path d="M11 38c0-13 9-22 21-22s21 9 21 22c0 2-2 3-4 3H15c-2 0-4-1-4-3z" fill="#BB6EE0" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <circle cx="23" cy="29" r="3.4" fill="#fff" />
+        <circle cx="36" cy="24" r="2.6" fill="#fff" />
+        <circle cx="42" cy="33" r="3" fill="#fff" />
+        <circle cx="30" cy="35" r="2" fill="#fff" />
+        <path d="M46 55c0-3 .5-6 1-8h4c.5 2 1 5 1 8z" fill="#FFF3DC" stroke={O} strokeWidth="2" />
+        <path d="M42 48c0-5 4-8 7-8s7 3 7 8z" fill="#9A4FC4" stroke={O} strokeWidth="2" strokeLinejoin="round" />
       </>
     ),
     red: (
       <>
-        <path d="M10.8 22h2.4v-8h-2.4z" fill="#7A4A22" />
-        <circle cx="12" cy="8" r="6" fill="#2E7D2B" />
-        <circle cx="7" cy="10" r="4" fill="#4EAE3F" />
-        <circle cx="17" cy="10" r="4" fill="#4EAE3F" />
-        <circle cx="8" cy="8" r="1.5" fill="#E73B2F" />
-        <circle cx="15.5" cy="11" r="1.5" fill="#FF6E5A" />
-        <circle cx="12.5" cy="5.5" r="1.4" fill="#E73B2F" />
+        {mound}
+        <path d="M29 55l1-15-6-7 3-2 5 5 5-6 3 2-6 8 1 15z" fill="#8B5A2B" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <circle cx="32" cy="23" r="16" fill="#4EAE3F" stroke={O} strokeWidth={W} />
+        <circle cx="18" cy="31" r="9" fill="#5CC23B" stroke={O} strokeWidth={W} />
+        <circle cx="46" cy="31" r="9" fill="#5CC23B" stroke={O} strokeWidth={W} />
+        <path d="M24 15c3-3 8-4 12-2" stroke="#B7F09A" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+        <circle cx="25" cy="25" r="4" fill="#FF4436" stroke={O} strokeWidth="2" />
+        <circle cx="39" cy="20" r="4" fill="#FF4436" stroke={O} strokeWidth="2" />
+        <circle cx="45" cy="33" r="3.6" fill="#FF6E5A" stroke={O} strokeWidth="2" />
+        <circle cx="19" cy="34" r="3.6" fill="#FF6E5A" stroke={O} strokeWidth="2" />
       </>
     ),
   };
 
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden style={{ overflow: "visible" }}>
       {shapes[tier]}
     </svg>
   );
@@ -60,51 +92,45 @@ export default function TierLegend({
   counts?: Record<Tier, number>;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-      <h3
-        style={{
-          fontSize: 12,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          color: "var(--ink-mute)",
-          fontWeight: 600,
-          margin: "0 0 2px",
-          fontFamily: "var(--font-body)",
-        }}
-      >
-        {t(locale, "legend")}
-      </h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      <h3 style={{ fontSize: 17, margin: "0 0 2px" }}>{t(locale, "legend")}</h3>
       {TIER_LIST.map((spec) => (
         <div
           key={spec.tier}
+          className="pop"
           style={{
             display: "grid",
-            gridTemplateColumns: "26px 1fr auto auto",
+            gridTemplateColumns: "40px 1fr auto auto",
             gap: 10,
             alignItems: "center",
-            padding: "8px 10px",
-            background: "var(--surface)",
-            borderRadius: 8,
-            border: "1px solid var(--border-soft)",
-            fontSize: 13,
+            padding: "6px 12px 6px 8px",
+            background: `color-mix(in oklab, ${spec.color} 30%, var(--surface))`,
+            borderRadius: 14,
+            fontSize: 14,
           }}
         >
-          <PlantIcon tier={spec.tier} />
-          <span style={{ fontWeight: 500 }}>
-            {locale === "ar" ? spec.labelAr : spec.labelEn}
-          </span>
+          <PlantIcon tier={spec.tier} size={38} />
+          <span style={{ fontWeight: 700 }}>{locale === "ar" ? spec.labelAr : spec.labelEn}</span>
           <span
             className="tabular"
             style={{
               fontFamily: "var(--font-display)",
               fontWeight: 700,
-              color: "var(--brand-deep)",
+              fontSize: 13,
+              padding: "1px 9px",
+              borderRadius: 999,
+              background: spec.color,
+              color: "var(--on-fill)",
+              border: "2px solid var(--outline)",
             }}
           >
-            {formatNumber(locale, spec.points)}
+            +{formatNumber(locale, spec.points)}
           </span>
           {counts && (
-            <span className="tabular" style={{ fontSize: 11, color: "var(--ink-mute)" }}>
+            <span
+              className="tabular"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, minWidth: 34, textAlign: "end" }}
+            >
               ×{formatNumber(locale, counts[spec.tier])}
             </span>
           )}

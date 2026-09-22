@@ -1,5 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
 
+/**
+ * لبنات الواجهة المشتركة. كل صفحات الإدارة تُبنى منها، فتغيير الهوية هنا
+ * يصل إلى كل جدول وزرّ وبطاقة دفعة واحدة.
+ *
+ * القاعدة اللونية: الحشو الفاقع نصّه `--on-fill` الداكن دائمًا، والنصّ على
+ * السطح الأبيض بألوان النصّ الداكنة (`--brand-deep` وأخواتها). انظر globals.css.
+ */
+
 export const page: CSSProperties = {
   maxWidth: 1240,
   margin: "0 auto",
@@ -7,22 +15,42 @@ export const page: CSSProperties = {
   paddingBlock: "28px 72px",
 };
 
+/** شريط قوس قزح أعلى كل صفحة: توقيع الهوية بألوان الفئات والسماء. */
+export const RAINBOW =
+  "linear-gradient(90deg, var(--lime) 0 17%, var(--sun) 17% 34%, var(--tangerine) 34% 51%, var(--berry) 51% 68%, var(--grape-fill) 68% 84%, var(--sky) 84% 100%)";
+
 export const topbar: CSSProperties = {
   position: "sticky",
   top: 0,
   zIndex: 50,
-  background: "var(--ground)",
-  borderBottom: "1px solid var(--border-soft)",
+  backgroundColor: "color-mix(in oklab, var(--surface) 92%, transparent)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  backgroundImage: RAINBOW,
+  backgroundSize: "100% 5px",
+  backgroundRepeat: "no-repeat",
+  borderBottom: "2.5px solid var(--outline)",
 };
 
 export const topbarInner: CSSProperties = {
   maxWidth: 1240,
   margin: "0 auto",
-  padding: "12px 20px",
+  padding: "15px 20px 11px",
   display: "flex",
   alignItems: "center",
   gap: 14,
   flexWrap: "wrap",
+};
+
+/** حقل إدخال موحّد. بلا `outline: 0` عمدًا: حلقة التركيز للوحة المفاتيح تبقى. */
+export const field: CSSProperties = {
+  font: "inherit",
+  padding: "10px 13px",
+  borderRadius: 12,
+  border: "2px solid var(--border)",
+  background: "var(--surface)",
+  color: "var(--ink)",
+  minWidth: 0,
 };
 
 export function Card({
@@ -36,10 +64,10 @@ export function Card({
 }) {
   return (
     <Tag
+      className="pop"
       style={{
-        background: "var(--surface-alt)",
-        border: "1px solid var(--border-soft)",
-        borderRadius: 14,
+        background: "var(--surface)",
+        borderRadius: 20,
         padding: 20,
         ...style,
       }}
@@ -53,58 +81,64 @@ export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <h2
       style={{
-        fontSize: 12,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        color: "var(--ink-mute)",
-        fontWeight: 600,
+        fontSize: 18,
+        color: "var(--ink)",
         margin: "0 0 12px",
-        fontFamily: "var(--font-body)",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
       }}
     >
+      <span
+        aria-hidden
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 3,
+          background: "var(--sun)",
+          border: "2px solid var(--outline)",
+          transform: "rotate(45deg)",
+        }}
+      />
       {children}
     </h2>
   );
 }
 
+const STAT_FILL = {
+  brand: "var(--brand-soft)",
+  gold: "var(--gold-soft)",
+  coral: "var(--coral-soft)",
+  sky: "color-mix(in oklab, var(--sky) 20%, var(--surface))",
+} as const;
+
 export function Stat({
   label,
   value,
-  accent,
+  accent = "sky",
 }: {
   label: string;
   value: string;
-  accent?: "brand" | "gold" | "coral";
+  accent?: keyof typeof STAT_FILL;
 }) {
-  const color =
-    accent === "gold" ? "var(--gold)" : accent === "coral" ? "var(--coral)" : "var(--brand-deep)";
   return (
     <div
+      className="pop"
       style={{
-        padding: 14,
-        background: "var(--surface)",
-        borderRadius: 10,
-        border: "1px solid var(--border-soft)",
+        padding: "12px 14px 10px",
+        background: STAT_FILL[accent],
+        borderRadius: 16,
       }}
     >
-      <div
-        style={{
-          fontSize: 11,
-          color: "var(--ink-mute)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {label}
-      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)" }}>{label}</div>
       <div
         className="tabular"
         style={{
           fontFamily: "var(--font-display)",
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: 700,
-          marginTop: 2,
-          color,
+          lineHeight: 1.15,
+          color: "var(--ink)",
         }}
       >
         {value}
@@ -115,52 +149,58 @@ export function Stat({
 
 type ButtonTone = "primary" | "default" | "danger";
 
+/**
+ * زرّ بحافة غليظة وظلّ صلب. يُمرَّر معه `className="press"` ليغوص عند الضغط —
+ * الأنماط السطرية لا تملك :active.
+ */
 export function buttonStyle(tone: ButtonTone = "default"): CSSProperties {
   const base: CSSProperties = {
     font: "inherit",
-    fontWeight: 600,
-    padding: "10px 16px",
-    borderRadius: 10,
+    fontWeight: 700,
+    padding: "10px 18px",
+    borderRadius: 14,
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    border: "1px solid var(--border)",
+    border: "2.5px solid var(--outline)",
+    boxShadow: "var(--pop)",
     background: "var(--surface)",
     color: "var(--ink)",
   };
-  if (tone === "primary") {
-    return { ...base, background: "var(--brand)", borderColor: "var(--brand)", color: "#fbf7ec" };
-  }
-  if (tone === "danger") {
-    return { ...base, borderColor: "var(--coral)", color: "var(--coral)" };
-  }
+  if (tone === "primary") return { ...base, background: "var(--lime)", color: "var(--on-fill)" };
+  // الحذف يتكرّر في كل صفّ من الجداول: حشو مرجانيّ فاقع فيها يطغى على البيانات
+  // نفسها، فالخطر هنا لونُ النصّ والحدّ لا مساحةٌ صارخة
+  if (tone === "danger") return { ...base, background: "var(--coral-soft)", color: "var(--coral)" };
   return base;
 }
+
+const BADGE_FILL = {
+  brand: "var(--lime)",
+  gold: "var(--sun)",
+  grape: "var(--grape-fill)",
+  coral: "var(--coral-fill)",
+  sky: "var(--sky)",
+} as const;
 
 export function Badge({
   children,
   tone = "brand",
 }: {
   children: ReactNode;
-  tone?: "brand" | "gold" | "grape" | "coral";
+  tone?: keyof typeof BADGE_FILL;
 }) {
-  const map = {
-    brand: ["var(--brand-soft)", "var(--brand-deep)"],
-    gold: ["var(--gold-soft)", "var(--gold)"],
-    grape: ["var(--grape-soft)", "var(--grape)"],
-    coral: ["var(--coral-soft)", "var(--coral)"],
-  } as const;
-  const [bg, fg] = map[tone];
   return (
     <span
       style={{
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "3px 9px",
+        fontSize: 12,
+        fontWeight: 700,
+        padding: "2px 10px",
         borderRadius: 999,
-        background: bg,
-        color: fg,
+        background: BADGE_FILL[tone],
+        color: "var(--on-fill)",
+        border: "2px solid var(--outline)",
         whiteSpace: "nowrap",
       }}
     >
@@ -173,14 +213,13 @@ export function Th({ children }: { children: ReactNode }) {
   return (
     <th
       style={{
-        padding: "9px 12px",
+        padding: "10px 12px",
         textAlign: "start",
-        borderBottom: "1px solid var(--border-soft)",
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-        color: "var(--ink-mute)",
-        fontWeight: 600,
+        background: "var(--gold-soft)",
+        borderBottom: "2.5px solid var(--outline)",
+        fontSize: 12,
+        color: "var(--ink)",
+        fontWeight: 700,
         whiteSpace: "nowrap",
       }}
     >
@@ -202,8 +241,8 @@ export function Td({
     <td
       className="tabular"
       style={{
-        padding: "9px 12px",
-        borderBottom: "1px solid var(--border-soft)",
+        padding: "10px 12px",
+        borderBottom: "1.5px solid var(--border-soft)",
         color: muted ? "var(--ink-mute)" : undefined,
         fontWeight: strong ? 700 : undefined,
         fontFamily: strong ? "var(--font-display)" : undefined,
@@ -214,21 +253,55 @@ export function Td({
   );
 }
 
+/** برعم صغير: حالة فارغة تَعِدُ بنموّ لا رسالة خطأ. */
+function Sprout() {
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden className="bob">
+      <ellipse cx="32" cy="55" rx="18" ry="5" fill="var(--tangerine)" stroke="var(--outline)" strokeWidth="2.5" />
+      <path d="M32 54V32" stroke="var(--outline)" strokeWidth="3" strokeLinecap="round" />
+      <path
+        d="M32 36C32 24 22 18 12 20c1 10 9 16 20 16z"
+        fill="var(--lime)"
+        stroke="var(--outline)"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M32 32c0-10 8-16 18-15-1 9-8 15-18 15z"
+        fill="var(--mint)"
+        stroke="var(--outline)"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div
       style={{
-        padding: "40px 24px",
+        padding: "28px 24px 32px",
         textAlign: "center",
         color: "var(--ink-mute)",
-        border: "1px dashed var(--border)",
-        borderRadius: 14,
+        border: "2.5px dashed var(--border)",
+        borderRadius: 20,
+        background: "var(--surface)",
       }}
     >
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--ink-soft)" }}>
+      <Sprout />
+      <div
+        style={{
+          fontFamily: "var(--font-display)",
+          fontSize: 19,
+          fontWeight: 700,
+          color: "var(--ink)",
+          marginTop: 6,
+        }}
+      >
         {title}
       </div>
-      {hint && <div style={{ fontSize: 13, marginTop: 6 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 14, marginTop: 6 }}>{hint}</div>}
     </div>
   );
 }

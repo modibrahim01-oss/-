@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { Brand } from "@/components/Brand";
+import HeroSky from "@/components/HeroSky";
 import RankBadge from "@/components/RankBadge";
 import StudentSearch from "@/components/StudentSearch";
 import { PlantIcon } from "@/components/TierLegend";
 import { LangToggle, ThemeToggle } from "@/components/Toggles";
 import { page, topbar, topbarInner } from "@/components/ui";
-import { formatNumber, t } from "@/lib/i18n";
+import { formatNumber, t, type Locale } from "@/lib/i18n";
 import { TIER_LIST } from "@/lib/tiers";
 import type { Group } from "@/lib/types";
 import { useLocale } from "@/lib/useLocale";
@@ -17,8 +18,9 @@ import { useLocale } from "@/lib/useLocale";
  * الحافة، واللغة تُقرأ هنا في المتصفح — فلا تحتاج الصفحة أن تُرسم على
  * الخادم لكل زائر لمجرّد معرفة لغته.
  *
- * البرنامج تحفيزي فيه فرح ومنافسة، فالصفحة لا تكتفي بمربّع بحث: تعرض
- * المتصدّرين وسباق المجموعات، وتشرح بالصورة أن كل نقطة نبتة.
+ * البرنامج تحفيزي فيه فرح ومنافسة، والصفحة تقول ذلك بالصورة قبل الكلام:
+ * سماء وتلّة تنمو عليها النبتات الأربع بأثمانها، ومنصّة تتويج، وسباق
+ * للمجموعات بمتسابقين يتقدّمون على مضمار.
  */
 
 /** طالب في لوحة الصدارة — صفّ من student_farms. */
@@ -31,33 +33,25 @@ export type Standing = {
   total_points: number;
 };
 
-/**
- * لون لكل مجموعة، بترتيبها. ألوان المزرعة نفسها (سماء، عشب، شمس، عنب)
- * ثم ثلاثة مكمّلة — فتبدو الصفحة والمزرعة من عالم واحد.
- */
-const GROUP_HUES = ["#4fb8e8", "#6cc24a", "#f2b632", "#b566d9", "#f08a4b", "#35b5a0", "#e2679b"];
+/** لون لكل مجموعة بترتيبها: ألوان الهوية الفاقعة نفسها. */
+const GROUP_HUES = [
+  "var(--sky)",
+  "var(--lime)",
+  "var(--sun)",
+  "var(--grape-fill)",
+  "var(--tangerine)",
+  "var(--mint)",
+  "var(--berry)",
+];
 
 const navLink: React.CSSProperties = {
   font: "inherit",
-  fontSize: 13,
-  fontWeight: 500,
+  fontSize: 14,
+  fontWeight: 700,
   padding: "8px 14px",
   borderRadius: 999,
-  color: "var(--ink-soft)",
+  color: "var(--ink)",
   textDecoration: "none",
-};
-
-const sectionTitle: React.CSSProperties = {
-  fontSize: 20,
-  margin: 0,
-};
-
-const card: React.CSSProperties = {
-  background: "var(--surface)",
-  border: "1px solid var(--border-soft)",
-  borderRadius: 20,
-  padding: "20px 20px 14px",
-  boxShadow: "var(--shadow)",
 };
 
 export default function HomeView({
@@ -73,10 +67,6 @@ export default function HomeView({
 }) {
   const locale = useLocale();
   const hueOf = new Map(groups.map((g, i) => [g.id, GROUP_HUES[i % GROUP_HUES.length]]));
-
-  // سباق المجموعات بالنقاط، وتبقى المجموعات بلا نقاط بترتيبها الأصلي
-  const race = [...groups].sort((a, b) => (groupPoints[b.id] ?? 0) - (groupPoints[a.id] ?? 0));
-  const topPoints = Math.max(0, ...race.map((g) => groupPoints[g.id] ?? 0));
 
   return (
     <>
@@ -98,239 +88,85 @@ export default function HomeView({
 
       <main style={page}>
         <section
+          className="pop hero"
           style={{
-            padding: "44px 24px 30px",
+            position: "relative",
+            borderRadius: 30,
+            overflow: "hidden",
             textAlign: "center",
-            // سماء المزرعة تذوب في سطح الصفحة، وشريط عشب يحدّها من أسفل
-            background:
-              "linear-gradient(180deg, color-mix(in oklab, var(--sky) 45%, var(--surface)) 0%, var(--surface) 82%)",
-            border: "1px solid var(--border-soft)",
-            borderBottom: "6px solid color-mix(in oklab, #7fcf55 78%, var(--surface))",
-            borderRadius: 20,
+            background: "linear-gradient(180deg, #7fdcff 0%, #b9ecff 48%, #e6f9ff 100%)",
           }}
         >
-          <h1
-            style={{
-              fontSize: "clamp(28px, 5vw, 44px)",
-              margin: "0 0 8px",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            {t(locale, "findYourFarm")}
-          </h1>
-          <p style={{ color: "var(--ink-soft)", margin: "0 auto 26px", maxWidth: "48ch" }}>
-            {t(locale, "publicIntro")}
-          </p>
-          <StudentSearch groups={groups} />
+          <HeroSky />
 
-          <p
-            style={{
-              margin: "30px 0 12px",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--ink-soft)",
-            }}
-          >
-            {t(locale, "everyPointPlants")}
-          </p>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            {TIER_LIST.map((spec) => (
-              <span
-                key={spec.tier}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "7px 14px 7px 10px",
-                  borderRadius: 999,
-                  background: `color-mix(in oklab, ${spec.color} 24%, var(--surface))`,
-                  border: `1px solid color-mix(in oklab, ${spec.color} 55%, var(--surface))`,
-                  fontSize: 14,
-                  fontWeight: 600,
-                }}
-              >
-                <PlantIcon tier={spec.tier} size={26} />
-                <span>{locale === "ar" ? spec.labelAr : spec.labelEn}</span>
-                <span
-                  className="tabular"
-                  style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: spec.ink }}
-                >
-                  {formatNumber(locale, spec.points)}
-                </span>
-              </span>
-            ))}
+          <div className="hero-body" style={{ position: "relative", padding: "46px 20px 30px" }}>
+            <span
+              className="pop-in"
+              style={{
+                display: "inline-block",
+                fontFamily: "var(--font-display)",
+                fontWeight: 700,
+                fontSize: 15,
+                padding: "4px 14px",
+                borderRadius: 999,
+                background: "var(--sun)",
+                color: "var(--on-fill)",
+                border: "2.5px solid var(--outline)",
+                boxShadow: "0 3px 0 var(--outline)",
+                transform: "rotate(-2deg)",
+                marginBottom: 14,
+              }}
+            >
+              {t(locale, "heroKicker")}
+            </span>
+            <h1
+              style={{
+                fontSize: "clamp(34px, 6.4vw, 60px)",
+                lineHeight: 1.1,
+                margin: "0 0 10px",
+                color: "var(--on-fill)",
+                // حدّ أبيض حول الحروف يفصلها عن الغيوم والسماء
+                textShadow: "0 3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 -2px 0 #fff",
+              }}
+            >
+              {t(locale, "findYourFarm")}
+            </h1>
+            <p
+              style={{
+                color: "var(--on-fill)",
+                fontWeight: 500,
+                fontSize: 17,
+                margin: "0 auto 24px",
+                maxWidth: "44ch",
+              }}
+            >
+              {t(locale, "publicIntro")}
+            </p>
+            <StudentSearch groups={groups} />
           </div>
+
+          <Garden locale={locale} />
         </section>
 
-        <div className="home-boards" style={{ marginTop: 28 }}>
-          <section style={card} aria-labelledby="leaders-title">
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
-              <h2 id="leaders-title" style={sectionTitle}>
-                {t(locale, "leaders")}
-              </h2>
-              <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>
-                {t(locale, "leadersHint")}
-              </span>
-            </div>
-
-            {leaders.length === 0 ? (
-              <p style={{ color: "var(--ink-mute)", fontSize: 14, margin: "18px 0 22px" }}>
-                {t(locale, "noLeadersYet")}
-              </p>
-            ) : (
-              <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {leaders.map((s, i) => (
-                  <li key={s.student_id}>
-                    <Link
-                      href={`/farm/${s.student_id}`}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "auto minmax(0, 1fr) auto",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: "10px 6px",
-                        borderTop: i === 0 ? "none" : "1px solid var(--border-soft)",
-                        textDecoration: "none",
-                        color: "var(--ink)",
-                      }}
-                    >
-                      <RankBadge rank={i + 1} label={formatNumber(locale, i + 1)} />
-                      <span style={{ minWidth: 0 }}>
-                        <span
-                          style={{
-                            display: "block",
-                            fontWeight: 700,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {s.full_name}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>
-                          {locale === "ar" ? s.group_name_ar : s.group_name_en}
-                        </span>
-                      </span>
-                      <span
-                        className="tabular"
-                        style={{
-                          fontFamily: "var(--font-display)",
-                          fontWeight: 700,
-                          fontSize: 18,
-                          color: "var(--brand-deep)",
-                        }}
-                      >
-                        {formatNumber(locale, s.total_points)}{" "}
-                        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink-mute)" }}>
-                          {t(locale, "points")}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ol>
-            )}
+        <div className="home-boards">
+          <section aria-labelledby="leaders-title">
+            <BoardTitle id="leaders-title" color="var(--sun)">
+              {t(locale, "leaders")}
+            </BoardTitle>
+            <Podium locale={locale} leaders={leaders} />
           </section>
 
-          <section style={card} aria-labelledby="race-title">
-            <h2 id="race-title" style={{ ...sectionTitle, marginBottom: 12 }}>
+          <section aria-labelledby="race-title">
+            <BoardTitle id="race-title" color="var(--sky)">
               {t(locale, "groupRace")}
-            </h2>
-            <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
-              {race.map((g, i) => {
-                const pts = groupPoints[g.id] ?? 0;
-                const hue = hueOf.get(g.id) ?? GROUP_HUES[0];
-                const leading = i === 0 && pts > 0;
-                return (
-                  <li key={g.id}>
-                    <Link
-                      href={`/?group=${g.id}#student-query`}
-                      style={{
-                        display: "grid",
-                        gap: 6,
-                        padding: "10px 6px",
-                        borderTop: i === 0 ? "none" : "1px solid var(--border-soft)",
-                        textDecoration: "none",
-                        color: "var(--ink)",
-                      }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span
-                          aria-hidden
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: 3,
-                            background: hue,
-                            flexShrink: 0,
-                          }}
-                        />
-                        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
-                          {locale === "ar" ? g.name_ar : g.name_en}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>
-                          {formatNumber(locale, studentCounts[g.id] ?? 0)} {t(locale, "students")}
-                        </span>
-                        {leading && (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: "2px 8px",
-                              borderRadius: 999,
-                              background: "var(--gold-soft)",
-                              color: "var(--ink)",
-                              border: "1px solid color-mix(in oklab, var(--gold) 60%, transparent)",
-                            }}
-                          >
-                            {t(locale, "leadingGroup")}
-                          </span>
-                        )}
-                        <span
-                          className="tabular"
-                          style={{
-                            marginInlineStart: "auto",
-                            fontFamily: "var(--font-display)",
-                            fontWeight: 700,
-                            color: "var(--brand-deep)",
-                          }}
-                        >
-                          {formatNumber(locale, pts)}
-                        </span>
-                      </span>
-                      <span
-                        aria-hidden
-                        style={{
-                          height: 8,
-                          borderRadius: 999,
-                          background: "var(--surface-alt)",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <span
-                          style={{
-                            display: "block",
-                            height: "100%",
-                            // مجموعة بلا نقاط شريطها فارغ فعلًا؛ والحدّ الأدنى
-                            // للمجموعات التي بدأت يُبقي أول نقطة مرئية
-                            width: `${pts > 0 ? Math.max(3, (pts / topPoints) * 100) : 0}%`,
-                            background: hue,
-                            borderRadius: 999,
-                          }}
-                        />
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ol>
+            </BoardTitle>
+            <RaceTrack
+              locale={locale}
+              groups={groups}
+              groupPoints={groupPoints}
+              studentCounts={studentCounts}
+              hueOf={hueOf}
+            />
           </section>
         </div>
       </main>
@@ -338,12 +174,355 @@ export default function HomeView({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            .home-boards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+            .home-boards { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; margin-top: 34px; }
+            .garden-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
             @media (max-width: 860px) { .home-boards { grid-template-columns: minmax(0, 1fr); } }
+            @media (max-width: 640px) {
+              .garden-row { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
+              /* الشمس والغيوم فوق المحتوى لا خلفه: تُزاح الكتابة تحتها */
+              .hero-body { padding-top: 92px !important; }
+              .hero-sun { width: 84px; height: 84px; top: 8px !important; }
+              .hero-cloud:nth-of-type(3) { display: none; }
+            }
             @media (max-width: 480px) { .hide-narrow { display: none; } }
           `,
         }}
       />
     </>
+  );
+}
+
+function BoardTitle({ id, color, children }: { id: string; color: string; children: React.ReactNode }) {
+  return (
+    <h2 id={id} style={{ fontSize: 26, margin: "0 0 14px", display: "flex", alignItems: "center", gap: 10 }}>
+      <span
+        aria-hidden
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 5,
+          background: color,
+          border: "2.5px solid var(--outline)",
+          transform: "rotate(45deg)",
+        }}
+      />
+      {children}
+    </h2>
+  );
+}
+
+/**
+ * التلّة أسفل الواجهة: النبتات الأربع واقفة على العشب، وفوق كل واحدة ثمنها.
+ * هي الشرح كلّه بلا فقرة: «كل نقطة نبتة، والنبتة الأكبر بنقاط أكثر».
+ */
+function Garden({ locale }: { locale: Locale }) {
+  return (
+    <div style={{ position: "relative", marginTop: 8 }}>
+      <svg
+        aria-hidden
+        viewBox="0 0 1200 60"
+        preserveAspectRatio="none"
+        style={{ display: "block", width: "100%", height: 46, marginBottom: -2 }}
+      >
+        <path
+          d="M0 40C120 12 240 12 360 30s240 26 360 6 240-30 360-14 120 18 120 18V60H0z"
+          fill="var(--lime)"
+          stroke="var(--outline)"
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div style={{ background: "var(--lime)", padding: "6px 16px 22px" }}>
+        <div className="garden-row" style={{ maxWidth: 860, margin: "0 auto" }}>
+          {TIER_LIST.map((spec, i) => (
+            <div
+              key={spec.tier}
+              className="bob"
+              style={{ animationDelay: `${i * 0.35}s`, display: "grid", justifyItems: "center", gap: 2 }}
+            >
+              <span
+                className="tabular"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 700,
+                  fontSize: 17,
+                  padding: "1px 12px",
+                  borderRadius: 999,
+                  background: "#fff",
+                  color: "var(--on-fill)",
+                  border: "2.5px solid var(--outline)",
+                  boxShadow: `0 3px 0 var(--outline), inset 0 -4px 0 ${spec.color}`,
+                }}
+              >
+                +{formatNumber(locale, spec.points)}
+              </span>
+              <PlantIcon tier={spec.tier} size={74 + i * 8} />
+              <span style={{ fontWeight: 700, color: "var(--on-fill)", fontSize: 15 }}>
+                {locale === "ar" ? spec.labelAr : spec.labelEn}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PODIUM = [
+  { place: 2, height: 96, fill: "linear-gradient(180deg, #f1f4f7, #b3bec8)" },
+  { place: 1, height: 132, fill: "linear-gradient(180deg, #ffe680, #ffc21a)" },
+  { place: 3, height: 74, fill: "linear-gradient(180deg, #f6c99a, #d9914f)" },
+];
+
+/**
+ * منصّة التتويج للثلاثة الأوائل، ثم الرابع والخامس.
+ *
+ * المكان الشاغر لا يُخفى: يظهر منصّةً منقّطة عليها «مكانك هنا؟» — دعوة لا
+ * فراغ. في أول الفصل حيث يكون المتصدّر واحدًا، يرى كل طالب مكانين ينتظرانه.
+ */
+function Podium({ locale, leaders }: { locale: Locale; leaders: Standing[] }) {
+  if (leaders.length === 0) {
+    return (
+      <div className="pop" style={{ background: "var(--surface)", borderRadius: 24, padding: "26px 20px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontWeight: 700, color: "var(--ink-soft)" }}>{t(locale, "noLeadersYet")}</p>
+      </div>
+    );
+  }
+
+  const rest = leaders.slice(3);
+
+  return (
+    <div className="pop" style={{ background: "var(--surface)", borderRadius: 24, padding: "20px 18px 16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", alignItems: "end", gap: 10 }}>
+        {PODIUM.map(({ place, height, fill }) => {
+          const s = leaders[place - 1];
+          return (
+            <div key={place} style={{ display: "grid", justifyItems: "center", gap: 6, minWidth: 0 }}>
+              {s ? (
+                <Link
+                  href={`/farm/${s.student_id}`}
+                  className="lift"
+                  style={{
+                    display: "grid",
+                    justifyItems: "center",
+                    gap: 3,
+                    textDecoration: "none",
+                    color: "var(--ink)",
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    borderRadius: 14,
+                    padding: "4px 6px",
+                  }}
+                >
+                  <RankBadge rank={place} label={formatNumber(locale, place)} size={place === 1 ? 46 : 38} />
+                  {/* سطران لا بتر: الاسم الكامل هو الجائزة على المنصّة */}
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: place === 1 ? 17 : 15,
+                      lineHeight: 1.3,
+                      textAlign: "center",
+                      maxWidth: "100%",
+                      overflowWrap: "anywhere",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {s.full_name}
+                  </span>
+                  <span
+                    className="tabular"
+                    style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-deep)" }}
+                  >
+                    {formatNumber(locale, s.total_points)} {t(locale, "points")}
+                  </span>
+                </Link>
+              ) : (
+                <span style={{ fontWeight: 700, color: "var(--ink-mute)", fontSize: 14, padding: "0 4px 6px" }}>
+                  {t(locale, "yourSpot")}
+                </span>
+              )}
+              <div
+                style={{
+                  width: "100%",
+                  height,
+                  borderRadius: "14px 14px 6px 6px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 700,
+                  fontSize: 38,
+                  color: "var(--on-fill)",
+                  ...(s
+                    ? { background: fill, border: "2.5px solid var(--outline)", boxShadow: "var(--pop)" }
+                    : { border: "2.5px dashed var(--border)", color: "var(--ink-mute)" }),
+                }}
+              >
+                {formatNumber(locale, place)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {rest.length > 0 && (
+        <ol style={{ listStyle: "none", margin: "16px 0 0", padding: 0, display: "grid", gap: 8 }}>
+          {rest.map((s, i) => (
+            <li key={s.student_id}>
+              <Link
+                href={`/farm/${s.student_id}`}
+                className="lift"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "8px 12px",
+                  borderRadius: 14,
+                  border: "2px solid var(--border)",
+                  textDecoration: "none",
+                  color: "var(--ink)",
+                  background: "var(--surface-alt)",
+                }}
+              >
+                <RankBadge rank={i + 4} label={formatNumber(locale, i + 4)} size={32} />
+                <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {s.full_name}
+                </span>
+                <span className="tabular" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-deep)" }}>
+                  {formatNumber(locale, s.total_points)}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/**
+ * سباق المجموعات على مضمار: لكل مجموعة حارة، ومتسابقها يتقدّم نحو خط النهاية
+ * بنسبة نقاطها إلى المتصدّرة. الحارة نفسها رابط يفتح بحث المجموعة.
+ */
+function RaceTrack({
+  locale,
+  groups,
+  groupPoints,
+  studentCounts,
+  hueOf,
+}: {
+  locale: Locale;
+  groups: Group[];
+  groupPoints: Record<number, number>;
+  studentCounts: Record<number, number>;
+  hueOf: Map<number, string>;
+}) {
+  const race = [...groups].sort((a, b) => (groupPoints[b.id] ?? 0) - (groupPoints[a.id] ?? 0));
+  const top = Math.max(0, ...race.map((g) => groupPoints[g.id] ?? 0));
+
+  return (
+    <div className="pop" style={{ background: "var(--surface)", borderRadius: 24, padding: "16px 16px 12px" }}>
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
+        {race.map((g, i) => {
+          const pts = groupPoints[g.id] ?? 0;
+          const hue = hueOf.get(g.id) ?? GROUP_HUES[0];
+          const pct = top > 0 ? (pts / top) * 100 : 0;
+          const name = locale === "ar" ? g.name_ar : g.name_en;
+          const leading = i === 0 && pts > 0;
+          return (
+            <li key={g.id}>
+              <Link
+                href={`/?group=${g.id}#student-query`}
+                style={{ display: "grid", gap: 4, textDecoration: "none", color: "var(--ink)" }}
+              >
+                <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17 }}>{name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-mute)" }}>
+                    {formatNumber(locale, studentCounts[g.id] ?? 0)} {t(locale, "students")}
+                  </span>
+                  {leading && (
+                    <span
+                      className="pop-in"
+                      style={{
+                        alignSelf: "center",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "0 8px",
+                        borderRadius: 999,
+                        background: "var(--sun)",
+                        color: "var(--on-fill)",
+                        border: "2px solid var(--outline)",
+                      }}
+                    >
+                      {t(locale, "leadingGroup")}
+                    </span>
+                  )}
+                  <span
+                    className="tabular"
+                    style={{
+                      marginInlineStart: "auto",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: 17,
+                      color: "var(--brand-deep)",
+                    }}
+                  >
+                    {formatNumber(locale, pts)}
+                  </span>
+                </span>
+                <span
+                  style={{
+                    position: "relative",
+                    height: 30,
+                    borderRadius: 999,
+                    border: "2.5px solid var(--outline)",
+                    // الحارة: أرضية مضمار وخطّ منقّط في منتصفها
+                    background:
+                      "repeating-linear-gradient(90deg, transparent 0 10px, color-mix(in oklab, var(--outline) 16%, transparent) 10px 18px) center / 100% 3px no-repeat, var(--surface-alt)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* الأثر الملوّن خلف المتسابق */}
+                  <span
+                    style={{
+                      position: "absolute",
+                      insetBlock: 0,
+                      insetInlineStart: 0,
+                      width: `${pct}%`,
+                      background: `color-mix(in oklab, ${hue} 55%, transparent)`,
+                    }}
+                  />
+                  {/* المتسابق: حرف المجموعة الأول على قرص بلونها */}
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      insetInlineStart: `clamp(0px, calc(${pct}% - 24px), calc(100% - 26px))`,
+                      transform: "translateY(-50%)",
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      display: "grid",
+                      placeItems: "center",
+                      background: hue,
+                      border: "2.5px solid var(--outline)",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: "var(--on-fill)",
+                    }}
+                  >
+                    {name.charAt(0)}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }

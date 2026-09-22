@@ -8,8 +8,9 @@ import { setLocale, useLocale } from "@/lib/useLocale";
 const pillWrap: React.CSSProperties = {
   display: "inline-flex",
   padding: 3,
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border-soft)",
+  background: "var(--surface)",
+  border: "2.5px solid var(--outline)",
+  boxShadow: "0 3px 0 var(--outline)",
   borderRadius: 999,
 };
 
@@ -22,9 +23,9 @@ function pillButton(active: boolean): React.CSSProperties {
     borderRadius: 999,
     border: 0,
     cursor: "pointer",
-    background: active ? "var(--surface)" : "transparent",
-    color: active ? "var(--ink)" : "var(--ink-mute)",
-    boxShadow: active ? "var(--shadow-sm)" : "none",
+    // الخيار النشط حبّة شمسية: يُقرأ من نظرة أيّ لغة مختارة
+    background: active ? "var(--sun)" : "transparent",
+    color: active ? "var(--on-fill)" : "var(--ink-mute)",
   };
 }
 
@@ -60,14 +61,12 @@ export function ThemeToggle() {
     try {
       stored = localStorage.getItem("sabbaq-theme");
     } catch {
-      // نافذة خاصة أو بيانات موقع محجوبة — نكتفي بتفضيل النظام
+      // نافذة خاصة أو بيانات موقع محجوبة — يبقى الفاتح
     }
-    if (stored === "dark" || stored === "light") {
-      document.documentElement.setAttribute("data-theme", stored);
-      setDark(stored === "dark");
-    } else {
-      setDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
+    // الفاتح هو الافتراضي للجميع، ولو كان الجهاز على الوضع الليلي: الموقع
+    // فاتح فاقع بالتصميم، والداكن اختيار صريح يُحفَظ لمن أراده
+    if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    setDark(stored === "dark");
   }, []);
 
   function toggle() {
@@ -86,15 +85,17 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="Toggle theme"
+      className="press"
       style={{
         display: "grid",
         placeItems: "center",
-        width: 34,
-        height: 34,
-        borderRadius: 10,
-        border: "1px solid var(--border-soft)",
-        background: "var(--surface-alt)",
-        color: "var(--ink-soft)",
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        border: "2.5px solid var(--outline)",
+        boxShadow: "0 3px 0 var(--outline)",
+        background: dark ? "var(--grape-fill)" : "var(--sun)",
+        color: "var(--on-fill)",
         cursor: "pointer",
       }}
     >

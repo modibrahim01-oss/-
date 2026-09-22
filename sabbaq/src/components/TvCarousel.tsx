@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/Brand";
 import FarmScene from "@/components/FarmScene";
 import RankBadge from "@/components/RankBadge";
+import { RAINBOW } from "@/components/ui";
 import { formatNumber, t } from "@/lib/i18n";
 import type { Plant, StudentFarmSummary } from "@/lib/types";
 import { useLocale } from "@/lib/useLocale";
@@ -17,19 +18,16 @@ const REFRESH_MS = 5 * 60 * 1000;
 const BOARD_SIZE = 8;
 
 /**
- * بطاقة زجاجية فاتحة فوق المزرعة.
+ * بطاقة الشاشة: بيضاء بحدّ غليظ وظلّ صلب، كبقية الهوية.
  *
  * الشاشة كانت بالوضع الليلي وأشرطة سوداء متدرّجة — عكس ما يطلبه برنامج
- * تحفيزي فيه فرح. البطاقات الفاتحة تُبقي النصّ مقروءًا فوق السماء والعشب معًا
- * دون أن تُظلم المشهد.
+ * تحفيزي فيه فرح. البطاقات الصلبة تُقرأ من آخر الممرّ فوق السماء والعشب معًا.
  */
 const glass: React.CSSProperties = {
-  background: "color-mix(in oklab, var(--surface) 86%, transparent)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)",
-  borderRadius: 22,
-  boxShadow: "0 10px 30px rgba(20, 60, 90, 0.18)",
+  background: "var(--surface)",
+  border: "3px solid var(--outline)",
+  borderRadius: 24,
+  boxShadow: "var(--pop-lg)",
   color: "var(--ink)",
 };
 
@@ -78,7 +76,7 @@ export default function TvCarousel({
           minHeight: "100vh",
           display: "grid",
           placeItems: "center",
-          background: "linear-gradient(180deg, var(--sky) 0%, var(--ground) 100%)",
+          background: "linear-gradient(180deg, var(--scene-sky) 0%, var(--ground) 100%)",
           color: "var(--ink)",
           textAlign: "center",
           padding: 24,
@@ -102,7 +100,7 @@ export default function TvCarousel({
       style={{
         position: "fixed",
         inset: 0,
-        background: "var(--sky)",
+        background: "var(--scene-sky)",
         color: "var(--ink)",
         overflow: "hidden",
       }}
@@ -128,7 +126,15 @@ export default function TvCarousel({
         </div>
         <span
           className="tabular"
-          style={{ ...glass, fontFamily: "var(--font-display)", fontSize: 22, padding: "10px 18px" }}
+          style={{
+            ...glass,
+            background: "var(--sun)",
+            color: "var(--on-fill)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 24,
+            padding: "8px 20px",
+          }}
         >
           {clock}
         </span>
@@ -145,7 +151,7 @@ export default function TvCarousel({
           zIndex: 2,
         }}
       >
-        <h2 style={{ margin: "0 6px 10px", fontSize: 20 }}>{t(locale, "leaders")}</h2>
+        <h2 style={{ margin: "0 6px 10px", fontSize: 24 }}>{t(locale, "leaders")}</h2>
         <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {roster.slice(0, BOARD_SIZE).map((s, i) => {
             const active = i === index;
@@ -161,7 +167,9 @@ export default function TvCarousel({
                   borderRadius: 12,
                   // الطالب المعروض الآن يُضاء في اللوحة، فيربط المشاهد بين
                   // المزرعة واسم صاحبها وترتيبه
-                  background: active ? "color-mix(in oklab, var(--gold) 26%, transparent)" : "transparent",
+                  background: active ? "var(--sun)" : "transparent",
+                  color: active ? "var(--on-fill)" : undefined,
+                  border: active ? "2.5px solid var(--outline)" : "2.5px solid transparent",
                   transition: "background 400ms ease",
                 }}
               >
@@ -178,7 +186,11 @@ export default function TvCarousel({
                 </span>
                 <span
                   className="tabular"
-                  style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-deep)" }}
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 700,
+                    color: active ? "var(--on-fill)" : "var(--brand-deep)",
+                  }}
                 >
                   {formatNumber(locale, s.total_points)}
                 </span>
@@ -196,6 +208,8 @@ export default function TvCarousel({
           insetInlineStart: 28,
           maxWidth: "min(760px, 60vw)",
           padding: "18px 24px 20px",
+          background:
+            "linear-gradient(100deg, color-mix(in oklab, var(--sun) 45%, var(--surface)) 0%, var(--surface) 70%)",
           display: "flex",
           alignItems: "center",
           gap: 20,
@@ -216,7 +230,17 @@ export default function TvCarousel({
             <h1 style={{ margin: 0, fontSize: "clamp(28px, 3.6vw, 46px)", fontWeight: 700 }}>
               {current.full_name}
             </h1>
-            <span style={{ fontSize: "clamp(15px, 1.6vw, 20px)", color: "var(--brand-deep)", fontWeight: 700 }}>
+            <span
+              style={{
+                fontSize: "clamp(15px, 1.6vw, 20px)",
+                fontWeight: 700,
+                padding: "0 12px",
+                borderRadius: 999,
+                background: "var(--sky)",
+                color: "var(--on-fill)",
+                border: "2.5px solid var(--outline)",
+              }}
+            >
               {groupName}
             </span>
           </div>
@@ -235,8 +259,9 @@ export default function TvCarousel({
           position: "absolute",
           bottom: 0,
           insetInline: 0,
-          height: 5,
-          background: "color-mix(in oklab, var(--surface) 55%, transparent)",
+          height: 8,
+          background: "color-mix(in oklab, var(--surface) 70%, transparent)",
+          borderTop: "2.5px solid var(--outline)",
           zIndex: 3,
         }}
       >
@@ -244,7 +269,9 @@ export default function TvCarousel({
           key={index}
           style={{
             height: "100%",
-            background: "var(--gold)",
+            // قوس قزح الهوية يمتدّ مع مرور وقت الشريحة
+            background: RAINBOW,
+            backgroundSize: "100vw 100%",
             animation: `tvSlide ${SLIDE_MS}ms linear forwards`,
           }}
         />

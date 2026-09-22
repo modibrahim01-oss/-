@@ -38,7 +38,7 @@ export default async function SupervisorPage() {
             : "Your account has no role in the system. Contact the admin."}
         </p>
         <form action={signOut}>
-          <button type="submit" style={buttonStyle()}>
+          <button className="press" type="submit" style={buttonStyle()}>
             {t(locale, "logout")}
           </button>
         </form>
@@ -121,11 +121,11 @@ export default async function SupervisorPage() {
                 href="/admin"
                 style={{
                   font: "inherit",
-                  fontSize: 13,
-                  fontWeight: 500,
+                  fontSize: 14,
+                  fontWeight: 700,
                   padding: "8px 14px",
                   borderRadius: 999,
-                  color: "var(--ink-soft)",
+                  color: "var(--ink)",
                   textDecoration: "none",
                 }}
               >
@@ -135,7 +135,7 @@ export default async function SupervisorPage() {
             <LangToggle />
             <ThemeToggle />
             <form action={signOut}>
-              <button type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>
+              <button className="press" type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>
                 {t(locale, "logout")}
               </button>
             </form>

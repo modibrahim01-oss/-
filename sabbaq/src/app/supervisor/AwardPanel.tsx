@@ -2,9 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { PlantIcon } from "@/components/TierLegend";
-import { Card, EmptyState } from "@/components/ui";
+import { Badge, Card, EmptyState, SectionLabel } from "@/components/ui";
 import { awardPoints } from "@/lib/actions/award";
-import { formatNumber, t } from "@/lib/i18n";
+import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { TIER_LIST, isTier } from "@/lib/tiers";
 import type { Tier } from "@/lib/tiers";
@@ -42,6 +42,8 @@ export default function AwardPanel({
   // تعديلات محلية على أرصدة الطلاب بعد المنح، حتى لا تحتاج إعادة تحميل
   const [bumps, setBumps] = useState<Record<string, { points: number; plants: number }>>({});
   const [toast, setToast] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  // «+٥٠» يطفو من الزرّ الذي ضُغط: تأكيد يُرى حيث تنظر العين، لا في زاوية
+  const [burst, setBurst] = useState<{ tier: Tier; key: number } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const unlimited = status.limit < 0;
@@ -114,16 +116,13 @@ export default function AwardPanel({
         tone: "ok",
         text: `${t(locale, "awarded")} +${formatNumber(locale, gained)} · ${student.full_name}`,
       });
+      setBurst({ tier, key: Date.now() });
     });
   }
 
   const pct = unlimited || status.limit === 0 ? 0 : Math.min(100, (status.used / status.limit) * 100);
-  const meterColor =
-    pct >= 90
-      ? "linear-gradient(90deg, var(--coral), #e88670)"
-      : pct >= 70
-        ? "linear-gradient(90deg, var(--gold), #f0d370)"
-        : "linear-gradient(90deg, var(--brand), #7ec599)";
+  // المتبقّي يُقرأ لونًا قبل أن يُقرأ رقمًا: ليمونيّ ثم شمسيّ ثم مرجانيّ
+  const meterFill = pct >= 90 ? "var(--coral-fill)" : pct >= 70 ? "var(--sun)" : "var(--lime)";
 
   return (
     <main
@@ -132,54 +131,34 @@ export default function AwardPanel({
         margin: "0 auto",
         padding: "22px 20px 64px",
         display: "grid",
-        gridTemplateColumns: "320px minmax(0, 1fr)",
-        gap: 20,
+        gridTemplateColumns: "330px minmax(0, 1fr)",
+        gap: 22,
         alignItems: "start",
       }}
       className="sup-grid"
     >
-      <aside style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <Card>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18 }}>
-            {supervisorName}
-          </div>
-          <span
-            style={{
-              display: "inline-block",
-              marginTop: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              color: "var(--brand-deep)",
-              background: "var(--brand-soft)",
-              padding: "3px 10px",
-              borderRadius: 999,
-            }}
-          >
-            {roleName}
-          </span>
-          <div style={{ marginTop: 10, fontSize: 12, color: "var(--ink-soft)" }}>
-            {t(locale, "myGroups")}: {scopeLabel || "—"}
+      <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Avatar name={supervisorName} fill="var(--grape-fill)" size={52} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, lineHeight: 1.2 }}>
+              {supervisorName}
+            </div>
+            <div style={{ marginTop: 5, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <Badge tone="grape">{roleName}</Badge>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)" }}>
+                {t(locale, "myGroups")}: {scopeLabel || "—"}
+              </span>
+            </div>
           </div>
         </Card>
 
         <Card>
-          <h2
-            style={{
-              fontSize: 12,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "var(--ink-mute)",
-              fontWeight: 600,
-              margin: "0 0 10px",
-              fontFamily: "var(--font-body)",
-            }}
-          >
-            {t(locale, "yourDailyLimit")}
-          </h2>
+          <SectionLabel>{t(locale, "yourDailyLimit")}</SectionLabel>
           {unlimited ? (
             <div
               className="tabular"
-              style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--brand-deep)" }}
+              style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: "var(--brand-deep)" }}
             >
               {t(locale, "noLimit")} · {formatNumber(locale, status.used)} {t(locale, "points")}
             </div>
@@ -187,11 +166,12 @@ export default function AwardPanel({
             <>
               <div
                 style={{
-                  height: 10,
-                  background: "var(--ground-warm)",
+                  height: 22,
+                  background: "var(--surface-alt)",
+                  border: "2.5px solid var(--outline)",
                   borderRadius: 999,
                   overflow: "hidden",
-                  marginBottom: 8,
+                  marginBottom: 10,
                 }}
                 role="progressbar"
                 aria-valuenow={status.used}
@@ -202,20 +182,20 @@ export default function AwardPanel({
                   style={{
                     height: "100%",
                     width: `${pct}%`,
-                    background: meterColor,
-                    borderRadius: 999,
-                    transition: "width 0.35s",
+                    background: meterFill,
+                    borderInlineEnd: pct > 0 && pct < 100 ? "2.5px solid var(--outline)" : "none",
+                    transition: "width 0.35s, background 0.35s",
                   }}
                 />
               </div>
-              <div className="tabular" style={{ fontSize: 13, color: "var(--ink-soft)" }}>
-                <strong style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--ink)" }}>
+              <div className="tabular" style={{ fontSize: 14, fontWeight: 700, color: "var(--ink-soft)" }}>
+                <strong style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--ink)" }}>
                   {formatNumber(locale, status.used)}
                 </strong>{" "}
                 {t(locale, "of")} {formatNumber(locale, status.limit)} {t(locale, "points")}
               </div>
               {status.remaining === 0 && (
-                <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--coral)", fontWeight: 600 }}>
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--coral)", fontWeight: 700 }}>
                   {t(locale, "limitReached")}
                 </p>
               )}
@@ -223,30 +203,23 @@ export default function AwardPanel({
           )}
         </Card>
 
-        <div>
-          <div
+        <Card style={{ padding: 14 }}>
+          <label
+            htmlFor="supervisor-student-search"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 8,
-              padding: "10px 14px",
+              padding: "8px 14px",
               background: "var(--surface)",
-              border: "1px solid var(--border)",
+              border: "2.5px solid var(--outline)",
               borderRadius: 999,
-              marginBottom: 10,
+              marginBottom: 12,
             }}
           >
-            <svg
-              aria-hidden
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--ink-mute)"
-              strokeWidth="2"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.3-4.3" />
+            <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.6" strokeLinecap="round">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16l4.5 4.5" />
             </svg>
             <input
               id="supervisor-student-search"
@@ -259,27 +232,18 @@ export default function AwardPanel({
                 border: 0,
                 background: "transparent",
                 font: "inherit",
+                fontWeight: 500,
                 color: "var(--ink)",
                 flex: 1,
                 outline: 0,
                 minWidth: 0,
               }}
             />
-          </div>
+          </label>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 3,
-              maxHeight: 340,
-              overflowY: "auto",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 360, overflowY: "auto", padding: 2 }}>
             {filtered.length === 0 && (
-              <p style={{ fontSize: 13, color: "var(--ink-mute)", padding: "8px 4px" }}>
-                {t(locale, "noResults")}
-              </p>
+              <p style={{ fontSize: 14, color: "var(--ink-mute)", padding: "8px 4px" }}>{t(locale, "noResults")}</p>
             )}
             {filtered.map((s) => {
               const active = selected?.student_id === s.student_id;
@@ -289,92 +253,80 @@ export default function AwardPanel({
                   key={s.student_id}
                   type="button"
                   onClick={() => setSelected(s)}
+                  aria-pressed={active}
+                  className="pick"
                   style={{
                     font: "inherit",
                     textAlign: "start",
-                    padding: "10px 12px",
-                    borderRadius: 8,
+                    padding: "9px 12px",
+                    borderRadius: 14,
                     cursor: "pointer",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     gap: 8,
-                    fontSize: 13,
-                    border: `1px solid ${active ? "var(--brand)" : "transparent"}`,
-                    background: active ? "var(--brand-soft)" : "transparent",
-                    color: active ? "var(--brand-deep)" : "var(--ink)",
-                    fontWeight: active ? 600 : 400,
+                    fontSize: 15,
+                    border: `2.5px solid ${active ? "var(--outline)" : "transparent"}`,
+                    boxShadow: active ? "0 3px 0 var(--outline)" : "none",
+                    background: active ? "var(--sun)" : "transparent",
+                    color: active ? "var(--on-fill)" : "var(--ink)",
+                    fontWeight: 700,
                   }}
                 >
                   <span>{s.full_name}</span>
-                  <span className="tabular" style={{ color: active ? "inherit" : "var(--ink-mute)" }}>
+                  <span className="tabular" style={{ fontFamily: "var(--font-display)", color: active ? "inherit" : "var(--brand-deep)" }}>
                     {formatNumber(locale, bal.points)}
                   </span>
                 </button>
               );
             })}
           </div>
-        </div>
+        </Card>
       </aside>
 
-      <section style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {selected ? (
-          <Card
+          <div
+            className="pop pop-in"
+            key={selected.student_id}
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              gap: 16,
+              gap: 14,
               flexWrap: "wrap",
+              padding: "16px 20px",
+              borderRadius: 24,
+              background:
+                "linear-gradient(100deg, color-mix(in oklab, var(--sun) 42%, var(--surface)) 0%, var(--surface) 60%, color-mix(in oklab, var(--sky) 28%, var(--surface)) 100%)",
             }}
           >
-            <div>
-              <h1 style={{ margin: 0, fontSize: 22 }}>{selected.full_name}</h1>
-              <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: 13 }}>
-                {locale === "ar" ? selected.group_name_ar : selected.group_name_en}
-                {selected.grade ? ` · ${selected.grade}` : ""}
-              </p>
+            <Avatar name={selected.full_name} fill="var(--lime)" size={58} />
+            <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+              <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.15 }}>{selected.full_name}</h1>
+              <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                <Badge tone="sky">{locale === "ar" ? selected.group_name_ar : selected.group_name_en}</Badge>
+                {selected.grade && <Badge tone="grape">{localizeDigits(locale, selected.grade)}</Badge>}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 22 }}>
+            <div style={{ display: "flex", gap: 10 }}>
               {(() => {
                 const bal = balanceOf(selected);
                 return (
                   <>
-                    <MiniStat
-                      n={formatNumber(locale, bal.points)}
-                      label={t(locale, "totalPoints")}
-                    />
-                    <MiniStat n={formatNumber(locale, bal.plants)} label={t(locale, "plants")} />
+                    <MiniStat n={formatNumber(locale, bal.points)} label={t(locale, "totalPoints")} fill="var(--sun)" />
+                    <MiniStat n={formatNumber(locale, bal.plants)} label={t(locale, "plants")} fill="var(--lime)" />
                   </>
                 );
               })()}
             </div>
-          </Card>
+          </div>
         ) : (
           <EmptyState title={t(locale, "selectStudentFirst")} hint={t(locale, "pickStudent")} />
         )}
 
         <div>
-          <h2
-            style={{
-              fontSize: 13,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "var(--ink-soft)",
-              fontWeight: 700,
-              margin: "0 0 10px",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {t(locale, "awardPoints")}
-          </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: 12,
-            }}
-          >
+          <SectionLabel>{t(locale, "awardPoints")}</SectionLabel>
+          <div className="award-grid">
             {TIER_LIST.map((spec) => {
               const blocked = !selected || spec.points > remaining || pending;
               return (
@@ -383,6 +335,7 @@ export default function AwardPanel({
                   type="button"
                   onClick={() => award(spec.tier)}
                   disabled={blocked}
+                  className="press"
                   title={
                     !selected
                       ? t(locale, "selectStudentFirst")
@@ -391,56 +344,87 @@ export default function AwardPanel({
                         : undefined
                   }
                   style={{
+                    position: "relative",
                     font: "inherit",
-                    padding: "20px 16px",
-                    borderRadius: 14,
-                    border: `2px solid ${blocked ? "var(--border)" : spec.color}`,
-                    background: "var(--surface)",
+                    padding: "16px 12px 14px",
+                    borderRadius: 24,
+                    border: "3px solid var(--outline)",
+                    boxShadow: "var(--pop-lg)",
+                    // الحشو بلون الفئة نفسها، والنصّ داكن فوقه — لا نصّ ملوّن على أبيض
+                    background: `linear-gradient(180deg, color-mix(in oklab, ${spec.color} 55%, #fff) 0%, ${spec.color} 100%)`,
+                    color: "var(--on-fill)",
                     cursor: blocked ? "not-allowed" : "pointer",
                     display: "flex",
                     flexDirection: "column",
-                    gap: 8,
+                    gap: 4,
                     alignItems: "center",
-                    opacity: blocked ? 0.42 : 1,
-                    transition: "opacity 0.15s, border-color 0.15s",
                   }}
                 >
-                  <PlantIcon tier={spec.tier} size={44} />
+                  <span
+                    style={{
+                      width: 78,
+                      height: 78,
+                      borderRadius: "50%",
+                      background: "#fff",
+                      border: "3px solid var(--outline)",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <PlantIcon tier={spec.tier} size={58} />
+                  </span>
                   <span
                     className="tabular"
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: 30,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      // spec.ink لا spec.color: المشبع لا يُقرأ نصًّا (الأصفر ١٫٥٥:١ على أبيض)
-                      color: spec.ink,
-                    }}
+                    style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, lineHeight: 1.05 }}
                   >
                     +{formatNumber(locale, spec.points)}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>
+                  <span style={{ fontSize: 15, fontWeight: 700 }}>
                     {locale === "ar" ? spec.labelAr : spec.labelEn}
                   </span>
+                  {burst?.tier === spec.tier && (
+                    <span
+                      key={burst.key}
+                      aria-hidden
+                      className="tabular float-up"
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        insetInline: 0,
+                        marginInline: "auto",
+                        width: "fit-content",
+                        padding: "2px 12px",
+                        borderRadius: 999,
+                        background: "#fff",
+                        border: "2.5px solid var(--outline)",
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 700,
+                        fontSize: 22,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      +{formatNumber(locale, spec.points)}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
-          <p style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 10 }}>
-            {t(locale, "noManualEntry")}
-          </p>
+          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-mute)", marginTop: 12 }}>{t(locale, "noManualEntry")}</p>
         </div>
 
         {toast && (
           <div
             role="status"
+            className="pop pop-in"
+            key={toast.text}
             style={{
-              padding: "13px 18px",
-              borderRadius: 12,
-              fontWeight: 500,
-              background: toast.tone === "ok" ? "var(--brand-deep)" : "var(--coral)",
-              color: "#fbf7ec",
-              boxShadow: "var(--shadow)",
+              padding: "12px 18px",
+              borderRadius: 18,
+              fontWeight: 700,
+              fontSize: 16,
+              background: toast.tone === "ok" ? "var(--lime)" : "var(--coral-fill)",
+              color: "var(--on-fill)",
             }}
           >
             {toast.text}
@@ -448,25 +432,11 @@ export default function AwardPanel({
         )}
 
         <Card>
-          <h2
-            style={{
-              fontSize: 12,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "var(--ink-mute)",
-              fontWeight: 600,
-              margin: "0 0 12px",
-              fontFamily: "var(--font-body)",
-            }}
-          >
-            {t(locale, "recentToday")}
-          </h2>
+          <SectionLabel>{t(locale, "recentToday")}</SectionLabel>
           {recent.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--ink-mute)", margin: 0 }}>
-              {t(locale, "noAwardsToday")}
-            </p>
+            <p style={{ fontSize: 14, color: "var(--ink-mute)", margin: 0 }}>{t(locale, "noAwardsToday")}</p>
           ) : (
-            <div>
+            <div style={{ display: "grid", gap: 8 }}>
               {recent.map((r) => {
                 const tier = isTier(r.tier) ? r.tier : "green";
                 const spec = TIER_LIST.find((s) => s.tier === tier);
@@ -475,35 +445,37 @@ export default function AwardPanel({
                     key={r.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "24px 1fr auto auto",
+                      gridTemplateColumns: "36px 1fr auto auto",
                       gap: 12,
                       alignItems: "center",
-                      padding: "8px 0",
-                      fontSize: 13,
-                      borderBottom: "1px solid var(--border-soft)",
+                      padding: "6px 10px",
+                      fontSize: 15,
+                      borderRadius: 14,
+                      background: `color-mix(in oklab, ${spec?.color ?? "var(--lime)"} 18%, var(--surface))`,
+                      border: "2px solid var(--border)",
                     }}
                   >
-                    <PlantIcon tier={tier} size={20} />
-                    <span style={{ fontWeight: 500 }}>{r.studentName}</span>
+                    <PlantIcon tier={tier} size={32} />
+                    <span style={{ fontWeight: 700 }}>{r.studentName}</span>
                     <span
                       className="tabular"
                       style={{
                         fontFamily: "var(--font-display)",
                         fontWeight: 700,
-                        color: spec?.ink,
+                        padding: "0 10px",
+                        borderRadius: 999,
+                        background: spec?.color,
+                        color: "var(--on-fill)",
+                        border: "2px solid var(--outline)",
                       }}
                     >
                       +{formatNumber(locale, r.points)}
                     </span>
-                    <time
-                      className="tabular"
-                      dateTime={r.awardedAt}
-                      style={{ fontSize: 12, color: "var(--ink-mute)" }}
-                    >
-                      {new Date(r.awardedAt).toLocaleTimeString(
-                        locale === "ar" ? "ar-SA-u-nu-arab" : "en-US",
-                        { hour: "2-digit", minute: "2-digit" },
-                      )}
+                    <time className="tabular" dateTime={r.awardedAt} style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-mute)" }}>
+                      {new Date(r.awardedAt).toLocaleTimeString(locale === "ar" ? "ar-SA-u-nu-arab" : "en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </time>
                   </div>
                 );
@@ -515,41 +487,60 @@ export default function AwardPanel({
 
       <style
         dangerouslySetInnerHTML={{
-          __html: `@media (max-width: 800px) {
-            .sup-grid { grid-template-columns: minmax(0, 1fr) !important; }
-          }`,
+          __html: `
+            .award-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+            .pick:hover:not([aria-pressed="true"]) { background: var(--surface-alt) !important; }
+            @keyframes float-up { 0% { transform: translateY(0) scale(.7); opacity: 0 } 25% { opacity: 1; transform: translateY(-18px) scale(1.1) } 100% { transform: translateY(-64px) scale(1); opacity: 0 } }
+            .float-up { animation: float-up 1100ms ease-out forwards; }
+            @media (max-width: 1000px) { .award-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+            @media (max-width: 800px) { .sup-grid { grid-template-columns: minmax(0, 1fr) !important; } }
+          `,
         }}
       />
     </main>
   );
 }
 
-function MiniStat({ n, label }: { n: string; label: string }) {
+/** قرص الحرف الأول بحدّ غليظ. */
+function Avatar({ name, fill, size }: { name: string; fill: string; size: number }) {
   return (
-    <div style={{ textAlign: "center" }}>
+    <span
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.32,
+        display: "grid",
+        placeItems: "center",
+        background: fill,
+        border: "3px solid var(--outline)",
+        boxShadow: "var(--pop)",
+        fontFamily: "var(--font-display)",
+        fontWeight: 700,
+        fontSize: size * 0.46,
+        color: "var(--on-fill)",
+        transform: "rotate(-5deg)",
+        flexShrink: 0,
+      }}
+    >
+      {name.trim().charAt(0)}
+    </span>
+  );
+}
+
+function MiniStat({ n, label, fill }: { n: string; label: string; fill: string }) {
+  return (
+    <div
+      className="pop"
+      style={{ textAlign: "center", padding: "6px 14px", borderRadius: 16, background: fill, color: "var(--on-fill)" }}
+    >
       <span
         className="tabular"
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: 22,
-          fontWeight: 700,
-          color: "var(--brand-deep)",
-          display: "block",
-          lineHeight: 1.2,
-        }}
+        style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, display: "block", lineHeight: 1.15 }}
       >
         {n}
       </span>
-      <span
-        style={{
-          fontSize: 11,
-          color: "var(--ink-mute)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {label}
-      </span>
+      <span style={{ fontSize: 12, fontWeight: 700 }}>{label}</span>
     </div>
   );
 }

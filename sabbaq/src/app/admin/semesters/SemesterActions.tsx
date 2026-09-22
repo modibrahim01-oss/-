@@ -1,22 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Card, buttonStyle } from "@/components/ui";
+import { buttonStyle, Card, field } from "@/components/ui";
 import { closeSemester } from "@/lib/actions/admin";
 import { t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import type { Semester } from "@/lib/types";
 
-const field: React.CSSProperties = {
-  font: "inherit",
-  padding: "9px 12px",
-  borderRadius: 9,
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-  color: "var(--ink)",
-  outline: 0,
-  minWidth: 0,
-};
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -195,7 +185,7 @@ export default function SemesterActions({
           />
         </label>
 
-        <button
+        <button className="press"
           type="submit"
           disabled={!canSubmit}
           style={{

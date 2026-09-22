@@ -2,83 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * هوية سبّاق: ألوان فاقعة على أرضية فاتحة، وحبر نيليّ داكن.
+ *
+ * كل لون فاقع يُستعمل **خلفيةً** والنصّ فوقه بالحبر الداكن — لا العكس. الأصفر
+ * والليموني والسماوي فاقعة بما يكفي لتبهج، وهي لهذا بالذات لا تُقرأ نصًّا على
+ * أبيض. أما ألوان النصّ (-deep و -ink و coral) فنسخ داكنة لكل لون، وكلها
+ * محسوبة فوق ٤٫٥:١ على كل سطح تظهر عليه.
+ *
+ * الحواف الغليظة والظلّ الصلب أسفل كل بطاقة وزرّ لغةُ ألعاب الأطفال: العنصر
+ * يبدو قطعةً تُضغط، والضغطة تُنزله فعلًا.
+ */
 :root {
-  --ground: #fbf8ef;
-  --ground-warm: #f6f0e0;
+  --ground: #fffaeb;
+  --ground-warm: #fff4d6;
   --surface: #ffffff;
-  --surface-alt: #fdfbf4;
-  --border: #e1d8bf;
-  --border-soft: #ede5ce;
-  --ink: #1b2f26;
-  --ink-soft: #4c5d53;
-  --ink-mute: #8b9188;
-  --brand: #2e7d52;
-  --brand-deep: #1c6342;
-  --brand-soft: #e6f6dd;
-  --gold: #e0aa33;
-  --gold-soft: #fdf0c8;
-  --grape: #7c4b8b;
-  --grape-soft: #ecdff0;
-  --coral: #c2452d;
-  --coral-soft: #f5d9d0;
-  --sky: #86d5f5;
+  --surface-alt: #fff4d6;
+  --border: #eadfc2;
+  --border-soft: #f3ead2;
+  --outline: #1d1b3a;
+  --ink: #1d1b3a;
+  --ink-soft: #4a4870;
+  --ink-mute: #6b6990;
 
-  --shadow-sm: 0 1px 2px rgba(27, 47, 38, 0.06);
-  --shadow: 0 2px 4px rgba(27, 47, 38, 0.06), 0 8px 20px rgba(27, 47, 38, 0.06);
-  --shadow-lg: 0 12px 40px rgba(27, 47, 38, 0.14);
+  /* ألوان الحشو الفاقعة — النصّ فوقها دائمًا var(--on-fill) */
+  --lime: #7ddc3f;
+  --sun: #ffce1f;
+  --sky: #37c3f4;
+  --berry: #ff4f8b;
+  --grape-fill: #b77cff;
+  --tangerine: #ff8a3d;
+  --mint: #2fd3a6;
+  --coral-fill: #ff5a4e;
+  /* النصّ فوق الحشو الفاقع: داكن في الوضعين، لأن الحشو نفسه فاتح في الوضعين */
+  --on-fill: #1d1b3a;
 
-  /* next/font يعرّف المتغيّرين *-loaded في <html>؛ البدائل تحمي العرض لو
-     لم يُحمّل الخط بعد أو فشل جلبه. */
+  /* الأدوار الدلالية */
+  --brand: var(--lime);
+  --brand-deep: #177424;
+  --brand-soft: #e4fad3;
+  --gold: var(--sun);
+  --gold-ink: #8a5a00;
+  --gold-soft: #fff1b8;
+  --grape: #7a3fd1;
+  --grape-soft: #f1e6ff;
+  --coral: #b8281c;
+  --coral-soft: #ffe1dd;
+
+  /* سماء المشهد ثلاثي الأبعاد: خلفية حاوية المزرعة قبل أول رسم */
+  --scene-sky: #6fd3fb;
+
+  --shadow-sm: 0 1px 2px rgba(29, 27, 58, 0.08);
+  --shadow: 0 6px 22px rgba(29, 27, 58, 0.1);
+  --shadow-lg: 0 16px 44px rgba(29, 27, 58, 0.18);
+  /* الظلّ الصلب: عمق اللعبة. عموديّ فقط فلا يتعلّق باتجاه اللغة */
+  --pop: 0 4px 0 var(--outline);
+  --pop-lg: 0 6px 0 var(--outline);
+
   --font-display: var(--font-display-loaded), "Reem Kufi", system-ui, sans-serif;
   --font-body: var(--font-body-loaded), "Tajawal", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ground: #14201b;
-    --ground-warm: #182722;
-    --surface: #1d2e27;
-    --surface-alt: #24382f;
-    --border: #2e4238;
-    --border-soft: #263831;
-    --ink: #ede5ce;
-    --ink-soft: #b7b29a;
-    --ink-mute: #8b9188;
-    --brand: #6ab489;
-    --brand-deep: #4a9a6d;
-    --brand-soft: #23392e;
-    --gold: #e5b54a;
-    --gold-soft: #3a3020;
-    --grape: #b788c6;
-    --grape-soft: #38293b;
-    --coral: #e97561;
-    --coral-soft: #3b2621;
-    --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
-  }
-}
-
+/*
+ * الوضع الداكن باختيار صريح من زرّ الثيم فقط.
+ *
+ * كان يتبع إعداد الجهاز تلقائيًا، فمن هاتفه على الوضع الليلي يرى الموقع
+ * داكنًا — والمطلوب موقع فاتح فاقع. الفاتح هو الافتراضي للجميع الآن.
+ */
 :root[data-theme="dark"] {
-  --ground: #14201b;
-  --ground-warm: #182722;
-  --surface: #1d2e27;
-  --surface-alt: #24382f;
-  --border: #2e4238;
-  --border-soft: #263831;
-  --ink: #ede5ce;
-  --ink-soft: #b7b29a;
-  --ink-mute: #8b9188;
-  --brand: #6ab489;
-  --brand-deep: #4a9a6d;
-  --brand-soft: #23392e;
-  --gold: #e5b54a;
-  --gold-soft: #3a3020;
-  --grape: #b788c6;
-  --grape-soft: #38293b;
-  --coral: #e97561;
-  --coral-soft: #3b2621;
-  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --ground: #141331;
+  --ground-warm: #1b1a3f;
+  --surface: #1f1e45;
+  --surface-alt: #282757;
+  --border: #37356b;
+  --border-soft: #2d2b5e;
+  --outline: #07061a;
+  --ink: #fdf8ec;
+  --ink-soft: #cfcbe8;
+  --ink-mute: #a8a4cc;
+  --brand-deep: #8fe660;
+  --brand-soft: #22402a;
+  --gold-ink: #ffd95a;
+  --gold-soft: #3d3418;
+  --grape: #cfa6ff;
+  --grape-soft: #35285a;
+  --coral: #ff8a7f;
+  --coral-soft: #452331;
+  --shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -87,7 +98,7 @@
 
 html,
 body {
-  background: var(--ground);
+  background-color: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
 }
@@ -96,6 +107,9 @@ body {
   margin: 0;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  /* ورق منقّط خفيف: ملمس دفتر رسم بدل مساحة مصمتة */
+  background-image: radial-gradient(color-mix(in oklab, var(--sun) 32%, transparent) 1.4px, transparent 1.6px);
+  background-size: 24px 24px;
 }
 
 h1,
@@ -112,8 +126,100 @@ h4 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 3px solid var(--sky);
   outline-offset: 2px;
+}
+
+/* ── قطع قابلة للضغط ─────────────────────────────────────────────────── */
+
+.pop {
+  border: 2.5px solid var(--outline);
+  box-shadow: var(--pop);
+}
+
+.press {
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    filter 120ms ease;
+}
+.press:hover {
+  filter: brightness(1.04) saturate(1.08);
+}
+.press:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--outline);
+}
+.press:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.7) opacity(0.55);
+  transform: none;
+}
+
+.lift {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--pop-lg);
+}
+
+/* ── حركة تُفرح ولا تُتعب ────────────────────────────────────────────── */
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+.bob {
+  animation: bob 3.2s ease-in-out infinite;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.pop-in {
+  animation: pop-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--drift, 40px));
+  }
+}
+
+@keyframes shine {
+  from {
+    background-position: -120% 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -121,6 +227,7 @@ h4 {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

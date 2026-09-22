@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Badge, Card, Td, Th, buttonStyle } from "@/components/ui";
+import { Badge, buttonStyle, Card, field, Td, Th } from "@/components/ui";
 import {
   createSupervisor,
   setSupervisorActive,
@@ -20,16 +20,6 @@ type StaffRow = {
   groupIds: number[];
 };
 
-const field: React.CSSProperties = {
-  font: "inherit",
-  padding: "9px 12px",
-  borderRadius: 9,
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-  color: "var(--ink)",
-  outline: 0,
-  minWidth: 0,
-};
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -177,7 +167,7 @@ export default function SupervisorsManager({
             </fieldset>
           )}
 
-          <button
+          <button className="press"
             type="submit"
             disabled={pending}
             style={{ ...buttonStyle("primary"), justifySelf: "start" }}
@@ -230,7 +220,7 @@ export default function SupervisorsManager({
                             </label>
                           ))}
                         </div>
-                        <button
+                        <button className="press"
                           type="submit"
                           disabled={pending}
                           style={{ ...buttonStyle("primary"), padding: "5px 10px", fontSize: 12 }}
@@ -254,7 +244,7 @@ export default function SupervisorsManager({
                       <form action={(fd) => run(() => setSupervisorActive(fd))}>
                         <input type="hidden" name="id" value={u.id} />
                         <input type="hidden" name="active" value={String(!u.isActive)} />
-                        <button
+                        <button className="press"
                           type="submit"
                           disabled={pending}
                           style={{

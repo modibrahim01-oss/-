@@ -37,17 +37,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header style={topbar}>
         <div style={topbarInner}>
           <Brand locale={locale} href="/admin" />
-          <span style={{ fontSize: 12, color: "var(--ink-mute)" }}>{displayName}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-soft)" }}>{displayName}</span>
           <div style={{ marginInlineStart: "auto", display: "flex", gap: 8, alignItems: "center" }}>
             <Link
               href="/supervisor"
               style={{
                 font: "inherit",
-                fontSize: 13,
-                fontWeight: 500,
+                fontSize: 14,
+                fontWeight: 700,
                 padding: "8px 14px",
                 borderRadius: 999,
-                color: "var(--ink-soft)",
+                color: "var(--ink)",
                 textDecoration: "none",
               }}
             >
@@ -56,7 +56,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LangToggle />
             <ThemeToggle />
             <form action={signOut}>
-              <button type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>
+              <button className="press" type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>
                 {t(locale, "logout")}
               </button>
             </form>
@@ -70,7 +70,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           margin: "0 auto",
           padding: "22px 20px 64px",
           display: "grid",
-          gridTemplateColumns: "220px minmax(0, 1fr)",
+          gridTemplateColumns: "236px minmax(0, 1fr)",
           gap: 22,
           alignItems: "start",
         }}
