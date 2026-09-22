@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/Brand";
 import FarmScene from "@/components/FarmScene";
+import RankBadge from "@/components/RankBadge";
 import { formatNumber, t } from "@/lib/i18n";
 import type { Plant, StudentFarmSummary } from "@/lib/types";
 import { useLocale } from "@/lib/useLocale";
@@ -12,6 +13,25 @@ const SLIDE_MS = 9000;
 // إعادة جلب البيانات كل خمس دقائق: الشاشة تبقى معلّقة أسابيع، ولا بد أن
 // تلتقط نقاط اليوم الجديدة دون أن يلمسها أحد.
 const REFRESH_MS = 5 * 60 * 1000;
+// لوحة الصدارة على الشاشة: ثمانية أسماء تُقرأ من آخر الممرّ، لا اثنا عشر
+const BOARD_SIZE = 8;
+
+/**
+ * بطاقة زجاجية فاتحة فوق المزرعة.
+ *
+ * الشاشة كانت بالوضع الليلي وأشرطة سوداء متدرّجة — عكس ما يطلبه برنامج
+ * تحفيزي فيه فرح. البطاقات الفاتحة تُبقي النصّ مقروءًا فوق السماء والعشب معًا
+ * دون أن تُظلم المشهد.
+ */
+const glass: React.CSSProperties = {
+  background: "color-mix(in oklab, var(--surface) 86%, transparent)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)",
+  borderRadius: 22,
+  boxShadow: "0 10px 30px rgba(20, 60, 90, 0.18)",
+  color: "var(--ink)",
+};
 
 export default function TvCarousel({
   roster,
@@ -58,8 +78,8 @@ export default function TvCarousel({
           minHeight: "100vh",
           display: "grid",
           placeItems: "center",
-          background: "#0a140f",
-          color: "#f0e4c2",
+          background: "linear-gradient(180deg, var(--sky) 0%, var(--ground) 100%)",
+          color: "var(--ink)",
           textAlign: "center",
           padding: 24,
         }}
@@ -67,7 +87,7 @@ export default function TvCarousel({
         <div>
           <BrandMark size={64} />
           <h1 style={{ fontSize: 34, marginTop: 20 }}>{t(locale, "emptyFarm")}</h1>
-          <p style={{ opacity: 0.7, fontSize: 18 }}>{t(locale, "emptyFarmHint")}</p>
+          <p style={{ color: "var(--ink-soft)", fontSize: 18 }}>{t(locale, "emptyFarmHint")}</p>
         </div>
       </div>
     );
@@ -82,27 +102,25 @@ export default function TvCarousel({
       style={{
         position: "fixed",
         inset: 0,
-        background: "#0a140f",
-        color: "#f0e4c2",
+        background: "var(--sky)",
+        color: "var(--ink)",
         overflow: "hidden",
       }}
     >
-      <FarmScene key={current.student_id} plants={plants} cinematic dusk />
+      <FarmScene key={current.student_id} plants={plants} cinematic />
 
       <header
         style={{
           position: "absolute",
-          top: 0,
-          insetInline: 0,
-          padding: "20px 34px",
+          top: 20,
+          insetInline: 28,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "linear-gradient(180deg, rgba(0,0,0,0.55), transparent)",
           zIndex: 2,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ ...glass, display: "flex", alignItems: "center", gap: 12, padding: "10px 18px 10px 12px" }}>
           <BrandMark size={42} />
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 26 }}>
             {t(locale, "appName")}
@@ -110,45 +128,105 @@ export default function TvCarousel({
         </div>
         <span
           className="tabular"
-          style={{ fontFamily: "var(--font-display)", fontSize: 22, opacity: 0.85 }}
+          style={{ ...glass, fontFamily: "var(--font-display)", fontSize: 22, padding: "10px 18px" }}
         >
           {clock}
         </span>
       </header>
 
-      <footer
+      <aside
         style={{
+          ...glass,
           position: "absolute",
-          bottom: 0,
-          insetInline: 0,
-          padding: "26px 34px 32px",
-          background: "linear-gradient(0deg, rgba(0,0,0,0.78), transparent)",
+          top: 104,
+          insetInlineEnd: 28,
+          width: "min(300px, 28vw)",
+          padding: "16px 14px 10px",
           zIndex: 2,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 16,
-            flexWrap: "wrap",
-            fontFamily: "var(--font-display)",
-          }}
-        >
-          <h1 style={{ margin: 0, fontSize: "clamp(28px, 4vw, 46px)", fontWeight: 700 }}>
-            {current.full_name}
-          </h1>
-          <span style={{ fontSize: "clamp(15px, 1.6vw, 20px)", color: "#e5b54a" }}>
-            {groupName}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: 34, marginTop: 12, flexWrap: "wrap" }}>
-          <TvMetric
-            n={formatNumber(locale, current.total_points)}
-            label={t(locale, "totalPoints")}
-          />
-          <TvMetric n={formatNumber(locale, current.plant_count)} label={t(locale, "plants")} />
-          <TvMetric n={`#${formatNumber(locale, index + 1)}`} label={t(locale, "topStudents")} />
+        <h2 style={{ margin: "0 6px 10px", fontSize: 20 }}>{t(locale, "leaders")}</h2>
+        <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {roster.slice(0, BOARD_SIZE).map((s, i) => {
+            const active = i === index;
+            return (
+              <li
+                key={s.student_id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "7px 8px",
+                  borderRadius: 12,
+                  // الطالب المعروض الآن يُضاء في اللوحة، فيربط المشاهد بين
+                  // المزرعة واسم صاحبها وترتيبه
+                  background: active ? "color-mix(in oklab, var(--gold) 26%, transparent)" : "transparent",
+                  transition: "background 400ms ease",
+                }}
+              >
+                <RankBadge rank={i + 1} label={formatNumber(locale, i + 1)} size={28} />
+                <span
+                  style={{
+                    fontWeight: active ? 700 : 500,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {s.full_name}
+                </span>
+                <span
+                  className="tabular"
+                  style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-deep)" }}
+                >
+                  {formatNumber(locale, s.total_points)}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </aside>
+
+      <footer
+        style={{
+          ...glass,
+          position: "absolute",
+          bottom: 28,
+          insetInlineStart: 28,
+          maxWidth: "min(760px, 60vw)",
+          padding: "18px 24px 20px",
+          display: "flex",
+          alignItems: "center",
+          gap: 20,
+          zIndex: 2,
+        }}
+      >
+        <RankBadge rank={index + 1} label={formatNumber(locale, index + 1)} size={64} />
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 14,
+              flexWrap: "wrap",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            <h1 style={{ margin: 0, fontSize: "clamp(28px, 3.6vw, 46px)", fontWeight: 700 }}>
+              {current.full_name}
+            </h1>
+            <span style={{ fontSize: "clamp(15px, 1.6vw, 20px)", color: "var(--brand-deep)", fontWeight: 700 }}>
+              {groupName}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 30, marginTop: 10, flexWrap: "wrap" }}>
+            <TvMetric
+              n={formatNumber(locale, current.total_points)}
+              label={t(locale, "totalPoints")}
+            />
+            <TvMetric n={formatNumber(locale, current.plant_count)} label={t(locale, "plants")} />
+          </div>
         </div>
       </footer>
 
@@ -157,8 +235,8 @@ export default function TvCarousel({
           position: "absolute",
           bottom: 0,
           insetInline: 0,
-          height: 3,
-          background: "rgba(255,255,255,0.15)",
+          height: 5,
+          background: "color-mix(in oklab, var(--surface) 55%, transparent)",
           zIndex: 3,
         }}
       >
@@ -166,7 +244,7 @@ export default function TvCarousel({
           key={index}
           style={{
             height: "100%",
-            background: "#e5b54a",
+            background: "var(--gold)",
             animation: `tvSlide ${SLIDE_MS}ms linear forwards`,
           }}
         />
@@ -199,8 +277,8 @@ function TvMetric({ n, label }: { n: string; label: string }) {
       </span>
       <span
         style={{
-          fontSize: 12,
-          opacity: 0.72,
+          fontSize: 13,
+          color: "var(--ink-soft)",
           textTransform: "uppercase",
           letterSpacing: "0.05em",
           marginTop: 5,

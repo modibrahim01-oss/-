@@ -50,7 +50,7 @@ export default async function LoginPage({
             textDecoration: "none",
           }}
         >
-          ← {t(locale, "findYourFarm")}
+          {locale === "ar" ? "→" : "←"} {t(locale, "findYourFarm")}
         </Link>
       </main>
     </>

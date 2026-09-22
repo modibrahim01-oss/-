@@ -27,7 +27,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#2f6f4e",
+  // شريط المتصفح على الجوّال بلون الصفحة نفسها: الأخضر الغامق السابق كان
+  // يضع شريطًا قاتمًا فوق واجهة فاتحة
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbf8ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#14201b" },
+  ],
 };
 
 /**

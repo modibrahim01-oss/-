@@ -76,13 +76,21 @@ export default function StudentSearch({ groups }: { groups: Group[] }) {
 
   return (
     <div>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `.search-bar { border-radius: 999px; }
+            @media (max-width: 520px) { .search-bar { border-radius: 18px; } }`,
+        }}
+      />
+      {/* حبّة دائرية في سطر واحد؛ حين تنكسر إلى سطرين على الجوّال يصير نصف
+          القطر الكامل شكلًا بيضويًا، فيُقلَّص هناك إلى زوايا مستديرة */}
       <div
+        className="search-bar"
         style={{
           display: "flex",
           gap: 8,
           background: "var(--surface)",
           padding: 6,
-          borderRadius: 999,
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-sm)",
           maxWidth: 520,

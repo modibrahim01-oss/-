@@ -1,4 +1,4 @@
-import HomeView from "@/components/HomeView";
+import HomeView, { type Standing } from "@/components/HomeView";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Group } from "@/lib/types";
 
@@ -14,15 +14,30 @@ export const revalidate = 60;
 export default async function HomePage() {
   const supabase = createPublicClient();
 
-  const [{ data: groups }, { data: counts }] = await Promise.all([
+  // student_farms يعطي الطلاب النشطين ونقاطهم في الفصل النشط دفعةً واحدة:
+  // منه يُحسب عدد طلاب كل مجموعة، ومجموع نقاطها، والمتصدّرون.
+  const [{ data: groups }, { data: farms }] = await Promise.all([
     supabase.from("groups").select("*").order("sort_order"),
-    supabase.from("students").select("group_id").eq("is_active", true),
+    supabase
+      .from("student_farms")
+      .select("student_id, full_name, group_id, group_name_ar, group_name_en, total_points")
+      .order("total_points", { ascending: false }),
   ]);
 
+  const rows = (farms ?? []) as Standing[];
   const studentCounts: Record<number, number> = {};
-  for (const row of counts ?? []) {
+  const groupPoints: Record<number, number> = {};
+  for (const row of rows) {
     studentCounts[row.group_id] = (studentCounts[row.group_id] ?? 0) + 1;
+    groupPoints[row.group_id] = (groupPoints[row.group_id] ?? 0) + row.total_points;
   }
 
-  return <HomeView groups={(groups ?? []) as Group[]} studentCounts={studentCounts} />;
+  return (
+    <HomeView
+      groups={(groups ?? []) as Group[]}
+      studentCounts={studentCounts}
+      groupPoints={groupPoints}
+      leaders={rows.filter((r) => r.total_points > 0).slice(0, 5)}
+    />
+  );
 }

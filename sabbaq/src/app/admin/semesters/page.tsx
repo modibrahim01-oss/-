@@ -36,7 +36,7 @@ export default async function SemestersPage() {
         <h1 style={{ fontSize: 26, margin: 0 }}>{t(locale, "semesters")}</h1>
         <p style={{ color: "var(--ink-mute)", fontSize: 13, margin: "4px 0 0" }}>
           {active
-            ? `${locale === "ar" ? active.name_ar : active.name_en} · ${active.start_date} → ${active.end_date}`
+            ? `${locale === "ar" ? active.name_ar : active.name_en} · ${active.start_date} ${locale === "ar" ? "←" : "→"} ${active.end_date}`
             : locale === "ar"
               ? "لا يوجد فصل نشط — لن تُقبل أي نقاط حتى تُنشئ واحدًا."
               : "No active semester — awards are rejected until one exists."}
