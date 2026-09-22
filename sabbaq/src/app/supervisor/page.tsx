@@ -65,15 +65,23 @@ export default async function SupervisorPage() {
 
   const groupIds = scopedGroups.map((g) => g.id);
 
-  let studentsQuery = supabase
-    .from("student_farms")
-    .select("*")
-    .order("full_name")
-    .limit(600);
-  if (staff.role === "group_supervisor" && groupIds.length > 0) {
-    studentsQuery = studentsQuery.in("group_id", groupIds);
+  // مشرف مجموعة بلا إسناد نطاقه فارغ لا مفتوح: تخطّي المرشِّح عند
+  // groupIds.length === 0 كان يُرجع طلاب المدرسة كلهم في قائمته.
+  const scopeIsEmpty = staff.role === "group_supervisor" && groupIds.length === 0;
+
+  let students: StudentFarmSummary[] = [];
+  if (!scopeIsEmpty) {
+    let studentsQuery = supabase
+      .from("student_farms")
+      .select("*")
+      .order("full_name")
+      .limit(600);
+    if (staff.role === "group_supervisor") {
+      studentsQuery = studentsQuery.in("group_id", groupIds);
+    }
+    const { data } = await studentsQuery;
+    students = (data ?? []) as StudentFarmSummary[];
   }
-  const { data: students } = await studentsQuery;
 
   const [status, { data: todayRows }] = await Promise.all([
     fetchDailyStatus(),
@@ -144,7 +152,7 @@ export default async function SupervisorPage() {
             ? scopedGroups.map((g) => (locale === "ar" ? g.name_ar : g.name_en)).join(" · ")
             : t(locale, "allGroupsScope")
         }
-        students={(students ?? []) as StudentFarmSummary[]}
+        students={students}
         initialStatus={status}
         initialRecent={recent}
       />

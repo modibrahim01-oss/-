@@ -83,7 +83,7 @@ export default function FarmScene({
     const playHalf = playHalfFor(maxRing);
 
     const scene = new THREE.Scene();
-    buildTerrain(scene, dusk ? PALETTES.dusk : PALETTES.day, playHalf);
+    const disposeTerrain = buildTerrain(scene, dusk ? PALETTES.dusk : PALETTES.day, playHalf);
 
     const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
     let zoom = 1;
@@ -325,9 +325,13 @@ export default function FarmScene({
       renderer.domElement.removeEventListener("wheel", onWheel);
       apiRef.current = null;
       drawn.clear();
-      // الهندسات والموادّ مُشتركة عبر lib/plants ولا تُتلَف هنا؛ نتلف الـ
-      // renderer وحده وإلا فقدت المشاهد اللاحقة موادّها.
+      // هندسات النبتات وموادّها مُشتركة عبر lib/plants ولا تُتلَف هنا وإلا
+      // فقدتها المشاهد اللاحقة. موارد الأرضية خاصّة بهذا المشهد فتُتلَف.
+      disposeTerrain();
       renderer.dispose();
+      // dispose وحده لا يُنهي سياق WebGL. وضع العرض يعيد بناء المشهد لكل
+      // طالب، فبدون هذا تتكدّس السياقات حتى يُسقط المتصفح أقدمها وتُظلم الشاشة.
+      renderer.forceContextLoss();
       host.removeChild(renderer.domElement);
     };
     // المشهد يُبنى مرة واحدة؛ تغيّر النبتات يُعالَج في الـ effect التالي عبر

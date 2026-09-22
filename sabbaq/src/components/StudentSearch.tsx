@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { normalizeArabic } from "@/lib/arabic";
 import type { Locale } from "@/lib/i18n";
 import { formatNumber, t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +47,13 @@ export default function StudentSearch({
         .limit(40);
 
       if (groupId !== "all") q = q.eq("group_id", groupId);
-      if (trimmed.length >= 2) q = q.ilike("full_name", `%${trimmed}%`);
+      // البحث على search_name لا على full_name: العمود مطبَّع في القاعدة
+      // (بلا تشكيل وبهمزات موحّدة) وعليه فهرس trigram، فـ "احمد" تجد "أحمد".
+      // `%` و `_` تُهرَّب وإلا صارت محارف بدل أن تكون نصًّا يبحث عنه المستخدم.
+      if (trimmed.length >= 2) {
+        const needle = normalizeArabic(trimmed).replace(/[\\%_]/g, "\\$&");
+        q = q.ilike("search_name", `%${needle}%`);
+      }
 
       const { data, error } = await q;
       // نتيجة قديمة وصلت بعد أحدث منها — نتجاهلها وإلا ارتدّت القائمة للخلف

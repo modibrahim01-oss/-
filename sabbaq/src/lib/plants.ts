@@ -281,13 +281,30 @@ export const PALETTES: Record<"day" | "dusk", ScenePalette> = {
   dusk: { sky: 0x2a5b7a, grassA: 0x3f8250, grassB: 0x357045, wall: 0x4a3c28, wallCap: 0x6b573c },
 };
 
-/** يبني الأرضية والجدار الحجري والزخارف — كل ما ليس نبتة. */
-export function buildTerrain(scene: THREE.Scene, palette: ScenePalette, playHalf: number) {
+/**
+ * يبني الأرضية والجدار الحجري والزخارف — كل ما ليس نبتة.
+ *
+ * الهندسات والموادّ هنا خاصّة بهذا المشهد (لونها من اللوحة وحجمها من امتداد
+ * المزرعة) لا مشتركة كتلك في `geo`/`mat`، فتُعاد الدالة بمُتلِفها: وضع العرض
+ * يعيد بناء المشهد لكل طالب كل تسع ثوان، وبلا إتلاف تتكدّس مواردها في ذاكرة
+ * كرت الرسم حتى تتوقّف الشاشة المعلّقة عن العرض بعد ساعات.
+ */
+export function buildTerrain(
+  scene: THREE.Scene,
+  palette: ScenePalette,
+  playHalf: number,
+): () => void {
   scene.background = new THREE.Color(palette.sky);
 
-  const grassA = new THREE.MeshStandardMaterial({ color: palette.grassA, roughness: 0.9 });
-  const grassB = new THREE.MeshStandardMaterial({ color: palette.grassB, roughness: 0.9 });
-  const tileGeo = new THREE.BoxGeometry(TILE, 0.1, TILE);
+  const owned: { dispose: () => void }[] = [];
+  function own<T extends { dispose: () => void }>(resource: T): T {
+    owned.push(resource);
+    return resource;
+  }
+
+  const grassA = own(new THREE.MeshStandardMaterial({ color: palette.grassA, roughness: 0.9 }));
+  const grassB = own(new THREE.MeshStandardMaterial({ color: palette.grassB, roughness: 0.9 }));
+  const tileGeo = own(new THREE.BoxGeometry(TILE, 0.1, TILE));
 
   for (let ix = -playHalf; ix < playHalf; ix++) {
     for (let iz = -playHalf; iz < playHalf; iz++) {
@@ -298,15 +315,19 @@ export function buildTerrain(scene: THREE.Scene, palette: ScenePalette, playHalf
     }
   }
 
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: palette.wall,
-    roughness: 0.85,
-    flatShading: true,
-  });
-  const capMat = new THREE.MeshStandardMaterial({ color: palette.wallCap, roughness: 0.85 });
+  const wallMat = own(
+    new THREE.MeshStandardMaterial({
+      color: palette.wall,
+      roughness: 0.85,
+      flatShading: true,
+    }),
+  );
+  const capMat = own(
+    new THREE.MeshStandardMaterial({ color: palette.wallCap, roughness: 0.85 }),
+  );
   const wallH = 0.55;
-  const wallGeo = new THREE.BoxGeometry(TILE * 0.95, wallH, TILE * 0.95);
-  const capGeo = new THREE.BoxGeometry(TILE * 0.75, 0.12, TILE * 0.75);
+  const wallGeo = own(new THREE.BoxGeometry(TILE * 0.95, wallH, TILE * 0.95));
+  const capGeo = own(new THREE.BoxGeometry(TILE * 0.75, 0.12, TILE * 0.75));
   const edge = playHalf * TILE;
 
   for (let i = -playHalf; i < playHalf; i++) {
@@ -355,7 +376,8 @@ export function buildTerrain(scene: THREE.Scene, palette: ScenePalette, playHalf
   scene.add(new THREE.AmbientLight(0xffffff, 0.55));
   scene.add(new THREE.HemisphereLight(0xc7e9ff, 0x6b5a3a, 0.35));
 
-  const sun = new THREE.DirectionalLight(0xfff2c8, 0.95);
+  // الضوء الموجَّه يملك خريطة ظلّ على كرت الرسم — dispose يحرّرها
+  const sun = own(new THREE.DirectionalLight(0xfff2c8, 0.95));
   sun.position.set(-14, 26, 10);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -368,6 +390,11 @@ export function buildTerrain(scene: THREE.Scene, palette: ScenePalette, playHalf
   sun.shadow.camera.far = 70;
   sun.shadow.bias = -0.0005;
   scene.add(sun);
+
+  return () => {
+    for (const resource of owned) resource.dispose();
+    owned.length = 0;
+  };
 }
 
 /** إحداثيات الشبكة → موضع عالمي في مركز البلاطة. */

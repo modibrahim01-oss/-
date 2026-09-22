@@ -76,11 +76,19 @@ npm run preflight   # يتأكّد أن القاعدة مُهيّأة كما ي�
 `user_metadata`:
 
 ```json
-{ "full_name_ar": "اسم المدير", "role": "admin" }
+{ "full_name_ar": "اسم المدير" }
 ```
 
-الـ trigger في `0004_seed.sql` ينشئ صفّه في `public.users` تلقائيًا. بعدها
-يستطيع المدير إنشاء بقية الحسابات من شاشة **المشرفون**.
+الـ trigger في `0004_seed.sql` ينشئ صفّه في `public.users` تلقائيًا بدور
+`group_supervisor`. الدور لا يُقرأ من `user_metadata` عن قصد: المفتاح العام
+في متناول أي زائر، فلو قُرئ منها لسجّل نفسه مديرًا. رقِّه بسطر SQL واحد:
+
+```sql
+update public.users set role = 'admin'
+ where id = (select id from auth.users where email = 'admin@example.com');
+```
+
+بعدها يستطيع المدير إنشاء بقية الحسابات من شاشة **المشرفون**.
 
 ---
 

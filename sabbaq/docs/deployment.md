@@ -57,7 +57,17 @@ select
 ثم افتح المستخدم ← **User Metadata** ← والصق:
 
 ```json
-{ "full_name_ar": "اسم المدير", "role": "admin" }
+{ "full_name_ar": "اسم المدير" }
+```
+
+الـ trigger ينشئ صفّه في `public.users` بدور `group_supervisor`. الدور لا
+يُقرأ من `user_metadata` عن قصد — المفتاح العام موجود في حزمة المتصفح، ومن
+يملكه يستطيع التسجيل ببيانات وصفية من اختياره — فالترقية تُصنع هنا، في
+**SQL Editor**، مرة واحدة:
+
+```sql
+update public.users set role = 'admin'
+ where id = (select id from auth.users where email = 'البريد الذي أنشأته');
 ```
 
 > إن أنشأت الحساب **قبل** تنفيذ الملف `0004_seed.sql` فلن يُنشأ صفّه في

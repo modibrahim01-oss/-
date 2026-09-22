@@ -43,6 +43,8 @@ export type Student = {
 export type StudentFarmSummary = {
   student_id: string;
   full_name: string;
+  /** الاسم المطبَّع الذي يبحث عليه مربّع البحث العام */
+  search_name: string;
   group_id: number;
   group_code: string;
   group_name_ar: string;

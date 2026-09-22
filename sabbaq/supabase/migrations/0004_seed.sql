@@ -24,8 +24,13 @@ select 'الفصل الأول', 'Semester 1', current_date, current_date + 90, t
 where not exists (select 1 from semesters);
 
 -- ── إنشاء صف users تلقائيًا لكل حساب auth جديد ────────────────────────────
--- المدير يُنشئ حسابات المشرفين عبر Supabase Auth مع user_metadata:
---   { "full_name_ar": "سعد الغامدي", "role": "group_supervisor" }
+-- المدير يُنشئ حسابات المشرفين من لوحته، ثم يُسند الدور في خطوة تالية.
+--
+-- الدور لا يُقرأ من user_metadata عن قصد: المفتاح العام موجود في حزمة
+-- المتصفح، ومن يملكه يستطيع نداء /auth/v1/signup ويضع في البيانات الوصفية
+-- ما يشاء. لو قرأنا الدور منها لصار بوسع أي زائر أن يسجّل نفسه 'admin'
+-- فيحصل على كل صلاحيات RLS. الدور يُضبَط دائمًا هنا على الأدنى، وتغييره
+-- يمرّ بسياسة users_admin_write — أي بمدير موجود سلفًا.
 create or replace function handle_new_auth_user()
 returns trigger
 language plpgsql
@@ -38,7 +43,7 @@ begin
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name_ar', new.email),
     new.raw_user_meta_data->>'full_name_en',
-    coalesce((new.raw_user_meta_data->>'role')::user_role, 'group_supervisor')
+    'group_supervisor'
   )
   on conflict (id) do nothing;
   return new;

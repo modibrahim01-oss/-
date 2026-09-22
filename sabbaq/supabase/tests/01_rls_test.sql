@@ -63,8 +63,9 @@ insert into semesters (name_ar, name_en, start_date, end_date, is_active)
 values ('فصل الاختبار', 'Test semester', current_date, current_date + 90, true);
 
 -- الإدراج في auth.users وحده: trigger handle_new_auth_user ينشئ صف
--- public.users من user_metadata. هذا هو المسار الحقيقي في الإنتاج، فنختبره
--- بدل أن نُدرج الصفوف يدويًا.
+-- public.users. هذا هو المسار الحقيقي في الإنتاج، فنختبره بدل أن نُدرج
+-- الصفوف يدويًا. البيانات الوصفية تحمل دورًا مزوّرًا عن قصد: المفتاح العام
+-- في متناول أي زائر، والـ trigger يجب أن يتجاهل ما يضعه فيها.
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-1111-1111-111111111111', 'admin@test',
    '{"full_name_ar":"المدير","role":"admin"}'),
@@ -73,18 +74,26 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('33333333-3333-3333-3333-333333333333', 'gsup-qabas@test',
    '{"full_name_ar":"مشرف قبس","role":"group_supervisor"}'),
   ('44444444-4444-4444-4444-444444444444', 'committee@test',
-   '{"full_name_ar":"مشرف اللجنة","role":"committee_supervisor"}');
+   '{"full_name_ar":"مشرف اللجنة","role":"admin"}');
 
 do $$
 begin
   perform assert(
     (select count(*) from users) = 4,
     '0a. auth trigger created a public.users row for every new account');
+  -- الضمانة الأمنية: لا ترقية ذاتية. من يسجّل نفسه بـ role=admin في
+  -- user_metadata يخرج مشرف مجموعة، فترقيته تحتاج مديرًا موجودًا سلفًا.
   perform assert(
-    (select role from users where id = '11111111-1111-1111-1111-111111111111') = 'admin',
-    '0b. auth trigger read the role out of user_metadata');
+    (select count(*) from users where role <> 'group_supervisor') = 0,
+    '0b. auth trigger IGNORES the role in user_metadata — no self-promotion');
 end;
 $$;
+
+-- الأدوار تُسند بعد الإنشاء، كما تفعل لوحة المدير (سياسة users_admin_write)
+update users set role = 'admin'
+ where id = '11111111-1111-1111-1111-111111111111';
+update users set role = 'committee_supervisor'
+ where id = '44444444-4444-4444-4444-444444444444';
 
 -- مشرف (أ) على باسل ١ (id=4)، مشرف (ب) على قبس (id=1)
 insert into supervisor_groups (supervisor_id, group_id) values
@@ -402,6 +411,30 @@ begin
   select count(*) into v_count from audit_log;
   reset role;
   perform assert(v_count > 0, '13b. admin sees the audit trail');
+end;
+$$;
+
+-- ── 13c/13d. الكتابة في السجل: المدير فقط، وباسمه ────────────────────────
+-- إجراءات لوحة المدير تسجّل الأثر بعميل المستخدم لا بدالة SECURITY DEFINER،
+-- فلا بد من سياسة إدراج. غيابها كان يُسقط كل سطر أثر بصمت.
+do $$
+declare v_err text;
+begin
+  v_err := try_as('22222222-2222-2222-2222-222222222222', $q$
+    set local role authenticated;
+    insert into audit_log (actor_id, action, entity)
+    values ('22222222-2222-2222-2222-222222222222', 'forged', 'students');
+  $q$);
+  reset role;
+  perform assert(v_err is not null, '13c. supervisor CANNOT write to the audit log');
+
+  v_err := try_as('11111111-1111-1111-1111-111111111111', $q$
+    set local role authenticated;
+    insert into audit_log (actor_id, action, entity)
+    values ('11111111-1111-1111-1111-111111111111', 'deactivate_student', 'students');
+  $q$);
+  reset role;
+  perform assert(v_err is null, '13d. admin CAN write to the audit log');
 end;
 $$;
 

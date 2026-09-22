@@ -27,6 +27,9 @@ export default async function TvPage() {
 
   const farms: Record<string, Plant[]> = {};
   if (roster.length > 0) {
+    // التصفية بالفصل النشط إلزامية: خانات الحلزون تُعاد للصفر عند بدء فصل
+    // جديد، فبدونها ترسم الشاشة نبتات الفصل الماضي فوق نبتات الفصل الحالي
+    // على نفس الإحداثيات — وتخالف الأعداد التي يعرضها student_farms.
     const { data: ledger } = await supabase
       .from("points_ledger")
       .select("student_id, slot_index, grid_x, grid_y, tier, points, awarded_at")
@@ -34,6 +37,7 @@ export default async function TvPage() {
         "student_id",
         roster.map((r) => r.student_id),
       )
+      .eq("semester_id", roster[0].semester_id)
       .is("revoked_at", null)
       .order("slot_index");
 

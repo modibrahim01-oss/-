@@ -82,9 +82,16 @@ create policy ledger_admin_write on points_ledger
 create policy archives_admin_all on semester_archives
   for all using (is_admin()) with check (is_admin());
 
--- ── سجل التدقيق: المدير فقط يقرأ، ولا أحد يعدّل أو يحذف ──────────────────
+-- ── سجل التدقيق: المدير فقط يقرأ ويكتب، ولا أحد يعدّل أو يحذف ────────────
 create policy audit_read_admin on audit_log
   for select using (is_admin());
+
+-- الكتابة لازمة: إجراءات المدير في lib/actions/admin.ts تسجّل هنا بعميل
+-- المستخدم لا بدالة SECURITY DEFINER، فبدون سياسة إدراج تُرفض كل أسطرها
+-- بصمت — الإجراء ينجح والأثر لا يُكتب. actor_id مقيَّد بالمنفِّذ نفسه حتى
+-- لا يُسجَّل أثر باسم غيره، ولا سياسة update أو delete: السجل append-only.
+create policy audit_insert_admin on audit_log
+  for insert with check (is_admin() and actor_id = auth.uid());
 
 -- ── صلاحيات الجداول على مستوى GRANT ──────────────────────────────────────
 -- RLS لا يعمل إلا إذا كان الدور يملك GRANT أصلًا. نمنح anon القراءة على ما
@@ -98,6 +105,10 @@ grant select on semester_archives, audit_log to authenticated;
 grant insert, update, delete on groups, semesters, students, users,
   supervisor_groups, daily_limits, points_ledger, semester_archives to authenticated;
 
+-- إدراج فقط على سجل التدقيق: RLS تحصره على المدير، وغياب update/delete هنا
+-- يجعل السجل append-only على مستوى الصلاحيات أيضًا لا بالسياسة وحدها.
+grant insert on audit_log to authenticated;
+
 grant usage, select on sequence points_ledger_id_seq to authenticated;
 grant usage, select on sequence audit_log_id_seq to authenticated;
 
@@ -107,6 +118,9 @@ grant usage, select on sequence audit_log_id_seq to authenticated;
 create view student_farms with (security_invoker = true) as
   select s.id                                as student_id,
          s.full_name,
+         -- الاسم المُطبَّع يُعرَض للبحث: مربّع البحث العام يستعلم عليه لا على
+         -- full_name، وإلا لم يجد "احمد" الطالب "أحمد".
+         s.search_name,
          s.group_id,
          g.code                              as group_code,
          g.name_ar                           as group_name_ar,
@@ -123,7 +137,7 @@ create view student_farms with (security_invoker = true) as
           and l.semester_id = sem.id
           and l.revoked_at is null
    where s.is_active
-   group by s.id, s.full_name, s.group_id, g.code, g.name_ar, g.name_en,
-            s.grade, sem.id;
+   group by s.id, s.full_name, s.search_name, s.group_id, g.code, g.name_ar,
+            g.name_en, s.grade, sem.id;
 
 grant select on student_farms to anon, authenticated;

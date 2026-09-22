@@ -195,19 +195,28 @@ export async function createSupervisor(formData: FormData): Promise<ActionResult
     user_metadata: {
       full_name_ar: parsed.data.fullNameAr,
       full_name_en: parsed.data.fullNameEn || null,
-      role: parsed.data.role,
     },
   });
   if (authError || !created.user) return { ok: false, error: authError?.message ?? "auth_failed" };
 
+  // الدور يُضبَط هنا بعميل المدير لا في user_metadata: الـ trigger يتجاهل
+  // البيانات الوصفية عن قصد حتى لا يستطيع أي مُسجِّل أن يمنح نفسه 'admin'.
+  // هذه الكتابة تمرّ بسياسة users_admin_write، أي أن المُستدعي مدير فعلًا.
+  const { error: roleError } = await auth.supabase
+    .from("users")
+    .update({ role: parsed.data.role })
+    .eq("id", created.user.id);
+  if (roleError) return { ok: false, error: roleError.message };
+
   // trigger handle_new_auth_user أنشأ صف users؛ نُسند المجموعات فوقه
   if (parsed.data.role === "group_supervisor" && parsed.data.groupIds.length > 0) {
-    await auth.supabase.from("supervisor_groups").insert(
+    const { error: groupsError } = await auth.supabase.from("supervisor_groups").insert(
       parsed.data.groupIds.map((gid) => ({
         supervisor_id: created.user.id,
         group_id: gid,
       })),
     );
+    if (groupsError) return { ok: false, error: groupsError.message };
   }
 
   await auth.supabase.from("audit_log").insert({

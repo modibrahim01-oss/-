@@ -11,18 +11,27 @@ export default async function AdminOverview() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const [{ data: semester }, { count: studentCount }, { data: todayPoints }, { data: farms }, { data: staff }] =
-    await Promise.all([
-      supabase.from("semesters").select("*").eq("is_active", true).maybeSingle(),
-      supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
-      supabase
-        .from("points_ledger")
-        .select("points, supervisor_id")
-        .is("revoked_at", null)
-        .gte("awarded_at", startOfToday.toISOString()),
-      supabase.from("student_farms").select("*").order("total_points", { ascending: false }).limit(10),
-      supabase.from("users").select("id, role, is_active").eq("is_active", true),
-    ]);
+  const [
+    { data: semester },
+    { count: studentCount },
+    { data: todayPoints },
+    { data: farms },
+    { data: staff },
+    { data: groupTotals },
+  ] = await Promise.all([
+    supabase.from("semesters").select("*").eq("is_active", true).maybeSingle(),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase
+      .from("points_ledger")
+      .select("points, supervisor_id")
+      .is("revoked_at", null)
+      .gte("awarded_at", startOfToday.toISOString()),
+    supabase.from("student_farms").select("*").order("total_points", { ascending: false }).limit(10),
+    supabase.from("users").select("id, role, is_active").eq("is_active", true),
+    // «أعلى مجموعة» تحتاج كل الطلاب لا العشرة الأوائل: مجموعة من متوسّطين
+    // كثيرين تتقدّم على مجموعة فيها متصدّر واحد، وهذا لا يظهر في قائمة مقصوصة.
+    supabase.from("student_farms").select("group_name_ar, group_name_en, total_points"),
+  ]);
 
   const pointsToday = (todayPoints ?? []).reduce((sum, r) => sum + (r.points as number), 0);
   const activeToday = new Set((todayPoints ?? []).map((r) => r.supervisor_id)).size;
@@ -30,11 +39,11 @@ export default async function AdminOverview() {
 
   const top = (farms ?? []) as StudentFarmSummary[];
 
-  // أعلى مجموعة بمجموع نقاط أعضائها
+  // أعلى مجموعة بمجموع نقاط أعضائها — على كل الطلاب
   const byGroup = new Map<string, number>();
-  for (const f of top) {
-    const key = locale === "ar" ? f.group_name_ar : f.group_name_en;
-    byGroup.set(key, (byGroup.get(key) ?? 0) + f.total_points);
+  for (const f of groupTotals ?? []) {
+    const key = (locale === "ar" ? f.group_name_ar : f.group_name_en) as string;
+    byGroup.set(key, (byGroup.get(key) ?? 0) + (f.total_points as number));
   }
   const topGroup = [...byGroup.entries()].sort((a, b) => b[1] - a[1])[0];
 

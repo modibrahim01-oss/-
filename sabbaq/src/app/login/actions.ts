@@ -30,9 +30,11 @@ export async function signIn(_prev: { error?: string } | null, formData: FormDat
   if (error) return { error: "invalid" };
 
   // مسار العودة يُقبل فقط إن كان مسارًا داخليًا. بدون هذا القيد يصبح
-  // ?next=https://... تحويلًا مفتوحًا يُستغل في التصيّد.
+  // ?next=https://... تحويلًا مفتوحًا يُستغل في التصيّد. المحرف الثاني يُفحص
+  // لا `//` وحدها: المتصفحات تطبّع `/\evil.com` إلى رابط بروتوكول-نسبي أيضًا.
   const target = parsed.data.next;
-  const safe = target && target.startsWith("/") && !target.startsWith("//") ? target : "/supervisor";
+  const safe =
+    target && /^\/(?![/\\])/.test(target) ? target : "/supervisor";
   redirect(safe);
 }
 

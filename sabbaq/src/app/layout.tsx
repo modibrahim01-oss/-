@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Reem_Kufi, Tajawal } from "next/font/google";
+import { dirOf } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 import "./globals.css";
 
 // خطوط مُستضافة ذاتيًا: لا طلب لجوجل وقت التشغيل ولا انزياح تخطيط عند
@@ -29,9 +31,18 @@ export const viewport: Viewport = {
   themeColor: "#2f6f4e",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // اللغة والاتجاه يتبعان كوكي اللغة. تثبيتهما على العربية كان يترك واجهة
+  // الإنجليزية كلها من اليمين لليسار وبلغة خاطئة لقارئات الشاشة، بينما كل
+  // صفحة تترجم نصوصها فعلًا. الصفحات تقرأ الكوكي أصلًا، فلا تخزين يُفقد هنا.
+  const locale = await getLocale();
+
   return (
-    <html lang="ar" dir="rtl" className={`${display.variable} ${body.variable}`}>
+    <html
+      lang={locale}
+      dir={dirOf(locale)}
+      className={`${display.variable} ${body.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

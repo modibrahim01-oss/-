@@ -12,9 +12,20 @@ import type { Group } from "@/lib/types";
 // يمنع كل مشاهد من أن يصبح استعلامًا على قاعدة البيانات.
 export const revalidate = 60;
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ group?: string }>;
+}) {
   const locale = await getLocale();
   const supabase = await createClient();
+
+  // بطاقات المجموعات تربط إلى ‎/?group=N‎ — نقرأ المعامل هنا، وإلا كان النقر
+  // عليها لا يفعل شيئًا لأن مربّع البحث يبدأ دائمًا على «كل المجموعات».
+  const { group } = await searchParams;
+  const requestedGroup = Number(group);
+  const initialGroupId =
+    Number.isInteger(requestedGroup) && requestedGroup > 0 ? requestedGroup : undefined;
 
   const [{ data: groups }, { data: counts }] = await Promise.all([
     supabase.from("groups").select("*").order("sort_order"),
@@ -97,7 +108,7 @@ export default async function HomePage() {
           >
             {t(locale, "publicIntro")}
           </p>
-          <StudentSearch locale={locale} groups={groupList} />
+          <StudentSearch locale={locale} groups={groupList} initialGroupId={initialGroupId} />
         </section>
 
         <section style={{ marginTop: 40 }}>

@@ -38,12 +38,16 @@ psql -d "$DB" -v ON_ERROR_STOP=1 \
 
 echo ""
 echo "▸ التحقّق من البيانات التجريبية"
-# البذر يحتاج حساب مدير — ننشئه عبر نفس مسار الإنتاج (trigger على auth.users)
+# البذر يحتاج حساب مدير — ننشئه عبر نفس مسار الإنتاج: trigger على auth.users
+# ينشئ الصف بأدنى دور، ثم يُرقّى بـ SQL. الـ trigger يتجاهل الدور في
+# user_metadata عن قصد، وإلا لرقّى أي زائر نفسه بمفتاح المتصفح العام.
 psql -q -d "$DB" -v ON_ERROR_STOP=1 -c "
 insert into auth.users (id, email, raw_user_meta_data) values
   ('99999999-9999-9999-9999-999999999999','seed-admin@test',
-   '{\"full_name_ar\":\"مدير البذر\",\"role\":\"admin\"}')
-on conflict (id) do nothing;"
+   '{\"full_name_ar\":\"مدير البذر\"}')
+on conflict (id) do nothing;
+update users set role = 'admin'
+ where id = '99999999-9999-9999-9999-999999999999';"
 psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$HERE/supabase/seed/demo.sql" > /dev/null
 
 # البذر يكتب في points_ledger مباشرة، فلا بد أن يتطابق مع ما تحسبه الدالة —
