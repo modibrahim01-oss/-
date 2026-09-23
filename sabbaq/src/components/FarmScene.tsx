@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   PALETTES,
@@ -65,6 +65,12 @@ export default function FarmScene({
   style,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  // يُزاد لإعادة بناء المشهد كاملًا حين لا تكفي الإضافة: نبتات قائمة انتقلت
+  // من خاناتها، أو مزرعة تجاوزت سورها
+  const [epoch, setEpoch] = useState(0);
+  // النبتات المرسومة قبل إعادة البناء: ما سواها جديد فيكبر أمام الطالب كما
+  // في الإضافة العادية، ولا يظهر فجأة لأن المشهد أُعيد بناؤه
+  const keptRef = useRef<Set<number> | null>(null);
   // آخر مجموعة نبتات مرسومة — نقارن بها لنُضيف الجديد فقط بدل إعادة البناء
   const drawnRef = useRef<Map<number, THREE.Object3D>>(new Map());
   const apiRef = useRef<{
@@ -144,6 +150,7 @@ export default function FarmScene({
         // buildPlant يعطي كل نبتة حجمًا مختلفًا قليلًا؛ يُحفَظ هنا لأن حركة
         // النموّ تكتب على scale، فبدونه تعود كل نبتة إلى حجم واحد بعد نموّها
         group.userData.baseScale = group.scale.x;
+        group.userData.cell = `${p.grid_x},${p.grid_y}`;
         scene.add(group);
         drawn.set(p.slot_index, group);
       }
@@ -329,6 +336,13 @@ export default function FarmScene({
     observer.observe(host);
 
     placePlants(plants);
+    const kept = keptRef.current;
+    keptRef.current = null;
+    if (kept) {
+      for (const slot of drawn.keys()) {
+        if (!kept.has(slot)) growIn(slot);
+      }
+    }
     // الترتيب مقصود: التأطير يقرأ أبعاد الحاوية، فلا بد أن يسبقه setSize
     renderer.setSize(host.clientWidth, Math.max(1, host.clientHeight), false);
     fitToPlants();
@@ -372,6 +386,25 @@ export default function FarmScene({
         applyCamera();
       },
       sync: (next) => {
+        // الإضافة وحدها تفترض أن النبتات القائمة ثابتة وأن السور يسعها. إن
+        // انتقلت نبتة (إعادة ترتيب المزرعة) أو خرجت الجديدة عن السور، يُعاد
+        // بناء المشهد بالساحة الجديدة بدل رسم نبتة في مكانها القديم أو خارج السور
+        const nextBounds = fieldBoundsFor(next.map((p) => ({ x: p.grid_x, y: p.grid_y })));
+        const moved = next.some((p) => {
+          const g = drawn.get(p.slot_index);
+          return g !== undefined && g.userData.cell !== `${p.grid_x},${p.grid_y}`;
+        });
+        if (
+          moved ||
+          nextBounds.minX !== bounds.minX ||
+          nextBounds.maxX !== bounds.maxX ||
+          nextBounds.minZ !== bounds.minZ ||
+          nextBounds.maxZ !== bounds.maxZ
+        ) {
+          keptRef.current = new Set(drawn.keys());
+          setEpoch((e) => e + 1);
+          return;
+        }
         const before = new Set(drawn.keys());
         placePlants(next);
         for (const slot of drawn.keys()) {
@@ -402,7 +435,7 @@ export default function FarmScene({
     // المشهد يُبنى مرة واحدة؛ تغيّر النبتات يُعالَج في الـ effect التالي عبر
     // sync، فإعادة البناء الكاملة على كل منح نقطة تفقد موضع الكاميرا.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cinematic, dusk]);
+  }, [cinematic, dusk, epoch]);
 
   useEffect(() => {
     apiRef.current?.sync(plants);

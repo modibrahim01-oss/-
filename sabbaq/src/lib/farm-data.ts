@@ -57,16 +57,26 @@ export async function loadFarm(supabase: FarmReader, id: string): Promise<FarmDa
 /**
  * هل تختلف قراءتان للمزرعة فيما يُرى؟
  *
- * النبتات لا تُعدَّل بعد غرسها — تُضاف أو تُسحَب فقط — فآخر خانة وعددها
- * يكفيان. والمجموع والترتيب يتغيّران بمنح زملاء المجموعة أيضًا.
+ * تُقارَن خانة كل نبتة لا عددها وحده: إعادة ترتيب المزرعة (ترحيل التوزيع
+ * على الزوايا) تنقل النبتات نفسها دون أن يتغيّر عددها ولا آخرها، وكانت
+ * المقارنة بالعدد تُبقي الطالب على الترتيب القديم. والمجموع والترتيب
+ * يتغيّران بمنح زملاء المجموعة أيضًا.
  */
 export function farmChanged(a: FarmData, b: FarmData): boolean {
-  const lastA = a.plants.at(-1)?.slot_index ?? -1;
-  const lastB = b.plants.at(-1)?.slot_index ?? -1;
-  return (
+  if (
     a.plants.length !== b.plants.length ||
-    lastA !== lastB ||
     a.farm.total_points !== b.farm.total_points ||
     a.rank !== b.rank
-  );
+  ) {
+    return true;
+  }
+  return a.plants.some((p, i) => {
+    const q = b.plants[i];
+    return (
+      p.slot_index !== q.slot_index ||
+      p.grid_x !== q.grid_x ||
+      p.grid_y !== q.grid_y ||
+      p.tier !== q.tier
+    );
+  });
 }

@@ -63,4 +63,9 @@ describe("farmChanged", () => {
   it("a rank change from a classmate's points is a change", () => {
     expect(farmChanged(base, { ...base, rank: 2 })).toBe(true);
   });
+
+  it("the same plants moved to new cells (a re-layout) is a change", () => {
+    const moved = { ...plant(1), grid_x: -1, grid_y: -1 };
+    expect(farmChanged(base, { ...base, plants: [plant(0), moved] })).toBe(true);
+  });
 });
