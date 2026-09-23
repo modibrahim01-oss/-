@@ -41,8 +41,43 @@ export async function awardPoints(studentId: string, tier: string): Promise<Awar
   // المزرعة العامة والقوائم تُخزَّن؛ نُبطل تخزينها فورًا لتظهر النبتة الجديدة
   revalidatePath(`/farm/${parsed.data.studentId}`);
   revalidatePath("/tv");
+  revalidatePath("/");
 
   return { ok: true, result: data as AwardResult };
+}
+
+export type UndoOutcome =
+  | { ok: true; points: number; studentId: string }
+  | { ok: false; reason: "expired" | "not_yours" | "already" | "unavailable" | "unknown" };
+
+/**
+ * تراجع المشرف عن منحه خلال دقيقتين. الشروط كلها (منحُه هو، لم يُلغَ، داخل
+ * النافذة) تُفحص في undo_my_award ذرّيًا؛ هنا ترجمة الرفض إلى سبب تعرضه الواجهة.
+ */
+export async function undoAward(ledgerId: number): Promise<UndoOutcome> {
+  if (!Number.isSafeInteger(ledgerId) || ledgerId <= 0) return { ok: false, reason: "unknown" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("undo_my_award", { p_ledger_id: ledgerId });
+
+  if (error) {
+    const message = error.message ?? "";
+    if (message.includes("UNDO_WINDOW_PASSED")) return { ok: false, reason: "expired" };
+    if (message.includes("UNDO_NOT_YOURS")) return { ok: false, reason: "not_yours" };
+    if (message.includes("UNDO_ALREADY_REVOKED")) return { ok: false, reason: "already" };
+    // الدالة غير موجودة: ترحيل 0006 لم يُشغَّل بعد على هذه القاعدة
+    if (error.code === "PGRST202" || message.includes("undo_my_award")) {
+      return { ok: false, reason: "unavailable" };
+    }
+    return { ok: false, reason: "unknown" };
+  }
+
+  const row = data as { student_id: string; points: number };
+  revalidatePath(`/farm/${row.student_id}`);
+  revalidatePath("/tv");
+  revalidatePath("/");
+
+  return { ok: true, points: row.points, studentId: row.student_id };
 }
 
 export async function fetchDailyStatus(): Promise<DailyStatus> {

@@ -71,6 +71,7 @@ npm run preflight   # يتأكّد أن القاعدة مُهيّأة كما ي�
 0003_rls.sql        ٢٠ سياسة RLS + العرض العام student_farms
 0004_seed.sql       المجموعات السبع، الحدود، الفصل الأول، trigger المصادقة
 0005_quadrant_layout.sql  تخطيط الأرباع + إعادة رسم المزارع القائمة
+0006_undo_and_compact.sql تراجع المشرف خلال دقيقتين + ملء خانة النبتة المُلغاة
 ```
 
 ثم أنشئ أول حساب مدير من `Authentication ← Users ← Add user` مع

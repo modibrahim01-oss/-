@@ -10,6 +10,7 @@ import { LangToggle, ThemeToggle } from "@/components/Toggles";
 import { EmptyState, Stat, buttonStyle, topbar, topbarInner } from "@/components/ui";
 import { countByTier } from "@/lib/farm";
 import { type FarmData, farmChanged, loadFarm } from "@/lib/farm-data";
+import { MilestoneCelebration, MilestonesCard, useMilestoneCelebration } from "@/components/Milestones";
 import { createRestClient } from "@/lib/supabase/rest";
 import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import { TIER_LIST } from "@/lib/tiers";
@@ -66,6 +67,8 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
   }, [grown]);
 
   const counts = countByTier(plants);
+  const typesCollected = TIER_LIST.filter((s) => counts[s.tier] > 0).length;
+  const { celebrating, dismiss } = useMilestoneCelebration(id, farm.total_points, typesCollected);
   const groupName = locale === "ar" ? farm.group_name_ar : farm.group_name_en;
 
   return (
@@ -193,6 +196,7 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
                 <span className="hint-touch">{t(locale, "dragToPanTouch")}</span>
               </div>
             )}
+            {celebrating && <MilestoneCelebration locale={locale} milestone={celebrating} onDone={dismiss} />}
             {grown > 0 && (
               <div
                 role="status"
@@ -236,11 +240,12 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
               {/* الترتيب في شريط الاسم أعلاه؛ هنا هدف صغير بدلًا منه: جمع الأنواع الأربعة */}
               <Stat
                 label={t(locale, "typesCollected")}
-                value={`${formatNumber(locale, TIER_LIST.filter((s) => counts[s.tier] > 0).length)}/${formatNumber(locale, TIER_LIST.length)}`}
+                value={`${formatNumber(locale, typesCollected)}/${formatNumber(locale, TIER_LIST.length)}`}
                 accent="gold"
               />
             </div>
             <TierLegend locale={locale} counts={counts} />
+            <MilestonesCard locale={locale} totalPoints={farm.total_points} typesCollected={typesCollected} />
           </aside>
         </div>
       </main>

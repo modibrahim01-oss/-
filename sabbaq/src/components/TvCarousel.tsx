@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/Brand";
 import FarmScene from "@/components/FarmScene";
 import RankBadge from "@/components/RankBadge";
+import StarBadge from "@/components/StarBadge";
 import { RAINBOW } from "@/components/ui";
 import { formatNumber, t } from "@/lib/i18n";
 import type { Plant, StudentFarmSummary } from "@/lib/types";
 import { useLocale } from "@/lib/useLocale";
+import type { WeeklyStar } from "@/lib/weekly";
 
 const SLIDE_MS = 9000;
 // إعادة جلب البيانات كل خمس دقائق: الشاشة تبقى معلّقة أسابيع، ولا بد أن
@@ -33,10 +35,15 @@ const glass: React.CSSProperties = {
 
 export default function TvCarousel({
   roster,
+  leaderCount = roster.length,
   farms,
+  weekly = [],
 }: {
   roster: StudentFarmSummary[];
+  /** أول leaderCount في الدورة هم الأوائل بترتيبهم؛ ما بعدهم أبطال أسبوع أُضيفوا */
+  leaderCount?: number;
   farms: Record<string, Plant[]>;
+  weekly?: WeeklyStar[];
 }) {
   const locale = useLocale();
   const router = useRouter();
@@ -91,7 +98,11 @@ export default function TvCarousel({
     );
   }
 
-  const current = roster[index];
+  // الدورة قد تقصر بين تحديثين (طالب عُطّل)، فيُحصر المؤشّر فيها
+  const current = roster[index % roster.length];
+  const isLeader = index % roster.length < leaderCount;
+  const weekOf = new Map(weekly.map((w) => [w.student_id, w.week_points]));
+  const currentWeek = weekOf.get(current.student_id);
   const plants = farms[current.student_id] ?? [];
   const groupName = locale === "ar" ? current.group_name_ar : current.group_name_en;
 
@@ -140,20 +151,21 @@ export default function TvCarousel({
         </span>
       </header>
 
-      <aside
+      <div
         style={{
-          ...glass,
           position: "absolute",
           top: 104,
           insetInlineEnd: 28,
           width: "min(300px, 28vw)",
-          padding: "16px 14px 10px",
+          display: "grid",
+          gap: 14,
           zIndex: 2,
         }}
       >
+      <aside style={{ ...glass, padding: "16px 14px 10px" }}>
         <h2 style={{ margin: "0 6px 10px", fontSize: 24 }}>{t(locale, "leaders")}</h2>
         <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
-          {roster.slice(0, BOARD_SIZE).map((s, i) => {
+          {roster.slice(0, Math.min(BOARD_SIZE, leaderCount)).map((s, i) => {
             const active = i === index;
             return (
               <li
@@ -200,6 +212,45 @@ export default function TvCarousel({
         </ol>
       </aside>
 
+      {weekly.length > 0 && (
+        <aside style={{ ...glass, padding: "14px 14px 10px", background: "color-mix(in oklab, var(--berry) 14%, var(--surface))" }}>
+          <h2 style={{ margin: "0 6px 8px", fontSize: 22, display: "flex", alignItems: "center", gap: 8 }}>
+            <StarBadge size={28} gold />
+            {t(locale, "weeklyStars")}
+          </h2>
+          <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {weekly.map((w, i) => {
+              const active = w.student_id === current.student_id;
+              return (
+                <li
+                  key={w.student_id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "6px 8px",
+                    borderRadius: 12,
+                    background: active ? "var(--sun)" : "transparent",
+                    border: active ? "2.5px solid var(--outline)" : "2.5px solid transparent",
+                    transition: "background 400ms ease",
+                  }}
+                >
+                  <StarBadge label={formatNumber(locale, i + 1)} size={28} gold={i === 0} />
+                  <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: active ? "var(--on-fill)" : undefined }}>
+                    {w.full_name}
+                  </span>
+                  <span className="tabular" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: active ? "var(--on-fill)" : "var(--brand-deep)" }}>
+                    +{formatNumber(locale, w.week_points)}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
+      )}
+      </div>
+
       <footer
         style={{
           ...glass,
@@ -216,7 +267,11 @@ export default function TvCarousel({
           zIndex: 2,
         }}
       >
-        <RankBadge rank={index + 1} label={formatNumber(locale, index + 1)} size={64} />
+        {isLeader ? (
+          <RankBadge rank={index + 1} label={formatNumber(locale, index + 1)} size={64} />
+        ) : (
+          <StarBadge size={64} gold />
+        )}
         <div style={{ minWidth: 0 }}>
           <div
             style={{
@@ -250,6 +305,9 @@ export default function TvCarousel({
               label={t(locale, "totalPoints")}
             />
             <TvMetric n={formatNumber(locale, current.plant_count)} label={t(locale, "plants")} />
+            {currentWeek !== undefined && (
+              <TvMetric n={`+${formatNumber(locale, currentWeek)}`} label={t(locale, "thisWeek")} />
+            )}
           </div>
         </div>
       </footer>

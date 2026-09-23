@@ -341,11 +341,11 @@ begin
 end;
 $$;
 
--- ── 9e. الخانة المسحوبة لا يعيد المنح التالي استعمالها ───────────────────
--- الترتيب داخل الفئة يُعدّ شاملًا السحوبات؛ لو عُدّت الحيّة وحدها لوقع المنح
--- التالي على خانة النبتة المسحوبة، والقيد يرفضه فيفشل المنح كله.
+-- ── 9e. الخانة المسحوبة تعود لأول منح تالٍ من فئتها ─────────────────────
+-- المنح يختار أول خانة شاغرة من زاوية الربع للخارج؛ النبتة المسحوبة لا تشغل
+-- خانتها، فالمنح التالي من فئتها يملأ الفجوة بدل أن يتركها في البستان.
 do $$
-declare v_err text; v_tier point_tier; v_x integer; v_y integer; v_r jsonb;
+declare v_tier point_tier; v_x integer; v_y integer; v_r jsonb;
 begin
   select tier, grid_x, grid_y into v_tier, v_x, v_y from points_ledger
    where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -355,18 +355,19 @@ begin
   perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
   v_r := award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', v_tier);
   perform assert(
-    ((v_r->>'grid_x')::int, (v_r->>'grid_y')::int) is distinct from (v_x, v_y),
-    '9e. a revoked plant''s cell is never handed to the next award of its tier');
+    ((v_r->>'grid_x')::int, (v_r->>'grid_y')::int) = (v_x, v_y),
+    '9e. a revoked plant''s cell is refilled by the next award of its tier — no holes');
 end;
 $$;
 
--- ── 9f. القيد يرفض نبتتين على خانة واحدة مهما كان مصدرهما ──────────────────
+-- ── 9f. القيد يرفض نبتتين حيّتين على خانة واحدة مهما كان مصدرهما ──────────────────
 do $$
 declare v_err text;
 begin
   begin
     update points_ledger set grid_x = 1, grid_y = 1
      where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+       and revoked_at is null
        and (grid_x, grid_y) <> (1, 1);
     v_err := null;
   exception when unique_violation then
@@ -503,6 +504,62 @@ begin
   select count(*) into v_count from users;
   reset role;
   perform assert(v_count = 1, '14. supervisor sees only their own user row');
+end;
+$$;
+
+-- ── 15. تراجع المشرف عن منحه ────────────────────────────────────────────
+do $$
+declare
+  v_err text; v_r jsonb; v_id bigint; v_x integer; v_y integer;
+  v_used_before integer; v_used_after integer;
+begin
+  -- رصيد كافٍ للمشرف حتى لا يتدخّل الحد اليومي في الاختبار
+  perform try_as('11111111-1111-1111-1111-111111111111',
+    $q$select set_daily_limit('group_supervisor', 100000)$q$);
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  v_used_before := (my_daily_status()->>'used')::int;
+  v_r := award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple');
+  v_id := (v_r->>'ledger_id')::bigint;
+  v_x := (v_r->>'grid_x')::int; v_y := (v_r->>'grid_y')::int;
+
+  -- مشرف آخر لا يلغي منح غيره
+  v_err := try_as('44444444-4444-4444-4444-444444444444',
+    format($q$select undo_my_award(%s)$q$, v_id));
+  perform assert(v_err like '%UNDO_NOT_YOURS%', '15a. a supervisor CANNOT undo someone else''s award');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select undo_my_award(%s)$q$, v_id));
+  perform assert(v_err is null, '15b. a supervisor CAN undo their own fresh award');
+
+  perform assert(
+    (select revoked_at is not null and revoke_reason = 'undo' from points_ledger where id = v_id),
+    '15c. undo is soft: the row survives, marked as an undo');
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  v_used_after := (my_daily_status()->>'used')::int;
+  perform assert(v_used_after = v_used_before,
+    '15d. the undone points return to the supervisor''s daily balance');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select undo_my_award(%s)$q$, v_id));
+  perform assert(v_err like '%UNDO_ALREADY_REVOKED%', '15e. the same award cannot be undone twice');
+
+  -- المنح التالي من نفس الفئة يأخذ الخانة التي أخلاها التراجع
+  v_r := award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple');
+  perform assert(((v_r->>'grid_x')::int, (v_r->>'grid_y')::int) = (v_x, v_y),
+    '15f. the next award of the tier takes the cell the undo freed');
+
+  -- منح قديم خرج من نافذة التراجع
+  v_id := (v_r->>'ledger_id')::bigint;
+  update points_ledger set awarded_at = now() - interval '10 minutes' where id = v_id;
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select undo_my_award(%s)$q$, v_id));
+  perform assert(v_err like '%UNDO_WINDOW_PASSED%', '15g. an award older than the window cannot be undone');
+
+  perform assert(
+    (select count(*) from audit_log where action = 'undo_award') = 1,
+    '15h. every undo is written to the audit log');
 end;
 $$;
 

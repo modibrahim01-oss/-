@@ -1,4 +1,4 @@
-import { Badge, Card, Td, Th } from "@/components/ui";
+import { Badge, Card, Td, Th, buttonStyle } from "@/components/ui";
 import { formatNumber, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { createClient } from "@/lib/supabase/server";
@@ -60,11 +60,28 @@ export default async function AdminOverview() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <div>
-        <h1 style={{ fontSize: 26, margin: 0 }}>{t(locale, "overview")}</h1>
-        <p style={{ color: "var(--ink-mute)", fontSize: 13, margin: "4px 0 0" }}>
-          {sem ? (locale === "ar" ? sem.name_ar : sem.name_en) : "—"} · {dayLabel}
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 240px" }}>
+          <h1 style={{ fontSize: 26, margin: 0 }}>{t(locale, "overview")}</h1>
+          <p style={{ color: "var(--ink-mute)", fontSize: 13, margin: "4px 0 0" }}>
+            {sem ? (locale === "ar" ? sem.name_ar : sem.name_en) : "—"} · {dayLabel}
+          </p>
+        </div>
+        {sem && (
+          // رابط تنزيل عادي لا زرّ: المتصفح يتولّى الملف وشريط التقدّم بنفسه
+          <a
+            href="/admin/export"
+            download
+            className="press"
+            title={t(locale, "exportHint")}
+            style={{ ...buttonStyle("primary"), textDecoration: "none", whiteSpace: "nowrap" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />
+            </svg>
+            {t(locale, "exportResults")}
+          </a>
+        )}
       </div>
 
       <div

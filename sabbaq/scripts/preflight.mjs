@@ -96,6 +96,16 @@ async function run() {
         : JSON.stringify(corner),
   );
 
+  // ── تراجع المشرف: غيابه يعني أن 0006 لم يُنفَّذ. نستدعيه بلا جلسة،
+  //    والمتوقّع رفض الصلاحية لا «الدالة غير موجودة» ──
+  const { error: undoErr } = await db.rpc("undo_my_award", { p_ledger_id: 0 });
+  const undoMissing = undoErr?.code === "PGRST202";
+  record(
+    !undoMissing,
+    "undo_my_award موجودة (تراجع المشرف)",
+    undoMissing ? "غير موجودة — نفّذ supabase/migrations/0006_undo_and_compact.sql" : "نعم",
+  );
+
   // ── وجود award_points: نستدعيه بمعرّف وهمي بلا جلسة، والمتوقّع رفض
   //    الصلاحية لا «الدالة غير موجودة» ──
   const { error: awardErr } = await db.rpc("award_points", {

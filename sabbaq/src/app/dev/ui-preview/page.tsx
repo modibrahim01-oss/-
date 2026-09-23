@@ -110,9 +110,9 @@ export default async function UiPreview({ searchParams }: { searchParams: Promis
         students={STUDENTS}
         initialStatus={{ role: "group_supervisor", limit: 200, used: 150, remaining: 50 }}
         initialRecent={[
-          { id: 3, studentName: "سارة العتيبي", points: 50, tier: "red", awardedAt: new Date().toISOString() },
-          { id: 2, studentName: "محمد الحيمي", points: 30, tier: "purple", awardedAt: new Date().toISOString() },
-          { id: 1, studentName: "يوسف السبيعي", points: 10, tier: "green", awardedAt: new Date().toISOString() },
+          { id: 3, studentId: "s3", studentName: "سارة العتيبي", points: 50, tier: "red", awardedAt: new Date().toISOString() },
+          { id: 2, studentId: "s2", studentName: "محمد الحيمي", points: 30, tier: "purple", awardedAt: new Date(Date.now() - 70_000).toISOString() },
+          { id: 1, studentId: "s1", studentName: "يوسف السبيعي", points: 10, tier: "green", awardedAt: new Date(Date.now() - 600_000).toISOString() },
         ]}
       />
     </>

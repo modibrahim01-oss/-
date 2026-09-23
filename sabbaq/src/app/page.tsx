@@ -1,6 +1,7 @@
 import HomeView, { type Standing } from "@/components/HomeView";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Group } from "@/lib/types";
+import { loadWeeklyStars } from "@/lib/weekly";
 
 /**
  * الصفحة العامة تُعرض على شاشات تُعيد التحميل باستمرار. التخزين لدقيقة
@@ -16,12 +17,13 @@ export default async function HomePage() {
 
   // student_farms يعطي الطلاب النشطين ونقاطهم في الفصل النشط دفعةً واحدة:
   // منه يُحسب عدد طلاب كل مجموعة، ومجموع نقاطها، والمتصدّرون.
-  const [{ data: groups }, { data: farms }] = await Promise.all([
+  const [{ data: groups }, { data: farms }, weekly] = await Promise.all([
     supabase.from("groups").select("*").order("sort_order"),
     supabase
       .from("student_farms")
       .select("student_id, full_name, group_id, group_name_ar, group_name_en, total_points")
       .order("total_points", { ascending: false }),
+    loadWeeklyStars(supabase, 5),
   ]);
 
   const rows = (farms ?? []) as Standing[];
@@ -38,6 +40,7 @@ export default async function HomePage() {
       studentCounts={studentCounts}
       groupPoints={groupPoints}
       leaders={rows.filter((r) => r.total_points > 0).slice(0, 5)}
+      weekly={weekly}
     />
   );
 }

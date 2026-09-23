@@ -100,6 +100,7 @@ export default async function SupervisorPage() {
     const name = Array.isArray(joined) ? joined[0]?.full_name : joined?.full_name;
     return {
       id: r.id as number,
+      studentId: r.student_id as string,
       studentName: name ?? "—",
       points: r.points as number,
       tier: r.tier as string,

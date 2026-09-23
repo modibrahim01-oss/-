@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Brand } from "@/components/Brand";
 import HeroSky from "@/components/HeroSky";
 import RankBadge from "@/components/RankBadge";
+import StarBadge from "@/components/StarBadge";
 import StudentSearch from "@/components/StudentSearch";
 import { PlantIcon } from "@/components/TierLegend";
 import { LangToggle, ThemeToggle } from "@/components/Toggles";
@@ -12,6 +13,7 @@ import { formatNumber, t, type Locale } from "@/lib/i18n";
 import { TIER_LIST } from "@/lib/tiers";
 import type { Group } from "@/lib/types";
 import { useLocale } from "@/lib/useLocale";
+import type { WeeklyStar } from "@/lib/weekly";
 
 /**
  * واجهة الصفحة العامّة. مكوّن عميل عن قصد: الصفحة نفسها ساكنة تُخدَم من
@@ -59,11 +61,13 @@ export default function HomeView({
   studentCounts,
   groupPoints,
   leaders,
+  weekly,
 }: {
   groups: Group[];
   studentCounts: Record<number, number>;
   groupPoints: Record<number, number>;
   leaders: Standing[];
+  weekly: WeeklyStar[];
 }) {
   const locale = useLocale();
   const hueOf = new Map(groups.map((g, i) => [g.id, GROUP_HUES[i % GROUP_HUES.length]]));
@@ -148,6 +152,14 @@ export default function HomeView({
           <Garden locale={locale} />
         </section>
 
+        <section aria-labelledby="weekly-title" style={{ marginTop: 34 }}>
+          <BoardTitle id="weekly-title" color="var(--berry)">
+            {t(locale, "weeklyStars")}
+          </BoardTitle>
+          <p style={{ margin: "-6px 0 14px", color: "var(--ink-soft)", fontWeight: 500 }}>{t(locale, "weeklyStarsHint")}</p>
+          <WeeklyStars locale={locale} weekly={weekly} hueOf={hueOf} />
+        </section>
+
         <div className="home-boards">
           <section aria-labelledby="leaders-title">
             <BoardTitle id="leaders-title" color="var(--sun)">
@@ -175,6 +187,9 @@ export default function HomeView({
         dangerouslySetInnerHTML={{
           __html: `
             .home-boards { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; margin-top: 34px; }
+            .weekly-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+            @media (max-width: 1000px) { .weekly-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+            @media (max-width: 640px) { .weekly-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .weekly-row > :first-child { grid-column: 1 / -1; } }
             .garden-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
             @media (max-width: 860px) { .home-boards { grid-template-columns: minmax(0, 1fr); } }
             @media (max-width: 640px) {
@@ -265,6 +280,124 @@ function Garden({ locale }: { locale: Locale }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * أبطال الأسبوع: بطاقة لكل بطل، والأول أعرض بنجمة ذهبية ولقب «نجم الأسبوع».
+ * الرقم على البطاقة نقاط الأسبوع لا المجموع: هو ما يتنافس عليه الجميع من الصفر.
+ */
+function WeeklyStars({
+  locale,
+  weekly,
+  hueOf,
+}: {
+  locale: Locale;
+  weekly: WeeklyStar[];
+  hueOf: Map<number, string>;
+}) {
+  if (weekly.length === 0) {
+    return (
+      <div
+        className="pop"
+        style={{
+          background: "var(--surface)",
+          borderRadius: 24,
+          padding: "22px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 14,
+          textAlign: "center",
+        }}
+      >
+        <StarBadge size={44} />
+        <p style={{ margin: 0, fontWeight: 700, color: "var(--ink-soft)" }}>{t(locale, "noWeeklyYet")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <ol className="weekly-row" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      {weekly.map((s, i) => {
+        const first = i === 0;
+        return (
+          <li key={s.student_id} style={{ minWidth: 0 }}>
+            <Link
+              href={`/farm/${s.student_id}`}
+              className="pop lift"
+              style={{
+                display: "grid",
+                justifyItems: "center",
+                gap: 6,
+                height: "100%",
+                padding: "14px 10px 12px",
+                borderRadius: 20,
+                textAlign: "center",
+                textDecoration: "none",
+                color: "var(--ink)",
+                background: first
+                  ? "linear-gradient(180deg, color-mix(in oklab, var(--sun) 55%, var(--surface)), var(--surface))"
+                  : "var(--surface)",
+              }}
+            >
+              <StarBadge label={formatNumber(locale, i + 1)} size={first ? 58 : 44} gold={first} />
+              {first && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: "1px 10px",
+                    borderRadius: 999,
+                    background: "var(--berry)",
+                    color: "var(--on-fill)",
+                    border: "2px solid var(--outline)",
+                  }}
+                >
+                  {t(locale, "starOfWeek")}
+                </span>
+              )}
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: first ? 18 : 15,
+                  lineHeight: 1.3,
+                  maxWidth: "100%",
+                  overflowWrap: "anywhere",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {s.full_name}
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "0 10px",
+                  borderRadius: 999,
+                  background: hueOf.get(s.group_id) ?? "var(--sky)",
+                  color: "var(--on-fill)",
+                  border: "2px solid var(--outline)",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {locale === "ar" ? s.group_name_ar : s.group_name_en}
+              </span>
+              <span className="tabular" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--brand-deep)", fontSize: first ? 20 : 17 }}>
+                +{formatNumber(locale, s.week_points)}{" "}
+                <span style={{ fontSize: 12, fontFamily: "var(--font-body)", color: "var(--ink-mute)" }}>{t(locale, "thisWeek")}</span>
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

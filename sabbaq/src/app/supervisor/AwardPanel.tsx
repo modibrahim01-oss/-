@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { PlantIcon } from "@/components/TierLegend";
 import { Badge, Card, EmptyState, SectionLabel } from "@/components/ui";
-import { awardPoints } from "@/lib/actions/award";
+import { awardPoints, undoAward } from "@/lib/actions/award";
 import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { TIER_LIST, isTier } from "@/lib/tiers";
 import type { Tier } from "@/lib/tiers";
 import type { DailyStatus, StudentFarmSummary } from "@/lib/types";
+import { undoSecondsLeft } from "@/lib/undo";
 
 type RecentAward = {
   id: number;
+  studentId: string;
   studentName: string;
   points: number;
   tier: string;
@@ -45,6 +47,22 @@ export default function AwardPanel({
   // «+٥٠» يطفو من الزرّ الذي ضُغط: تأكيد يُرى حيث تنظر العين، لا في زاوية
   const [burst, setBurst] = useState<{ tier: Tier; key: number } | null>(null);
   const [pending, startTransition] = useTransition();
+  // ساعة تدقّ كل ثانية ما دام في القائمة منحٌ يمكن التراجع عنه — تُعدّ بها
+  // الثواني الظاهرة على زرّ التراجع، وتتوقّف وحدها حين تنقضي كل النوافذ
+  // تبدأ بصفر (لا نافذة مفتوحة) في الرسم الأول على الخادم وفي المتصفح معًا،
+  // ثم تُضبط على الساعة الحقيقية بعد التركيب: ساعتا الخادم والمتصفح تختلفان
+  // فيختلف العدّاد بين الرسمين ويكسر الـ hydration
+  const [now, setNow] = useState(0);
+  const [undoing, setUndoing] = useState<number | null>(null);
+  const anyUndoable = recent.some((r) => undoSecondsLeft(r.awardedAt, now) > 0);
+  useEffect(() => {
+    setNow(Date.now());
+  }, []);
+  useEffect(() => {
+    if (!anyUndoable) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [anyUndoable]);
 
   const unlimited = status.limit < 0;
   const remaining = unlimited ? Number.POSITIVE_INFINITY : status.remaining;
@@ -104,6 +122,7 @@ export default function AwardPanel({
         [
           {
             id: outcome.result.ledger_id,
+            studentId: student.student_id,
             studentName: student.full_name,
             points: gained,
             tier,
@@ -117,6 +136,55 @@ export default function AwardPanel({
         text: `${t(locale, "awarded")} +${formatNumber(locale, gained)} · ${student.full_name}`,
       });
       setBurst({ tier, key: Date.now() });
+      setNow(Date.now());
+    });
+  }
+
+  /**
+   * التراجع عن منحٍ خلال دقيقتين. كل ما عدّله المنح محليًا يُعكس: الرصيد
+   * اليومي، ورصيد الطالب في القائمة، وسطر «آخر إضافات اليوم».
+   */
+  function undo(r: RecentAward) {
+    if (undoing !== null || pending) return;
+    setUndoing(r.id);
+    startTransition(async () => {
+      const outcome = await undoAward(r.id);
+      setUndoing(null);
+
+      if (!outcome.ok) {
+        const text =
+          outcome.reason === "expired"
+            ? t(locale, "undoExpired")
+            : outcome.reason === "unavailable"
+              ? t(locale, "undoUnavailable")
+              : t(locale, "undoFailed");
+        setToast({ tone: "err", text });
+        // انقضت النافذة على الخادم: يختفي الزرّ بدل أن يبقى يَعِد بما لا يحدث
+        if (outcome.reason === "expired" || outcome.reason === "already") {
+          setRecent((prev) => prev.map((x) => (x.id === r.id ? { ...x, awardedAt: new Date(0).toISOString() } : x)));
+        }
+        return;
+      }
+
+      const lost = outcome.points;
+      setStatus((prev) =>
+        prev.limit < 0
+          ? { ...prev, used: Math.max(0, prev.used - lost) }
+          : {
+              ...prev,
+              used: Math.max(0, prev.used - lost),
+              remaining: Math.min(prev.limit, prev.remaining + lost),
+            },
+      );
+      setBumps((prev) => {
+        const cur = prev[r.studentId] ?? { points: 0, plants: 0 };
+        return { ...prev, [r.studentId]: { points: cur.points - lost, plants: cur.plants - 1 } };
+      });
+      setRecent((prev) => prev.filter((x) => x.id !== r.id));
+      setToast({
+        tone: "ok",
+        text: `${t(locale, "undone")} +${formatNumber(locale, lost)} · ${r.studentName}`,
+      });
     });
   }
 
@@ -433,6 +501,9 @@ export default function AwardPanel({
             }}
           >
             {toast.text}
+            {toast.tone === "ok" && recent.length > 0 && undoSecondsLeft(recent[0].awardedAt, now) > 0 && (
+              <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{t(locale, "undoHint")}</div>
+            )}
           </div>
         )}
 
@@ -450,7 +521,7 @@ export default function AwardPanel({
                     key={r.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "36px 1fr auto auto",
+                      gridTemplateColumns: "36px minmax(0, 1fr) auto auto auto",
                       gap: 12,
                       alignItems: "center",
                       padding: "6px 10px",
@@ -482,6 +553,13 @@ export default function AwardPanel({
                         minute: "2-digit",
                       })}
                     </time>
+                    <UndoButton
+                      locale={locale}
+                      seconds={undoSecondsLeft(r.awardedAt, now)}
+                      busy={undoing === r.id}
+                      disabled={undoing !== null || pending}
+                      onUndo={() => undo(r)}
+                    />
                   </div>
                 );
               })}
@@ -503,6 +581,54 @@ export default function AwardPanel({
         }}
       />
     </main>
+  );
+}
+
+/**
+ * زرّ التراجع بعدّاد ثوانيه. يبقى مكانه محجوزًا بعد انقضاء النافذة حتى لا
+ * تقفز أعمدة السطر حين يختفي.
+ */
+function UndoButton({
+  locale,
+  seconds,
+  busy,
+  disabled,
+  onUndo,
+}: {
+  locale: Locale;
+  seconds: number;
+  busy: boolean;
+  disabled: boolean;
+  onUndo: () => void;
+}) {
+  if (seconds <= 0) return <span aria-hidden />;
+  const mm = Math.floor(seconds / 60);
+  const ss = String(seconds % 60).padStart(2, "0");
+  return (
+    <button
+      type="button"
+      onClick={onUndo}
+      disabled={disabled}
+      className="press"
+      aria-label={`${t(locale, "undo")} (${seconds})`}
+      style={{
+        font: "inherit",
+        fontSize: 13,
+        fontWeight: 700,
+        padding: "4px 10px",
+        borderRadius: 999,
+        cursor: "pointer",
+        border: "2px solid var(--outline)",
+        boxShadow: "0 2px 0 var(--outline)",
+        background: "var(--coral-soft)",
+        color: "var(--coral)",
+        whiteSpace: "nowrap",
+        opacity: busy ? 0.6 : 1,
+      }}
+    >
+      ↶ {t(locale, "undo")}{" "}
+      <span className="tabular">{localizeDigits(locale, `${mm}:${ss}`)}</span>
+    </button>
   );
 }
 
