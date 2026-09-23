@@ -126,6 +126,10 @@ export default function FarmScene({
     let panY = 0;
     let panZ = 0;
     const axes = screenAxes(ISO_AZIM);
+    // الرسم عند الحاجة لا كل إطار: المزرعة ساكنة معظم الوقت، ورسمها ستين مرة
+    // في الثانية بظلالها كان يُبقي معالج الجوّال والتلفاز مشغولًا بلا توقّف
+    // فتثقل الصفحة كلها وتتأخّر اللمسات. كل ما يغيّر الصورة يرفع هذه الراية.
+    let dirty = true;
     const field = fieldBox(bounds);
 
     const drawn = drawnRef.current;
@@ -154,6 +158,7 @@ export default function FarmScene({
         scene.add(group);
         drawn.set(p.slot_index, group);
       }
+      dirty = true;
     }
 
     /** النبتة الجديدة تكبر من الصفر بارتداد خفيف. */
@@ -169,6 +174,7 @@ export default function FarmScene({
         const eased = 1 - (1 - t) ** 3;
         const s = eased * (1 + Math.sin(eased * Math.PI) * 0.15);
         group.scale.setScalar(Math.max(0.01, s) * base);
+        dirty = true;
         if (t < 1) requestAnimationFrame(step);
         else group.scale.setScalar(base);
       };
@@ -195,6 +201,7 @@ export default function FarmScene({
         panZ + axes.toCamera.z * dist,
       );
       camera.lookAt(panX, panY, panZ);
+      dirty = true;
     }
 
     /**
@@ -349,9 +356,13 @@ export default function FarmScene({
     applyCamera();
 
     let raf = 0;
+    let lastCinematic = 0;
     const loop = () => {
-      if (cinematic) {
-        const t = performance.now();
+      const t = performance.now();
+      // حركة العرض بطيئة جدًا (دورة في دقائق)، فثلاثون إطارًا تكفيها تمامًا
+      // وتنصّف حمل شاشة تبقى تعمل طوال اليوم
+      if (cinematic && t - lastCinematic >= 33) {
+        lastCinematic = t;
         const azim = ISO_AZIM + Math.sin(t * 0.00007) * 0.16;
         const breathe = 1 + Math.sin(t * 0.00015) * 0.07;
         // ينطلق من التكبير المؤطَّر لا من ثابت، وإلا عرضت الشاشة زاوية من
@@ -371,8 +382,12 @@ export default function FarmScene({
           panZ + Math.sin(azim) * Math.cos(ISO_ELEV) * dist,
         );
         camera.lookAt(panX, panY, panZ);
+        dirty = true;
       }
-      renderer.render(scene, camera);
+      if (dirty) {
+        dirty = false;
+        renderer.render(scene, camera);
+      }
       raf = requestAnimationFrame(loop);
     };
     loop();
