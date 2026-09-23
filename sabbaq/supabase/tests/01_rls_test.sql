@@ -263,7 +263,7 @@ begin
        order by tier, slot_index) f
      where (f.grid_x, f.grid_y) is distinct from (
        case f.tier when 'green' then 1 when 'yellow' then -1
-                   when 'purple' then -1 else 1 end,
+                   when 'purple' then 1 else -1 end,
        case f.tier when 'green' then 1 when 'yellow' then 1
                    when 'purple' then -1 else -1 end)) = 0,
     '7a. the first plant of each tier sits at its quadrant''s corner');
@@ -274,8 +274,8 @@ begin
        and not (
          (tier = 'green'  and grid_x > 0 and grid_y > 0) or
          (tier = 'yellow' and grid_x < 0 and grid_y > 0) or
-         (tier = 'purple' and grid_x < 0 and grid_y < 0) or
-         (tier = 'red'    and grid_x > 0 and grid_y < 0))) = 0,
+         (tier = 'purple' and grid_x > 0 and grid_y < 0) or
+         (tier = 'red'    and grid_x < 0 and grid_y < 0))) = 0,
     '7d. every plant lies inside its own tier''s quadrant');
 
   select array_agg(slot_index order by slot_index) into v_slots

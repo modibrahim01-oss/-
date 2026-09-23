@@ -56,12 +56,13 @@ begin
     x := 2 * s - 1 - r;  y := s;
   end if;
 
-  -- الربع الذي تملكه كل فئة
+  -- الربع الذي تملكه كل فئة. (−،−) هو الزاوية العليا في المنظور المتساوي
+  -- القياس: الأشجار المثمرة هناك، أطول النبتات في الخلف فلا تحجب غيرها
   case p_tier
-    when 'green'  then sx :=  1; sy :=  1;
-    when 'yellow' then sx := -1; sy :=  1;
-    when 'purple' then sx := -1; sy := -1;
-    else               sx :=  1; sy := -1;   -- red
+    when 'green'  then sx :=  1; sy :=  1;   -- السفلى
+    when 'yellow' then sx := -1; sy :=  1;   -- اليسرى
+    when 'purple' then sx :=  1; sy := -1;   -- اليمنى
+    else               sx := -1; sy := -1;   -- red: العليا
   end case;
 
   x := x * sx;

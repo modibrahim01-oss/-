@@ -13,12 +13,12 @@ describe("fieldBoundsFor", () => {
     // بستان أحمر كبير يمدّ الساحة نحوه وحده، لا في الجهات الأربع
     const reds = Array.from({ length: 30 }, (_, n) => quadrantCoord("red", n));
     const b = fieldBoundsFor(reds);
-    const maxX = Math.max(...reds.map((c) => c.x));
+    const minX = Math.min(...reds.map((c) => c.x));
     const minY = Math.min(...reds.map((c) => c.y));
-    expect(b.maxX).toBe(maxX + 2);
+    expect(b.minX).toBe(minX - 2);
     expect(b.minZ).toBe(minY - 2);
     // الجهتان الأخريان بقيتا على الحدّ الأدنى
-    expect(b.minX).toBe(-3);
+    expect(b.maxX).toBe(3);
     expect(b.maxZ).toBe(3);
   });
 

@@ -121,7 +121,7 @@ begin
   v_r := award_points(v_s, 'red');
   perform assert((v_r->>'slot_index')::int = v_n,
     'seed: a real award continues the slot sequence instead of colliding');
-  perform assert((v_r->>'grid_x')::int > 0 and (v_r->>'grid_y')::int < 0,
+  perform assert((v_r->>'grid_x')::int < 0 and (v_r->>'grid_y')::int < 0,
     'seed: a real red award lands in the red quadrant');
 end;
 $$;
