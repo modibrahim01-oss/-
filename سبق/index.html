@@ -73,6 +73,8 @@ small{font-size:12px}
 /* ═══════ CARDS ═══════ */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:var(--sp-6);box-shadow:var(--sh-2)}
 .card+.card{margin-top:var(--sp-3)}
+.grid>.card+.card{margin-top:0}
+.grid+.card{margin-top:var(--sp-3)}
 .card-featured{position:relative;overflow:hidden}
 .card-featured::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold-2),var(--green),var(--teal))}
 
@@ -366,6 +368,10 @@ input::placeholder,textarea::placeholder{color:rgba(109,127,116,.65)}
  .row,.row.wide{grid-template-columns:1fr}
  .tabs button{padding:10px 12px;font-size:12.5px}
  .card{padding:var(--sp-5)}
+ #student .grid3{grid-template-columns:repeat(3,1fr);gap:var(--sp-2)}
+ #student .stat{padding:var(--sp-4) var(--sp-2)}
+ #student .stat b{font-size:20px}
+ #student .stat small{font-size:10.5px}
 }
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
@@ -1120,10 +1126,12 @@ function renderAll(){
 
 function renderHome(){
   const len = state.settings.cycleLength || DEFAULTS.cycleLength;
-  const elapsed = Math.min(len, cycleDays().length), left = Math.max(0, len - elapsed);
-  $("cycleTitle").textContent = left ? "الدورة الحالية مستمرة" : "اكتملت الدورة — جاهزون للسحب";
+  const days = cycleDays();
+  const elapsed = Math.min(len, days.length), left = Math.max(0, len - elapsed);
+  const lastDayToday = !left && days[len-1] === todayKey();
+  $("cycleTitle").textContent = left ? "الدورة الحالية مستمرة" : lastDayToday ? "اليوم آخر يوم في الدورة" : "اكتملت الدورة — جاهزون للسحب";
   $("cycleDone").textContent = `مضى ${nf.format(elapsed)} من ${nf.format(len)} يوم حلقة`;
-  $("cycleLeft").textContent = left ? `باقي ${daysPhrase(left)}` : "جاهزون للسحب";
+  $("cycleLeft").textContent = left ? `باقي ${daysPhrase(left)}` : lastDayToday ? "السحب بعد انتهاء اليوم" : "جاهزون للسحب";
   requestAnimationFrame(() => { $("cycleFill").style.width = (elapsed/len*100) + "%"; });
 
   const box = $("winnersBox"), hist = state.settings.raffleHistory || [];
@@ -1182,7 +1190,7 @@ function renderStudent(id){
   const medals = [
     ["🌱","البداية","٣ أيام منجزة", c.doneDays >= 3],
     ["⚡","ثابت","مسار ٥ أيام", c.best >= 5],
-    ["🎁","مؤهل السحب",`مسار ${goal} أيام`, c.eligible],
+    ["🎁","مؤهل السحب",`مسار ${daysPhrase(goal)}`, c.eligible],
     ["🔥","المواظب","مسار ١٥ يومًا", c.best >= 15],
     ["💎","جامع النقاط","٥٠٠٠ نقطة", c.total >= 5000],
     ["🏆","نجم الحلقة","١٥٠٠٠ نقطة", c.total >= 15000]
@@ -1192,14 +1200,16 @@ function renderStudent(id){
 
   const cells = []; const d = new Date(); d.setHours(12,0,0,0);
   for(let i = 0; i < 14; i++){
-    const key = dayKey(d), rec = recOf(s,key), sess = isSessionDay(d), ok = qualifies(rec), exc = isExcused(rec);
+    const key = dayKey(d), rec = recOf(s,key), hol = isHoliday(key), sess = isSessionDay(d) && !hol, ok = qualifies(rec), exc = isExcused(rec);
+    const pending = sess && !ok && !exc && key === todayKey();
     const wd = WEEKDAY_AR[d.getDay()];
-    const tip = sess
+    const tip = hol ? `${wd} · ${fmtHijriLong.format(d)} — عطلة`
+      : sess
       ? (exc ? `${wd} · ${fmtHijriLong.format(d)}\nيوم بعذر — لا يُحتسب ولا يكسر المسار`
              : `${wd} · ${fmtHijriLong.format(d)}\nحفظ: ${pagesPhrase(rec.h)} · مراجعة: ${pagesPhrase(rec.r)}\nالحضور: ${ATT_AR[rec.a] || "لم يُسجَّل"}\nالنقاط: ${nf.format(dayPoints(rec))}`)
       : `${wd} · ${fmtHijriLong.format(d)} — يوم توقف`;
-    const cls = exc ? "" : (ok ? "ok" : (sess?"no":""));
-    const mark = exc ? "⏸" : (ok?"✓":(sess?"—":"راحة"));
+    const cls = exc || pending ? "" : (ok ? "ok" : (sess?"no":""));
+    const mark = hol ? "عطلة" : exc ? "⏸" : pending ? "اليوم" : (ok?"✓":(sess?"—":"راحة"));
     cells.push(`<div class="day ${cls}" title="${esc(tip)}"><span class="wd">${wd}</span><b class="mark">${mark}</b><span class="hd">${fmtHijriDay.format(d)}</span></div>`);
     d.setDate(d.getDate()-1);
   }
