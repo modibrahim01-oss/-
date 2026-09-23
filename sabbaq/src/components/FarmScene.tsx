@@ -254,8 +254,11 @@ export default function FarmScene({
       const cosA = Math.cos(ISO_AZIM);
       const sinA = Math.sin(ISO_AZIM);
       const sinE = Math.sin(ISO_ELEV);
-      panX += dx * worldPerPx * sinA - (dy * worldPerPx * cosA) / sinE;
-      panZ += -dx * worldPerPx * cosA - (dy * worldPerPx * sinA) / sinE;
+      // الأرض تلحق الإصبع: السحب يمينًا يحرّك نقطة النظر يسارًا (عكس محور
+      // يمين الشاشة) فتنزاح المزرعة يمينًا مع الإصبع. كانت الإشارة معكوسة
+      // أفقيًا فتهرب المزرعة عكس اليد
+      panX += -dx * worldPerPx * sinA - (dy * worldPerPx * cosA) / sinE;
+      panZ += dx * worldPerPx * cosA - (dy * worldPerPx * sinA) / sinE;
       // السحب محصور في الساحة: لا يُترك المستخدم يحدّق في سماء فارغة
       panX = Math.max(field.min.x, Math.min(field.max.x, panX));
       panZ = Math.max(field.min.z, Math.min(field.max.z, panZ));
