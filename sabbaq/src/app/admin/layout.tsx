@@ -38,7 +38,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div style={topbarInner}>
           <Brand locale={locale} href="/admin" />
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-soft)" }}>{displayName}</span>
-          <div style={{ marginInlineStart: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          {/* تلتفّ الأزرار إلى سطر ثانٍ على الجوّال بدل أن تتجاوز حافة الشاشة */}
+          <div
+            style={{
+              marginInlineStart: "auto",
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
             <Link
               href="/supervisor"
               style={{
@@ -49,6 +59,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 borderRadius: 999,
                 color: "var(--ink)",
                 textDecoration: "none",
+                whiteSpace: "nowrap",
               }}
             >
               {t(locale, "supervisorPanel")}
@@ -56,7 +67,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LangToggle />
             <ThemeToggle />
             <form action={signOut}>
-              <button className="press" type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>
+              <button className="press" type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13, whiteSpace: "nowrap" }}>
                 {t(locale, "logout")}
               </button>
             </form>

@@ -62,8 +62,9 @@ export default function LimitsEditor({
             style={{
               display: "flex",
               alignItems: "center",
-              border: "1px solid var(--border)",
-              borderRadius: 9,
+              border: "2.5px solid var(--outline)",
+              borderRadius: 14,
+              boxShadow: "var(--pop)",
               overflow: "hidden",
             }}
           >
@@ -111,7 +112,8 @@ export default function LimitsEditor({
             type="button"
             onClick={() => save(role)}
             disabled={pending}
-            style={{ ...buttonStyle("primary"), padding: "8px 14px", fontSize: 13 }}
+            className="press"
+            style={{ ...buttonStyle("primary"), padding: "8px 18px", fontSize: 14 }}
           >
             {t(locale, "save")}
           </button>
@@ -142,9 +144,10 @@ export default function LimitsEditor({
 const stepBtn: React.CSSProperties = {
   font: "inherit",
   border: 0,
-  background: "var(--surface-alt)",
-  padding: "9px 14px",
+  background: "var(--sun)",
+  padding: "8px 16px",
   cursor: "pointer",
-  color: "var(--ink)",
+  color: "var(--on-fill)",
+  fontSize: 18,
   fontWeight: 700,
 };

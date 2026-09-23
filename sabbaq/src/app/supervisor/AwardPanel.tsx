@@ -156,11 +156,16 @@ export default function AwardPanel({
         <Card>
           <SectionLabel>{t(locale, "yourDailyLimit")}</SectionLabel>
           {unlimited ? (
-            <div
-              className="tabular"
-              style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: "var(--brand-deep)" }}
-            >
-              {t(locale, "noLimit")} · {formatNumber(locale, status.used)} {t(locale, "points")}
+            // «بلا حد» شارة، والمنح اليوم رقم مستقلّ: جمعهما بنقطة وسطى في الخطّ
+            // العرضي كان يُقرأ كلمةً واحدة متّصلة
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <Badge tone="brand">{t(locale, "noLimit")}</Badge>
+              <span className="tabular" style={{ fontSize: 14, fontWeight: 700, color: "var(--ink-soft)" }}>
+                <strong style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--ink)" }}>
+                  {formatNumber(locale, status.used)}
+                </strong>{" "}
+                {t(locale, "points")}
+              </span>
             </div>
           ) : (
             <>

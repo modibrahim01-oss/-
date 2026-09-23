@@ -115,7 +115,17 @@ export default async function SupervisorPage() {
       <header style={topbar}>
         <div style={topbarInner}>
           <Brand locale={locale} href="/supervisor" />
-          <div style={{ marginInlineStart: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          {/* تلتفّ الأزرار إلى سطر ثانٍ على الجوّال بدل أن تتجاوز حافة الشاشة */}
+          <div
+            style={{
+              marginInlineStart: "auto",
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
             {staff.role === "admin" && (
               <Link
                 href="/admin"
@@ -127,6 +137,7 @@ export default async function SupervisorPage() {
                   borderRadius: 999,
                   color: "var(--ink)",
                   textDecoration: "none",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {t(locale, "adminDashboard")}
@@ -135,7 +146,7 @@ export default async function SupervisorPage() {
             <LangToggle />
             <ThemeToggle />
             <form action={signOut}>
-              <button className="press" type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13 }}>
+              <button className="press" type="submit" style={{ ...buttonStyle(), padding: "7px 13px", fontSize: 13, whiteSpace: "nowrap" }}>
                 {t(locale, "logout")}
               </button>
             </form>
