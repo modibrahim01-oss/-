@@ -84,5 +84,13 @@ export async function fetchDailyStatus(): Promise<DailyStatus> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("my_daily_status");
   if (error || !data) return { role: null, limit: 0, used: 0, remaining: 0 };
-  return data as DailyStatus;
+  // الشكل الجديد (0007) يحمل tiers ولا يحمل الحد بالنقاط، والقديم عكسه
+  const d = data as Partial<DailyStatus>;
+  return {
+    role: d.role ?? null,
+    limit: d.limit ?? 0,
+    used: d.used ?? 0,
+    remaining: d.remaining ?? 0,
+    tiers: d.tiers,
+  };
 }

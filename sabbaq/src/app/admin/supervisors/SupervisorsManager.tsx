@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Badge, buttonStyle, Card, field, Td, Th } from "@/components/ui";
 import {
   createSupervisor,
@@ -9,7 +9,10 @@ import {
 } from "@/lib/actions/admin";
 import { roleLabel, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import type { Tier } from "@/lib/tiers";
 import type { Group, UserRole } from "@/lib/types";
+import StaffLinkPanel from "./StaffLinkPanel";
+import SupervisorLimitsForm from "./SupervisorLimitsForm";
 
 type StaffRow = {
   id: string;
@@ -29,16 +32,28 @@ const labelStyle: React.CSSProperties = {
   color: "var(--ink-soft)",
 };
 
+const NO_LIMITS: Record<Tier, number> = { green: 0, yellow: 0, purple: 0, red: 0 };
+
 export default function SupervisorsManager({
   locale,
   groups,
   staff,
+  tiersReady = false,
+  roleLimits = {},
+  overrides = {},
 }: {
   locale: Locale;
   groups: Group[];
   staff: StaffRow[];
+  tiersReady?: boolean;
+  roleLimits?: Record<string, Record<Tier, number>>;
+  overrides?: Record<string, Partial<Record<Tier, number>>>;
 }) {
   const [role, setRole] = useState<UserRole>("group_supervisor");
+  // لوحة واحدة مفتوحة لكل صفّ: رابط الدخول أو الحدّ الخاص
+  const [openPanel, setOpenPanel] = useState<{ id: string; kind: "link" | "limits" } | null>(null);
+  const toggle = (id: string, kind: "link" | "limits") =>
+    setOpenPanel((p) => (p && p.id === id && p.kind === kind ? null : { id, kind }));
   const [editingGroups, setEditingGroups] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -106,7 +121,7 @@ export default function SupervisorsManager({
               <input
                 name="email"
                 type="email"
-                required
+                required={role === "admin"}
                 dir="ltr"
                 autoComplete="off"
                 style={{ ...field, width: "100%" }}
@@ -117,7 +132,7 @@ export default function SupervisorsManager({
               <input
                 name="password"
                 type="password"
-                required
+                required={role === "admin"}
                 minLength={8}
                 dir="ltr"
                 autoComplete="new-password"
@@ -140,6 +155,12 @@ export default function SupervisorsManager({
               </select>
             </label>
           </div>
+
+          {role !== "admin" && (
+            <p style={{ margin: "-4px 0 0", fontSize: 12, fontWeight: 600, color: "var(--ink-soft)" }}>
+              {t(locale, "email")} / {t(locale, "password")}: {t(locale, "emailOptional")}
+            </p>
+          )}
 
           {/* مجموعات المشرف تُسأل فقط لمشرف المجموعة: الآخرون نطاقهم الجميع */}
           {role === "group_supervisor" && (
@@ -190,7 +211,8 @@ export default function SupervisorsManager({
             </thead>
             <tbody>
               {staff.map((u) => (
-                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.5 }}>
+                <Fragment key={u.id}>
+                <tr style={{ opacity: u.isActive ? 1 : 0.5 }}>
                   <Td>{locale === "en" && u.nameEn ? u.nameEn : u.nameAr}</Td>
                   <Td>
                     <Badge tone={roleTone(u.role)}>{roleLabel(locale, u.role)}</Badge>
@@ -232,6 +254,27 @@ export default function SupervisorsManager({
                   </Td>
                   <Td>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {u.role !== "admin" && u.isActive && (
+                        <button
+                          type="button"
+                          onClick={() => toggle(u.id, "link")}
+                          aria-expanded={openPanel?.id === u.id && openPanel.kind === "link"}
+                          style={{ ...buttonStyle(), padding: "5px 10px", fontSize: 12, background: "var(--sun)", color: "var(--on-fill)" }}
+                        >
+                          {t(locale, "loginLink")}
+                        </button>
+                      )}
+                      {u.role !== "admin" && tiersReady && (
+                        <button
+                          type="button"
+                          onClick={() => toggle(u.id, "limits")}
+                          aria-expanded={openPanel?.id === u.id && openPanel.kind === "limits"}
+                          style={{ ...buttonStyle(), padding: "5px 10px", fontSize: 12 }}
+                        >
+                          {t(locale, "customLimit")}
+                          {overrides[u.id] && Object.keys(overrides[u.id]).length > 0 ? " •" : ""}
+                        </button>
+                      )}
                       {u.role === "group_supervisor" && (
                         <button
                           type="button"
@@ -265,6 +308,23 @@ export default function SupervisorsManager({
                     </div>
                   </Td>
                 </tr>
+                {openPanel?.id === u.id && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "12px 14px 16px", background: "var(--surface-alt)", borderBottom: "1.5px solid var(--border-soft)" }}>
+                      {openPanel.kind === "link" ? (
+                        <StaffLinkPanel locale={locale} userId={u.id} />
+                      ) : (
+                        <SupervisorLimitsForm
+                          locale={locale}
+                          supervisorId={u.id}
+                          roleLimits={roleLimits[u.role] ?? NO_LIMITS}
+                          overrides={overrides[u.id] ?? {}}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

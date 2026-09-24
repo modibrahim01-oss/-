@@ -2,12 +2,13 @@
 
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { arrangeBounds, farmBounds, insideBounds } from "@/lib/farm-layout";
 import {
   PALETTES,
+  TILE,
   buildPlant,
   detailFor,
   buildTerrain,
-  fieldBoundsFor,
   fieldBox,
   gridToWorld,
 } from "@/lib/plants";
@@ -55,6 +56,12 @@ type Props = {
   className?: string;
   /** يُدمج فوق التموضع الافتراضي — الحاوية الأب يجب أن تكون مُموضَعة */
   style?: CSSProperties;
+  /**
+   * وضع الترتيب: سحب النبتة يضعها في خانة جديدة داخل السور، وإفلاتها على
+   * نبتة أخرى يبادلهما. المشهد يحرّك الشبكات بنفسه ويُبلغ بكل نقلة؛ لا يُعاد
+   * بناؤه، فلا تقفز الكاميرا ولا يومض شيء.
+   */
+  arrange?: { onMove: (moves: { slot: number; x: number; y: number }[]) => void };
 };
 
 export default function FarmScene({
@@ -63,8 +70,13 @@ export default function FarmScene({
   dusk = false,
   className,
   style,
+  arrange,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  // مرجع لا خاصية في تبعيات المشهد: الدخول إلى وضع الترتيب والخروج منه لا
+  // يعيدان بناء المشهد، ومعالجات المؤشر تقرأ آخر قيمة
+  const arrangeRef = useRef(arrange);
+  arrangeRef.current = arrange;
   // يُزاد لإعادة بناء المشهد كاملًا حين لا تكفي الإضافة: نبتات قائمة انتقلت
   // من خاناتها، أو مزرعة تجاوزت سورها
   const [epoch, setEpoch] = useState(0);
@@ -106,7 +118,10 @@ export default function FarmScene({
     // امتداد المزرعة يحدّد الساحة: السور يحيط بالنبتات بهامش ثابت من كل
     // جهة على حدة، فلا تغرق مزرعة صغيرة في عشب فارغ.
     const cells = plants.map((p) => ({ x: p.grid_x, y: p.grid_y }));
-    const bounds = fieldBoundsFor(cells);
+    // السور من التخطيط الافتراضي لا من الخانات الفعلية: ترتيب الطالب لا
+    // يحرّك السور، والترتيب يبقى داخله (انظر farm-layout.ts)
+    const bounds = farmBounds(plants);
+    const allowed = arrangeBounds(plants);
     const occupied = new Set(cells.map((c) => `${c.x},${c.y}`));
     const detail = detailFor(plants.length);
 
@@ -149,7 +164,9 @@ export default function FarmScene({
         const group = buildPlant(p.tier, p.slot_index, detail);
         const [x, y, z] = gridToWorld(p.grid_x, p.grid_y);
         // جمع لا إسناد: buildPlant يضع إزاحة النبتة داخل خانتها، و set كان
-        // يمحوها فتعود المزرعة صفوفًا مستوية
+        // يمحوها فتعود المزرعة صفوفًا مستوية. الإزاحة تُحفظ لتبقى مع النبتة
+        // إن نُقلت إلى خانة أخرى في وضع الترتيب
+        group.userData.offset = group.position.clone();
         group.position.add(new THREE.Vector3(x, y, z));
         // buildPlant يعطي كل نبتة حجمًا مختلفًا قليلًا؛ يُحفَظ هنا لأن حركة
         // النموّ تكتب على scale، فبدونه تعود كل نبتة إلى حجم واحد بعد نموّها
@@ -284,6 +301,67 @@ export default function FarmScene({
       applyCamera();
     }
 
+    // ── الترتيب ──
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hitPoint = new THREE.Vector3();
+    const highlight = new THREE.Mesh(
+      new THREE.PlaneGeometry(TILE * 0.92, TILE * 0.92),
+      new THREE.MeshBasicMaterial({ color: 0x7ddc3f, transparent: true, opacity: 0.55, depthWrite: false }),
+    );
+    highlight.rotation.x = -Math.PI / 2;
+    highlight.position.y = 0.07;
+    highlight.visible = false;
+    scene.add(highlight);
+    let drag: { slot: number; group: THREE.Object3D; from: { x: number; y: number }; pointerId: number } | null = null;
+
+    function aim(e: PointerEvent) {
+      const r = renderer.domElement.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+    }
+
+    function pickPlant(e: PointerEvent): number | null {
+      aim(e);
+      const hits = raycaster.intersectObjects([...drawn.values()], false);
+      if (hits.length === 0) return null;
+      for (const [slot, g] of drawn) if (g === hits[0].object) return slot;
+      return null;
+    }
+
+    function groundCell(e: PointerEvent): { x: number; y: number } | null {
+      aim(e);
+      if (!raycaster.ray.intersectPlane(ground, hitPoint)) return null;
+      return { x: Math.floor(hitPoint.x / TILE), y: Math.floor(hitPoint.z / TILE) };
+    }
+
+    function placeAt(group: THREE.Object3D, x: number, y: number) {
+      const [wx, wy, wz] = gridToWorld(x, y);
+      const off = (group.userData.offset as THREE.Vector3 | undefined) ?? new THREE.Vector3();
+      group.position.set(wx + off.x, wy + off.y, wz + off.z);
+      group.userData.cell = `${x},${y}`;
+    }
+
+    function cellOf(group: THREE.Object3D) {
+      const [x, y] = String(group.userData.cell).split(",").map(Number);
+      return { x, y };
+    }
+
+    // موضع نبتة على الشاشة لاختبارات المتصفح (السحب في وضع الترتيب). محجوب
+    // عن الإنتاج كعدّاد الرسم أعلاه.
+    if (process.env.NODE_ENV !== "production") {
+      (window as unknown as { __farmPlantAt?: (slot: number) => { x: number; y: number; cell: string } | null }).__farmPlantAt = (
+        slot,
+      ) => {
+        const g = drawn.get(slot);
+        if (!g) return null;
+        const v = g.position.clone().add(new THREE.Vector3(0, 0.3, 0)).project(camera);
+        const r = renderer.domElement.getBoundingClientRect();
+        return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height, cell: String(g.userData.cell) };
+      };
+    }
+
     // ── المدخلات ──
     const pointers = new Map<number, { x: number; y: number }>();
     let pinchStart = 0;
@@ -291,6 +369,19 @@ export default function FarmScene({
 
     const onPointerDown = (e: PointerEvent) => {
       if (cinematic) return;
+      // في وضع الترتيب: إصبع واحد على نبتة يمسكها، وعلى العشب يسحب المشهد
+      if (arrangeRef.current && pointers.size === 0 && !drag) {
+        const slot = pickPlant(e);
+        const group = slot === null ? undefined : drawn.get(slot);
+        if (slot !== null && group) {
+          drag = { slot, group, from: cellOf(group), pointerId: e.pointerId };
+          group.position.y += 0.35;
+          renderer.domElement.setPointerCapture(e.pointerId);
+          renderer.domElement.style.cursor = "grabbing";
+          dirty = true;
+          return;
+        }
+      }
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       renderer.domElement.setPointerCapture(e.pointerId);
       renderer.domElement.style.cursor = "grabbing";
@@ -303,6 +394,24 @@ export default function FarmScene({
 
     const onPointerMove = (e: PointerEvent) => {
       if (cinematic) return;
+      if (drag) {
+        if (e.pointerId !== drag.pointerId) return;
+        const c = groundCell(e);
+        if (c) {
+          // النبتة تتبع الإصبع، والخانة تحتها تُضاء: خضراء داخل السور وحمراء خارجه
+          drag.group.position.x = hitPoint.x;
+          drag.group.position.z = hitPoint.z;
+          const [hx, , hz] = gridToWorld(c.x, c.y);
+          highlight.position.x = hx;
+          highlight.position.z = hz;
+          (highlight.material as THREE.MeshBasicMaterial).color.setHex(
+            insideBounds(allowed, c.x, c.y) ? 0x7ddc3f : 0xff5a4e,
+          );
+          highlight.visible = true;
+          dirty = true;
+        }
+        return;
+      }
       const prev = pointers.get(e.pointerId);
       if (!prev) return;
       const now = { x: e.clientX, y: e.clientY };
@@ -320,6 +429,32 @@ export default function FarmScene({
     };
 
     const onPointerUp = (e: PointerEvent) => {
+      if (drag && e.pointerId === drag.pointerId) {
+        const { slot, group, from } = drag;
+        drag = null;
+        highlight.visible = false;
+        const c = e.type === "pointercancel" ? null : groundCell(e);
+        const target = c && insideBounds(allowed, c.x, c.y) ? c : null;
+        if (!target || (target.x === from.x && target.y === from.y)) {
+          placeAt(group, from.x, from.y);
+        } else {
+          // إفلات على نبتة أخرى يبادلهما؛ على خانة فارغة ينقلها وحدها
+          let occupant: [number, THREE.Object3D] | null = null;
+          for (const [s2, g2] of drawn) {
+            if (s2 !== slot && g2.userData.cell === `${target.x},${target.y}`) occupant = [s2, g2];
+          }
+          placeAt(group, target.x, target.y);
+          const moves = [{ slot, x: target.x, y: target.y }];
+          if (occupant) {
+            placeAt(occupant[1], from.x, from.y);
+            moves.push({ slot: occupant[0], x: from.x, y: from.y });
+          }
+          arrangeRef.current?.onMove(moves);
+        }
+        renderer.domElement.style.cursor = "grab";
+        dirty = true;
+        return;
+      }
       pointers.delete(e.pointerId);
       if (pointers.size < 2) pinchStart = 0;
       if (pointers.size === 0 && !cinematic) renderer.domElement.style.cursor = "grab";
@@ -404,7 +539,7 @@ export default function FarmScene({
         // الإضافة وحدها تفترض أن النبتات القائمة ثابتة وأن السور يسعها. إن
         // انتقلت نبتة (إعادة ترتيب المزرعة) أو خرجت الجديدة عن السور، يُعاد
         // بناء المشهد بالساحة الجديدة بدل رسم نبتة في مكانها القديم أو خارج السور
-        const nextBounds = fieldBoundsFor(next.map((p) => ({ x: p.grid_x, y: p.grid_y })));
+        const nextBounds = farmBounds(next);
         const moved = next.some((p) => {
           const g = drawn.get(p.slot_index);
           return g !== undefined && g.userData.cell !== `${p.grid_x},${p.grid_y}`;
@@ -441,6 +576,8 @@ export default function FarmScene({
       // هندسات النبتات وموادّها مُشتركة عبر lib/plants ولا تُتلَف هنا وإلا
       // فقدتها المشاهد اللاحقة. موارد الأرضية خاصّة بهذا المشهد فتُتلَف.
       disposeTerrain();
+      highlight.geometry.dispose();
+      (highlight.material as THREE.Material).dispose();
       renderer.dispose();
       // dispose وحده لا يُنهي سياق WebGL. وضع العرض يعيد بناء المشهد لكل
       // طالب، فبدون هذا تتكدّس السياقات حتى يُسقط المتصفح أقدمها وتُظلم الشاشة.

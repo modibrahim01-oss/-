@@ -8,7 +8,7 @@ import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { TIER_LIST, isTier } from "@/lib/tiers";
 import type { Tier } from "@/lib/tiers";
-import type { DailyStatus, StudentFarmSummary } from "@/lib/types";
+import type { DailyStatus, StudentFarmSummary, TierAllowance } from "@/lib/types";
 import { undoSecondsLeft } from "@/lib/undo";
 
 type RecentAward = {
@@ -64,8 +64,34 @@ export default function AwardPanel({
     return () => window.clearInterval(id);
   }, [anyUndoable]);
 
-  const unlimited = status.limit < 0;
+  // بعد 0007 الحد بعدد نبتات كل فئة (tiers)؛ قبله بمجموع النقاط
+  const perTier = status.tiers;
+  const unlimited = perTier ? TIER_LIST.every((s) => perTier[s.tier]?.limit < 0) : status.limit < 0;
   const remaining = unlimited ? Number.POSITIVE_INFINITY : status.remaining;
+
+  /** هل بقي من حصّة اليوم ما يكفي لمنح هذه الفئة؟ */
+  function canAward(spec: (typeof TIER_LIST)[number]): boolean {
+    if (perTier) {
+      const a = perTier[spec.tier];
+      return !a || a.limit < 0 || a.remaining > 0;
+    }
+    return spec.points <= remaining;
+  }
+
+  /** يعدّل حصّة فئة محليًا بعد منح (+1) أو تراجع (-1) أو رفض الحد. */
+  function bumpTier(tier: Tier, delta: number, exhausted = false) {
+    setStatus((prev) => {
+      if (!prev.tiers) return prev;
+      const a = prev.tiers[tier];
+      if (!a) return prev;
+      const used = Math.max(0, a.used + delta);
+      const next =
+        a.limit < 0
+          ? { ...a, used }
+          : { ...a, used, remaining: exhausted ? 0 : Math.max(0, Math.min(a.limit, a.limit - used)) };
+      return { ...prev, tiers: { ...prev.tiers, [tier]: next } };
+    });
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -84,7 +110,7 @@ export default function AwardPanel({
   function award(tier: Tier) {
     if (!selected || pending) return;
     const spec = TIER_LIST.find((s) => s.tier === tier);
-    if (!spec || spec.points > remaining) return;
+    if (!spec || !canAward(spec)) return;
 
     const student = selected;
     startTransition(async () => {
@@ -93,24 +119,27 @@ export default function AwardPanel({
       if (!outcome.ok) {
         const text =
           outcome.reason === "limit"
-            ? t(locale, "limitReached")
+            ? t(locale, perTier ? "tierLimitReached" : "limitReached")
             : outcome.reason === "scope"
               ? t(locale, "awardFailed")
               : t(locale, "awardFailed");
         setToast({ tone: "err", text });
         // الحد قد يكون استُهلك من جهاز آخر لنفس المشرف — نصفّر المتبقّي
         if (outcome.reason === "limit") {
-          setStatus((prev) => ({ ...prev, used: prev.limit, remaining: 0 }));
+          if (perTier) bumpTier(tier, 0, true);
+          else setStatus((prev) => ({ ...prev, used: prev.limit, remaining: 0 }));
         }
         return;
       }
 
       const gained = outcome.result.points;
-      setStatus((prev) =>
-        prev.limit < 0
-          ? { ...prev, used: prev.used + gained }
-          : { ...prev, used: prev.used + gained, remaining: Math.max(0, prev.remaining - gained) },
-      );
+      if (perTier) bumpTier(tier, 1);
+      else
+        setStatus((prev) =>
+          prev.limit < 0
+            ? { ...prev, used: prev.used + gained }
+            : { ...prev, used: prev.used + gained, remaining: Math.max(0, prev.remaining - gained) },
+        );
       setBumps((prev) => {
         const cur = prev[student.student_id] ?? { points: 0, plants: 0 };
         return {
@@ -167,15 +196,17 @@ export default function AwardPanel({
       }
 
       const lost = outcome.points;
-      setStatus((prev) =>
-        prev.limit < 0
-          ? { ...prev, used: Math.max(0, prev.used - lost) }
-          : {
-              ...prev,
-              used: Math.max(0, prev.used - lost),
-              remaining: Math.min(prev.limit, prev.remaining + lost),
-            },
-      );
+      if (perTier && isTier(r.tier)) bumpTier(r.tier, -1);
+      else
+        setStatus((prev) =>
+          prev.limit < 0
+            ? { ...prev, used: Math.max(0, prev.used - lost) }
+            : {
+                ...prev,
+                used: Math.max(0, prev.used - lost),
+                remaining: Math.min(prev.limit, prev.remaining + lost),
+              },
+        );
       setBumps((prev) => {
         const cur = prev[r.studentId] ?? { points: 0, plants: 0 };
         return { ...prev, [r.studentId]: { points: cur.points - lost, plants: cur.plants - 1 } };
@@ -223,16 +254,21 @@ export default function AwardPanel({
 
         <Card>
           <SectionLabel>{t(locale, "yourDailyLimit")}</SectionLabel>
-          {unlimited ? (
+          {perTier && !unlimited ? (
+            <TierMeters locale={locale} tiers={perTier} />
+          ) : unlimited ? (
             // «بلا حد» شارة، والمنح اليوم رقم مستقلّ: جمعهما بنقطة وسطى في الخطّ
             // العرضي كان يُقرأ كلمةً واحدة متّصلة
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <Badge tone="brand">{t(locale, "noLimit")}</Badge>
               <span className="tabular" style={{ fontSize: 14, fontWeight: 700, color: "var(--ink-soft)" }}>
                 <strong style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--ink)" }}>
-                  {formatNumber(locale, status.used)}
+                  {formatNumber(
+                    locale,
+                    perTier ? TIER_LIST.reduce((n, s) => n + (perTier[s.tier]?.used ?? 0), 0) : status.used,
+                  )}
                 </strong>{" "}
-                {t(locale, "points")}
+                {t(locale, perTier ? "plantsToday" : "points")}
               </span>
             </div>
           ) : (
@@ -401,7 +437,8 @@ export default function AwardPanel({
           <SectionLabel>{t(locale, "awardPoints")}</SectionLabel>
           <div className="award-grid">
             {TIER_LIST.map((spec) => {
-              const blocked = !selected || spec.points > remaining || pending;
+              const blocked = !selected || !canAward(spec) || pending;
+              const allowance = perTier?.[spec.tier];
               return (
                 <button
                   key={spec.tier}
@@ -412,8 +449,8 @@ export default function AwardPanel({
                   title={
                     !selected
                       ? t(locale, "selectStudentFirst")
-                      : spec.points > remaining
-                        ? t(locale, "limitReached")
+                      : !canAward(spec)
+                        ? t(locale, perTier ? "tierLimitReached" : "limitReached")
                         : undefined
                   }
                   style={{
@@ -455,6 +492,21 @@ export default function AwardPanel({
                   <span style={{ fontSize: 15, fontWeight: 700 }}>
                     {locale === "ar" ? spec.labelAr : spec.labelEn}
                   </span>
+                  {allowance && allowance.limit >= 0 && (
+                    <span
+                      className="tabular"
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        padding: "1px 10px",
+                        borderRadius: 999,
+                        background: "#fff",
+                        border: "2px solid var(--outline)",
+                      }}
+                    >
+                      {t(locale, "left")} {formatNumber(locale, allowance.remaining)}
+                    </span>
+                  )}
                   {burst?.tier === spec.tier && (
                     <span
                       key={burst.key}
@@ -581,6 +633,46 @@ export default function AwardPanel({
         }}
       />
     </main>
+  );
+}
+
+/**
+ * حصّة اليوم لكل نوع: أيقونة النبتة، وشريط صغير بلونها، و«باقي ٣ من ٥».
+ * الشريط يفرغ مع المنح فيُرى النفاد قبل أن يُقرأ الرقم.
+ */
+function TierMeters({ locale, tiers }: { locale: Locale; tiers: Record<Tier, TierAllowance> }) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {TIER_LIST.map((spec) => {
+        const a = tiers[spec.tier];
+        if (!a) return null;
+        const pct = a.limit > 0 ? (a.remaining / a.limit) * 100 : 0;
+        return (
+          <div key={spec.tier} style={{ display: "grid", gridTemplateColumns: "30px minmax(0, 1fr) auto", gap: 10, alignItems: "center" }}>
+            <PlantIcon tier={spec.tier} size={30} />
+            <div
+              role="progressbar"
+              aria-label={locale === "ar" ? spec.labelAr : spec.labelEn}
+              aria-valuemin={0}
+              aria-valuemax={a.limit}
+              aria-valuenow={a.remaining}
+              style={{
+                height: 14,
+                borderRadius: 999,
+                background: "var(--surface-alt)",
+                border: "2px solid var(--outline)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ width: `${pct}%`, height: "100%", background: spec.color, transition: "width 0.35s" }} />
+            </div>
+            <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: a.remaining === 0 ? "var(--coral)" : "var(--ink-soft)", whiteSpace: "nowrap" }}>
+              {t(locale, "left")} <strong style={{ fontFamily: "var(--font-display)", fontSize: 17, color: a.remaining === 0 ? "var(--coral)" : "var(--ink)" }}>{formatNumber(locale, a.remaining)}</strong> {t(locale, "of")} {formatNumber(locale, a.limit)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

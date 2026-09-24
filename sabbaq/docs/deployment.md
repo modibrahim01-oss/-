@@ -32,10 +32,17 @@
 | ٤ | `supabase/migrations/0004_seed.sql` | المجموعات السبع، الحدود، الفصل الأول، trigger المصادقة |
 | ٥ | `supabase/migrations/0005_quadrant_layout.sql` | تخطيط الأرباع: كل فئة نبتات في بستانها |
 | ٦ | `supabase/migrations/0006_undo_and_compact.sql` | تراجع المشرف خلال دقيقتين + ملء الخانة المُلغاة |
+| ٧ | `supabase/migrations/0007_tier_limits_links_keys.sql` | حدّ يومي بعدد النبتات، رابط دخول المشرف، مفتاح مزرعة الطالب |
 
 > **قاعدة قائمة نُفِّذت عليها 0001–0004 سابقًا؟** نفّذ `0005` وحده. يعيد رسم
 > المزارع القائمة بالتخطيط الجديد في معاملة واحدة، ولا يمسّ النقاط ولا
 > الترتيب — تتغيّر مواضع النبتات فقط.
+
+> **قاعدة نُفِّذ عليها حتى 0006؟** نفّذ `0007` وحده. يستبدل حدّ النقاط اليومي
+> بحدّ لكل نوع نبتة (قيم بداية تُضبط من «الحدود اليومية»)، ويضيف جدولَي روابط
+> المشرفين ومفاتيح المزارع. لا يحرّك نبتة ولا يغيّر نقطة. **مسار `/k/<رمز>`
+> يحتاج `SUPABASE_SERVICE_ROLE_KEY`** في متغيّرات Netlify (المستعمل أصلًا
+> لإنشاء المشرفين).
 
 > **قاعدة نُفِّذ عليها حتى 0005؟** نفّذ `0006` وحده. لا يحرّك أي نبتة قائمة:
 > يضيف دالة التراجع، ويجعل المنح التالي يملأ خانة أي نبتة أُلغيت بدل أن
@@ -54,7 +61,8 @@ select
   (select count(*) from semesters where is_active) = 1 as semester_ok,
   to_regprocedure('award_points(uuid,point_tier)') is not null as rpc_ok,
   (select x = 1 and y = 1 from quadrant_coord('green', 0)) as layout_ok,
-  to_regprocedure('undo_my_award(bigint)') is not null as undo_ok;
+  to_regprocedure('undo_my_award(bigint)') is not null as undo_ok,
+  to_regclass('public.tier_limits') is not null as tier_limits_ok;
 ```
 
 ---

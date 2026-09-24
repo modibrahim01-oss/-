@@ -25,7 +25,8 @@ for f in \
   "$HERE/supabase/migrations/0003_rls.sql" \
   "$HERE/supabase/migrations/0004_seed.sql" \
   "$HERE/supabase/migrations/0005_quadrant_layout.sql" \
-  "$HERE/supabase/migrations/0006_undo_and_compact.sql"
+  "$HERE/supabase/migrations/0006_undo_and_compact.sql" \
+  "$HERE/supabase/migrations/0007_tier_limits_links_keys.sql"
 do
   printf '  · %s\n' "$(basename "$f")"
   psql -q -d "$DB" -v ON_ERROR_STOP=1 -f "$f"

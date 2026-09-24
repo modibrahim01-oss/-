@@ -12,10 +12,10 @@ import LoginForm from "./LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const locale = await getLocale();
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
 
   return (
     <>
@@ -78,6 +78,22 @@ export default async function LoginPage({
 
         <section className="pop" style={{ background: "var(--surface)", borderRadius: 30, padding: "30px 26px 26px" }}>
           <h1 style={{ fontSize: 30, margin: "0 0 6px" }}>{t(locale, "loginTitle")}</h1>
+          {error === "link" && (
+            <p
+              role="alert"
+              style={{
+                margin: "8px 0 12px",
+                padding: "10px 14px",
+                borderRadius: 14,
+                background: "var(--coral-soft)",
+                color: "var(--coral)",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
+              {t(locale, "loginLinkInvalid")}
+            </p>
+          )}
           <p style={{ color: "var(--ink-soft)", fontSize: 15, margin: "0 0 24px" }}>{t(locale, "loginHint")}</p>
 
           <LoginForm locale={locale} next={next} />

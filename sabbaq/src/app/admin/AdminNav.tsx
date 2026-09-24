@@ -50,6 +50,17 @@ const ITEMS: { href: string; key: TranslationKey; hue: string; icon: React.React
     ),
   },
   {
+    href: "/admin/keys",
+    hue: "var(--grape-fill)",
+    key: "farmKeys",
+    icon: (
+      <>
+        <circle cx="8" cy="15" r="4" />
+        <path d="M11 12l8-8M16 7l3 3M14 9l2 2" />
+      </>
+    ),
+  },
+  {
     href: "/admin/limits",
     hue: "var(--tangerine)",
     key: "dailyLimits",

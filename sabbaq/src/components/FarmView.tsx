@@ -12,6 +12,7 @@ import { countByTier } from "@/lib/farm";
 import { type FarmData, farmChanged, loadFarm } from "@/lib/farm-data";
 import { MilestoneCelebration, MilestonesCard, useMilestoneCelebration } from "@/components/Milestones";
 import { createRestClient } from "@/lib/supabase/rest";
+import { resetArrangement, saveArrangement } from "@/lib/actions/farm";
 import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import { TIER_LIST } from "@/lib/tiers";
 import { useLocale } from "@/lib/useLocale";
@@ -28,6 +29,116 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
   const [grown, setGrown] = useState(0);
   const shown = useRef(initial.plants.length);
 
+  // ── مفتاح المزرعة ──
+  // يصل في الـ hash (#k=…) من بطاقة الطالب: لا يبلغ الخادم ولا يكسر تخزين
+  // الصفحة. يُحفظ في المتصفح ويُمحى من الشريط فلا يُنسخ مع الرابط صدفةً.
+  const [farmKey, setFarmKey] = useState<string | null>(null);
+  const [arranging, setArranging] = useState(false);
+  const arrangingRef = useRef(false);
+  arrangingRef.current = arranging;
+  const [moves, setMoves] = useState<Record<number, { x: number; y: number }>>({});
+  const [sceneKey, setSceneKey] = useState(0);
+  const [arrangeNote, setArrangeNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const storageKey = `sabbaq-farm-key:${id}`;
+    let key: string | null = null;
+    const m = window.location.hash.match(/(?:^#|&)k=([A-Za-z0-9_-]{32,128})/);
+    if (m) {
+      key = m[1];
+      try {
+        localStorage.setItem(storageKey, key);
+      } catch {
+        // تخزين محجوب: يبقى المفتاح لهذه الزيارة وحدها
+      }
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    } else {
+      try {
+        key = localStorage.getItem(storageKey);
+      } catch {
+        key = null;
+      }
+    }
+    if (!key) return;
+
+    let cancelled = false;
+    const candidate = key;
+    // تحقّق خفيف من المتصفح؛ الحفظ نفسه يتحقق من جديد في قاعدة البيانات
+    void (async () => {
+      const { data, error } = await createRestClient().rpc("farm_key_ok", { p_student: id, p_key: candidate });
+      if (cancelled) return;
+      if (!error && data === true) setFarmKey(candidate);
+      else if (!error) {
+        try {
+          localStorage.removeItem(storageKey);
+        } catch {
+          // انظر أعلاه
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const movedCount = Object.keys(moves).length;
+
+  function endArranging(note: { tone: "ok" | "err"; text: string } | null) {
+    setArranging(false);
+    setMoves({});
+    setArrangeNote(note);
+  }
+
+  async function save() {
+    if (!farmKey || movedCount === 0) return;
+    setSaving(true);
+    const list = Object.entries(moves).map(([slot, c]) => ({ slot: Number(slot), x: c.x, y: c.y }));
+    const res = await saveArrangement(id, farmKey, list);
+    setSaving(false);
+    if (res.ok) {
+      // المشهد في مكانه أصلًا؛ تُحدَّث البيانات بالخانات الجديدة فلا يُعاد رسمه
+      setData((prev) => ({
+        ...prev,
+        plants: prev.plants.map((p) => (moves[p.slot_index] ? { ...p, grid_x: moves[p.slot_index].x, grid_y: moves[p.slot_index].y } : p)),
+      }));
+      endArranging({ tone: "ok", text: t(locale, "arrangeSaved") });
+    } else if (res.reason === "key") {
+      setFarmKey(null);
+      setSceneKey((k) => k + 1);
+      endArranging({ tone: "err", text: t(locale, "arrangeKeyInvalid") });
+    } else {
+      setArrangeNote({ tone: "err", text: t(locale, "arrangeFailed") });
+    }
+  }
+
+  function cancel() {
+    // المشهد حرّك الشبكات بنفسه؛ إعادة تركيبه تعيد كل نبتة إلى خانتها المحفوظة
+    setSceneKey((k) => k + 1);
+    endArranging(null);
+  }
+
+  async function resetLayout() {
+    if (!farmKey || !window.confirm(t(locale, "resetArrangementConfirm"))) return;
+    setSaving(true);
+    const res = await resetArrangement(id, farmKey);
+    if (res.ok) {
+      const next = await loadFarm(createRestClient(), id).catch(() => null);
+      if (next) setData(next);
+      setSceneKey((k) => k + 1);
+      endArranging({ tone: "ok", text: t(locale, "arrangeSaved") });
+    } else {
+      setArrangeNote({ tone: "err", text: t(locale, res.reason === "key" ? "arrangeKeyInvalid" : "arrangeFailed") });
+    }
+    setSaving(false);
+  }
+
+  useEffect(() => {
+    if (!arrangeNote || arrangeNote.tone === "err") return;
+    const timer = setTimeout(() => setArrangeNote(null), 3500);
+    return () => clearTimeout(timer);
+  }, [arrangeNote]);
+
   useEffect(() => {
     let cancelled = false;
     const supabase = createRestClient();
@@ -37,7 +148,8 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
         const next = await loadFarm(supabase, id);
         // نستبدل فقط إن تغيّر ما يُرى: مصفوفة نبتات جديدة بنفس المحتوى
         // تجعل المشهد يعيد المقارنة بلا داعٍ
-        if (!cancelled && next) setData((prev) => (farmChanged(prev, next) ? next : prev));
+        // أثناء الترتيب لا تُستبدل البيانات: المشهد يحمل نقلات لم تُحفظ بعد
+        if (!cancelled && next && !arrangingRef.current) setData((prev) => (farmChanged(prev, next) ? next : prev));
         if (!cancelled && next && next.plants.length > shown.current) {
           setGrown(next.plants.length - shown.current);
           shown.current = next.plants.length;
@@ -173,9 +285,58 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
                 <EmptyState title={t(locale, "emptyFarm")} hint={t(locale, "emptyFarmHint")} />
               </div>
             ) : (
-              <FarmScene plants={plants} />
+              <FarmScene
+                key={sceneKey}
+                plants={plants}
+                arrange={
+                  arranging
+                    ? {
+                        onMove: (list) =>
+                          setMoves((prev) => {
+                            const next = { ...prev };
+                            for (const m of list) next[m.slot] = { x: m.x, y: m.y };
+                            return next;
+                          }),
+                      }
+                    : undefined
+                }
+              />
             )}
-            {plants.length > 0 && (
+            {plants.length > 0 && farmKey && (
+              <ArrangeBar
+                locale={locale}
+                arranging={arranging}
+                movedCount={movedCount}
+                saving={saving}
+                onStart={() => {
+                  setArrangeNote(null);
+                  setArranging(true);
+                }}
+                onSave={save}
+                onCancel={cancel}
+                onReset={resetLayout}
+              />
+            )}
+            {arrangeNote && (
+              <div
+                role="status"
+                className="pop pop-in"
+                style={{
+                  position: "absolute",
+                  top: 14,
+                  insetInlineEnd: 64,
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  background: arrangeNote.tone === "ok" ? "var(--lime)" : "var(--coral-fill)",
+                  color: "var(--on-fill)",
+                  zIndex: 4,
+                }}
+              >
+                {arrangeNote.text}
+              </div>
+            )}
+            {plants.length > 0 && !arranging && (
               <div
                 className="farm-hint"
                 style={{
@@ -294,5 +455,89 @@ function Chip({ fill, children }: { fill: string; children: React.ReactNode }) {
     >
       {children}
     </span>
+  );
+}
+
+/**
+ * شريط الترتيب أسفل المزرعة: زرّ «رتّب مزرعتي» لمن يملك المفتاح، ثم أثناء
+ * الترتيب تلميح وعدّاد النقلات و«حفظ» و«إلغاء» و«الترتيب الأصلي».
+ */
+function ArrangeBar({
+  locale,
+  arranging,
+  movedCount,
+  saving,
+  onStart,
+  onSave,
+  onCancel,
+  onReset,
+}: {
+  locale: "ar" | "en";
+  arranging: boolean;
+  movedCount: number;
+  saving: boolean;
+  onStart: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onReset: () => void;
+}) {
+  if (!arranging) {
+    return (
+      <button
+        type="button"
+        className="press"
+        onClick={onStart}
+        style={{
+          ...buttonStyle("primary"),
+          position: "absolute",
+          bottom: 14,
+          insetInlineEnd: 14,
+          zIndex: 3,
+          background: "var(--sun)",
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
+        </svg>
+        {t(locale, "arrangeFarm")}
+      </button>
+    );
+  }
+  return (
+    <div
+      className="pop"
+      style={{
+        position: "absolute",
+        insetInline: 12,
+        bottom: 12,
+        zIndex: 3,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        flexWrap: "wrap",
+        padding: "10px 12px",
+        borderRadius: 18,
+        background: "var(--surface)",
+      }}
+    >
+      <span style={{ flex: "1 1 220px", fontSize: 13, fontWeight: 700, color: "var(--ink-soft)" }}>
+        {movedCount > 0 ? `${formatNumber(locale, movedCount)} ${t(locale, "movedCount")}` : t(locale, "arrangeHint")}
+      </span>
+      <button type="button" className="press" disabled={saving} onClick={onReset} style={{ ...buttonStyle(), padding: "7px 12px", fontSize: 13 }}>
+        {t(locale, "resetArrangement")}
+      </button>
+      <button type="button" className="press" disabled={saving} onClick={onCancel} style={{ ...buttonStyle(), padding: "7px 12px", fontSize: 13 }}>
+        {t(locale, "cancel")}
+      </button>
+      <button
+        type="button"
+        className="press"
+        disabled={saving || movedCount === 0}
+        onClick={onSave}
+        style={{ ...buttonStyle("primary"), padding: "7px 16px", fontSize: 14 }}
+      >
+        {t(locale, "saveArrangement")}
+      </button>
+    </div>
   );
 }

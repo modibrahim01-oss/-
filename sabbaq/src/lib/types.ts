@@ -71,12 +71,20 @@ export type LedgerEntry = Plant & {
   supervisor_id: string;
 };
 
+/** حصّة المشرف اليومية من فئة واحدة، بعدد النبتات. -1 = بلا حد (المدير). */
+export type TierAllowance = { limit: number; used: number; remaining: number };
+
 export type DailyStatus = {
   role: UserRole | null;
-  /** -1 يعني بلا حد (المدير) */
+  /**
+   * الحد بالنقاط — شكل ما قبل 0007، يبقى ليعمل الموقع على قاعدة لم يُشغَّل
+   * عليها الترحيل بعد. -1 يعني بلا حد (المدير).
+   */
   limit: number;
   used: number;
   remaining: number;
+  /** الحد بعدد النبتات لكل فئة (0007). وجوده يعني أن الواجهة تعرض العدّادات. */
+  tiers?: Record<Tier, TierAllowance>;
 };
 
 export type AwardResult = {

@@ -54,6 +54,8 @@ $$;
 truncate points_ledger, supervisor_groups, students, audit_log,
          semester_archives restart identity cascade;
 update daily_limits set updated_by = null;
+update tier_limits set updated_by = null;
+truncate supervisor_tier_limits, staff_login_keys;
 delete from users;
 delete from auth.users;
 
@@ -104,8 +106,12 @@ insert into students (id, full_name, group_id, grade) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'طالب باسل', 4, 'الخامس'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'طالب قبس',  1, 'الأول');
 
-update daily_limits set points_perday = 50  where role = 'group_supervisor';
-update daily_limits set points_perday = 100 where role = 'committee_supervisor';
+-- الحد بعدد النبتات من كل فئة (0007): مشرف المجموعة سنبلتان وزهرة، ولا
+-- نبتات ولا أشجار؛ مشرف اللجنة شجرتان فقط
+update tier_limits set per_day = 0;
+update tier_limits set per_day = 2 where role = 'group_supervisor' and tier = 'green';
+update tier_limits set per_day = 1 where role = 'group_supervisor' and tier = 'purple';
+update tier_limits set per_day = 2 where role = 'committee_supervisor' and tier = 'red';
 
 -- ── 1. مشرف المجموعة لا يمنح خارج مجموعاته ──────────────────────────────
 do $$
@@ -130,35 +136,47 @@ begin
 end;
 $$;
 
--- ── 2. الحد اليومي صارم ─────────────────────────────────────────────────
+-- ── 2. الحد اليومي صارم، بعدد نبتات كل فئة على حدة ─────────────────────
 do $$
 declare v_err text; v_used integer;
 begin
-  -- الحد 50، وقد استُهلك 10 في الاختبار السابق. 30 تمرّ فيصبح 40.
+  -- حدّ الزهور ١: الأولى تمرّ
   v_err := try_as('22222222-2222-2222-2222-222222222222',
     $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple')$q$);
-  perform assert(v_err is null, '2a. award within remaining limit succeeds');
+  perform assert(v_err is null, '2a. award within the tier''s daily count succeeds');
 
-  -- 20 أخرى تجعل المجموع 60 > 50: يجب أن تُرفض
+  -- والثانية تُرفض: نفدت الزهور
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple')$q$);
+  perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%',
+    '2b. an award past the tier''s daily count is BLOCKED');
+
+  -- نفاد فئة لا يمسّ غيرها: السنبلة الثانية (من ٢) تمرّ
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'green')$q$);
+  perform assert(v_err is null, '2c. another tier is unaffected and reaches its limit exactly');
+
+  select count(*) into v_used from points_ledger
+   where supervisor_id = '22222222-2222-2222-2222-222222222222'
+     and tier = 'green' and revoked_at is null;
+  perform assert(v_used = 2, '2d. the tier count is exactly its limit, never above');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'green')$q$);
+  perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%',
+    '2e. an exhausted tier stays blocked');
+
+  -- فئة حدّها صفر ممنوعة من أول منح
   v_err := try_as('22222222-2222-2222-2222-222222222222',
     $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'yellow')$q$);
-  perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%',
-    '2b. award that would exceed the daily limit is BLOCKED');
+  perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%', '2f. a tier with a zero limit is blocked');
 
-  -- 10 تُكمل المجموع إلى 50 بالضبط: مسموحة (الحد شامل)
-  v_err := try_as('22222222-2222-2222-2222-222222222222',
-    $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'green')$q$);
-  perform assert(v_err is null, '2c. award hitting the limit exactly is allowed');
-
-  select coalesce(sum(points), 0) into v_used from points_ledger
-   where supervisor_id = '22222222-2222-2222-2222-222222222222' and revoked_at is null;
-  perform assert(v_used = 50, '2d. supervisor total is exactly the limit, never above');
-
-  -- ولا حتى أصغر فئة بعد استنفاد الحد
-  v_err := try_as('22222222-2222-2222-2222-222222222222',
-    $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'green')$q$);
-  perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%',
-    '2e. exhausted supervisor cannot award even the smallest tier');
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  perform assert(
+    (my_daily_status()->'tiers'->'green'->>'remaining')::int = 0
+    and (my_daily_status()->'tiers'->'purple'->>'used')::int = 1
+    and (my_daily_status()->'tiers'->'red'->>'limit')::int = 0,
+    '2g. my_daily_status reports each tier''s limit, use and remainder');
 end;
 $$;
 
@@ -174,9 +192,9 @@ begin
     $q$select award_points('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'red')$q$);
   perform assert(v_err is null, '3b. committee supervisor awards across groups (qabas)');
 
-  -- حدّه 100، استهلك 100: التالي يُرفض
+  -- حدّه شجرتان، استهلكهما: الثالثة تُرفض
   v_err := try_as('44444444-4444-4444-4444-444444444444',
-    $q$select award_points('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'green')$q$);
+    $q$select award_points('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'red')$q$);
   perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%',
     '3c. committee supervisor bound by their own limit');
 end;
@@ -378,20 +396,20 @@ begin
 end;
 $$;
 
--- ── 10. تعديل الحد: المدير فقط ──────────────────────────────────────────
+-- ── 10. تعديل الحد: المدير فقط، واستثناء المشرف يتغلّب على حدّ دوره ─────
 do $$
 declare v_err text;
 begin
   v_err := try_as('44444444-4444-4444-4444-444444444444',
-    $q$select set_daily_limit('group_supervisor', 9999)$q$);
+    $q$select set_tier_limit('group_supervisor', 'green', 9999)$q$);
   perform assert(v_err like '%ADMIN_ONLY%', '10a. committee supervisor CANNOT raise limits');
 
   v_err := try_as('11111111-1111-1111-1111-111111111111',
-    $q$select set_daily_limit('group_supervisor', 300)$q$);
-  perform assert(v_err is null, '10b. admin CAN change the daily limit');
+    $q$select set_tier_limit('group_supervisor', 'green', 5)$q$);
+  perform assert(v_err is null, '10b. admin CAN change a tier''s daily limit');
 
   perform assert(
-    (select points_perday from daily_limits where role = 'group_supervisor') = 300,
+    (select per_day from tier_limits where role = 'group_supervisor' and tier = 'green') = 5,
     '10c. the new limit is stored');
 
   -- ورفع الحد يُفرج عن المشرف الذي كان قد استنفده فورًا
@@ -399,6 +417,31 @@ begin
     $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'green')$q$);
   perform assert(v_err is null,
     '10d. raising the limit immediately unblocks an exhausted supervisor');
+
+  -- استثناء لمشرف واحد: نبتة واحدة له، وحدّ دوره صفر
+  v_err := try_as('11111111-1111-1111-1111-111111111111',
+    $q$select set_supervisor_tier_limit('22222222-2222-2222-2222-222222222222', 'yellow', 1)$q$);
+  perform assert(v_err is null, '10e. admin CAN set a per-supervisor override');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    $q$select award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'yellow')$q$);
+  perform assert(v_err is null, '10f. the override beats the role''s limit for that supervisor');
+
+  v_err := try_as('33333333-3333-3333-3333-333333333333',
+    $q$select award_points('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'yellow')$q$);
+  perform assert(v_err like '%DAILY_LIMIT_EXCEEDED%',
+    '10g. other supervisors of the same role keep the role''s limit');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    $q$select set_supervisor_tier_limit('22222222-2222-2222-2222-222222222222', 'yellow', 50)$q$);
+  perform assert(v_err like '%ADMIN_ONLY%', '10h. a supervisor CANNOT set their own override');
+
+  perform try_as('11111111-1111-1111-1111-111111111111',
+    $q$select set_supervisor_tier_limit('22222222-2222-2222-2222-222222222222', 'yellow', null)$q$);
+  perform assert(
+    not exists (select 1 from supervisor_tier_limits
+                 where supervisor_id = '22222222-2222-2222-2222-222222222222' and tier = 'yellow'),
+    '10i. null removes the override');
 end;
 $$;
 
@@ -515,10 +558,10 @@ declare
 begin
   -- رصيد كافٍ للمشرف حتى لا يتدخّل الحد اليومي في الاختبار
   perform try_as('11111111-1111-1111-1111-111111111111',
-    $q$select set_daily_limit('group_supervisor', 100000)$q$);
+    $q$select set_tier_limit('group_supervisor', 'purple', 100000)$q$);
 
   perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
-  v_used_before := (my_daily_status()->>'used')::int;
+  v_used_before := (my_daily_status()->'tiers'->'purple'->>'used')::int;
   v_r := award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple');
   v_id := (v_r->>'ledger_id')::bigint;
   v_x := (v_r->>'grid_x')::int; v_y := (v_r->>'grid_y')::int;
@@ -537,7 +580,7 @@ begin
     '15c. undo is soft: the row survives, marked as an undo');
 
   perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
-  v_used_after := (my_daily_status()->>'used')::int;
+  v_used_after := (my_daily_status()->'tiers'->'purple'->>'used')::int;
   perform assert(v_used_after = v_used_before,
     '15d. the undone points return to the supervisor''s daily balance');
 
@@ -560,6 +603,152 @@ begin
   perform assert(
     (select count(*) from audit_log where action = 'undo_award') = 1,
     '15h. every undo is written to the audit log');
+end;
+$$;
+
+-- ── 16. مفتاح المزرعة وترتيبها ──────────────────────────────────────────
+do $$
+declare
+  v_err text; v_ok boolean; v_n integer; v_sem uuid;
+  a_slot integer; a_x integer; a_y integer;
+  b_slot integer; b_x integer; b_y integer;
+  v_b record;
+begin
+  select id into v_sem from semesters where is_active;
+  insert into student_farm_keys (student_id, token) values
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', repeat('a', 43)),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', repeat('b', 43));
+
+  -- العامّة لا ترى المفاتيح
+  set local role anon;
+  begin
+    select count(*) into v_n from student_farm_keys;
+    v_err := null;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform assert(v_err is not null, '16a. anon CANNOT read farm keys');
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  set local role authenticated;
+  select count(*) into v_n from student_farm_keys;
+  reset role;
+  perform assert(v_n = 0, '16b. a supervisor sees NO farm keys');
+
+  set local role anon;
+  v_ok := farm_key_ok('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', repeat('a', 43));
+  reset role;
+  perform assert(v_ok, '16c. the right key opens its own farm');
+  perform assert(not farm_key_ok('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', repeat('b', 43)),
+    '16d. another student''s key does NOT open this farm');
+
+  -- نبتتان حيّتان للطالب (أ) في الفصل النشط
+  select slot_index, grid_x, grid_y into a_slot, a_x, a_y from points_ledger
+   where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and semester_id = v_sem and revoked_at is null
+   order by slot_index limit 1;
+  select slot_index, grid_x, grid_y into b_slot, b_x, b_y from points_ledger
+   where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and semester_id = v_sem and revoked_at is null
+   order by slot_index offset 1 limit 1;
+
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select arrange_farm('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', %L, '[{"slot":%s,"x":0,"y":0}]')$q$,
+    repeat('b', 43), a_slot));
+  perform assert(v_err like '%FARM_KEY_INVALID%', '16e. a wrong key CANNOT arrange the farm');
+
+  -- تبديل نبتتين: يمرّ رغم أن كل هدف مشغول بالأخرى لحظة البدء
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select arrange_farm('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', %L,
+       '[{"slot":%s,"x":%s,"y":%s},{"slot":%s,"x":%s,"y":%s}]')$q$,
+    repeat('a', 43), a_slot, b_x, b_y, b_slot, a_x, a_y));
+  perform assert(v_err is null, '16f. swapping two plants succeeds');
+  perform assert(
+    (select (grid_x, grid_y) = (b_x, b_y) from points_ledger
+      where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and semester_id = v_sem and slot_index = a_slot),
+    '16g. the plants really traded places');
+
+  -- نقل إلى خانة فارغة على المحور (0,0) داخل السور
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select arrange_farm('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', %L, '[{"slot":%s,"x":0,"y":0}]')$q$,
+    repeat('a', 43), a_slot));
+  perform assert(v_err is null, '16h. moving a plant to an empty cell inside the fence succeeds');
+
+  select * into v_b from farm_default_bounds('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', v_sem);
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select arrange_farm('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', %L, '[{"slot":%s,"x":%s,"y":0}]')$q$,
+    repeat('a', 43), a_slot, v_b.max_x + 1));
+  perform assert(v_err like '%FARM_MOVE_OUT_OF_BOUNDS%', '16i. a move outside the fence is refused');
+
+  -- هدف على نبتة لم تُنقل: يُرفض ولا يتغيّر شيء
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select arrange_farm('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', %L, '[{"slot":%s,"x":%s,"y":%s}]')$q$,
+    repeat('a', 43), a_slot, a_x, a_y));
+  perform assert(v_err like '%FARM_CELL_TAKEN%', '16j. dropping onto an unmoved plant is refused');
+  perform assert(
+    (select (grid_x, grid_y) = (0, 0) from points_ledger
+      where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and semester_id = v_sem and slot_index = a_slot),
+    '16k. a refused arrangement changes nothing');
+
+  -- مفتاح الطالب (ب) لا يحرّك نبتات (أ) حتى لو ذُكرت خاناتها
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select arrange_farm('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', %L, '[{"slot":%s,"x":1,"y":1}]')$q$,
+    repeat('b', 43), a_slot));
+  perform assert(
+    (select (grid_x, grid_y) = (0, 0) from points_ledger
+      where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' and semester_id = v_sem and slot_index = a_slot),
+    '16l. one student''s key never moves another student''s plant');
+
+  -- المنح بعد الترتيب لا يصادم ما نقله الطالب
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  v_err := null;
+  begin
+    perform award_points('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'yellow');
+  exception when others then v_err := sqlerrm;
+  end;
+  perform assert(v_err is null, '16m. awarding after an arrangement does not collide');
+
+  v_err := try_as('00000000-0000-0000-0000-000000000000', format(
+    $q$select reset_farm('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', %L)$q$, repeat('a', 43)));
+  perform assert(v_err is null, '16n. reset returns the farm to its default layout');
+  perform assert((select count(*) from (
+      select l.grid_x, l.grid_y, q.x, q.y
+        from (select grid_x, grid_y, tier,
+                     (row_number() over (partition by tier order by slot_index) - 1)::integer as rnk
+                from points_ledger
+               where student_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+                 and semester_id = v_sem and revoked_at is null) l,
+             lateral quadrant_coord(l.tier, l.rnk) q
+       where (l.grid_x, l.grid_y) <> (q.x, q.y)) d) = 0,
+    '16o. after reset every plant sits on its default cell');
+end;
+$$;
+
+-- ── 17. روابط دخول المشرفين: للمدير وحده ─────────────────────────────────
+do $$
+declare v_err text; v_n integer;
+begin
+  insert into staff_login_keys (user_id, token)
+  values ('22222222-2222-2222-2222-222222222222', repeat('k', 43));
+
+  set local role anon;
+  begin
+    select count(*) into v_n from staff_login_keys;
+    v_err := null;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform assert(v_err is not null, '17a. anon CANNOT read supervisor login links');
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  set local role authenticated;
+  select count(*) into v_n from staff_login_keys;
+  reset role;
+  perform assert(v_n = 0, '17b. a supervisor CANNOT read login links, not even their own');
+
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  set local role authenticated;
+  select count(*) into v_n from staff_login_keys;
+  reset role;
+  perform assert(v_n = 1, '17c. admin reads the login links');
 end;
 $$;
 

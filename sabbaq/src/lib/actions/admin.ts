@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createPlainClient } from "@supabase/supabase-js";
+import { internalEmail, newToken, qrSvg, siteOrigin } from "@/lib/login-links";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 /**
  * كل إجراء هنا يتحقق أولًا من أن المستدعي مدير. لا نعتمد على إخفاء الزر في
@@ -163,9 +166,10 @@ export async function importStudents(
 
 // ── المشرفون ──────────────────────────────────────────────────────────────
 
+// الإيميل وكلمة المرور اختياريان للمشرفين (يدخلون برابط)، إلزاميان للمدير
 const supervisorInput = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(72),
+  email: z.string().email().optional().or(z.literal("")),
+  password: z.string().min(8).max(72).optional().or(z.literal("")),
   fullNameAr: z.string().trim().min(2).max(120),
   fullNameEn: z.string().trim().max(120).optional().or(z.literal("")),
   role: z.enum(["group_supervisor", "committee_supervisor", "admin"]),
@@ -186,11 +190,17 @@ export async function createSupervisor(formData: FormData): Promise<ActionResult
   });
   if (!parsed.success) return { ok: false, error: "invalid" };
 
+  // المدير يبقى بالإيميل وكلمة المرور: صلاحياته أوسع من أن تُعطى لرابط
+  const hasCredentials = Boolean(parsed.data.email && parsed.data.password);
+  if (parsed.data.role === "admin" && !hasCredentials) return { ok: false, error: "admin_needs_email" };
+
   // إنشاء حساب auth يحتاج service_role — RLS لا تملك schema auth
   const admin = createAdminClient();
   const { data: created, error: authError } = await admin.auth.admin.createUser({
-    email: parsed.data.email,
-    password: parsed.data.password,
+    // بلا إيميل: بريد داخلي لا يستقبل شيئًا، وكلمة مرور عشوائية لا تُحفظ —
+    // الدخول برابط المشرف وحده
+    email: hasCredentials ? parsed.data.email! : internalEmail(),
+    password: hasCredentials ? parsed.data.password! : newToken(),
     email_confirm: true,
     user_metadata: {
       full_name_ar: parsed.data.fullNameAr,
@@ -296,6 +306,194 @@ export async function updateDailyLimit(formData: FormData): Promise<ActionResult
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/admin/limits");
+  revalidatePath("/supervisor");
+  return { ok: true };
+}
+
+// ── رابط دخول المشرف (0007) ──────────────────────────────────────────────
+
+export type StaffLinkResult = { ok: true; url: string; qr: string } | { ok: false; error: string };
+
+async function staffLinkFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  rotate: boolean,
+): Promise<StaffLinkResult> {
+  const { data: target } = await supabase.from("users").select("role").eq("id", userId).maybeSingle();
+  if (!target) return { ok: false, error: "not_found" };
+  if (target.role === "admin") return { ok: false, error: "admin_uses_password" };
+
+  let token: string | null = null;
+  if (!rotate) {
+    const { data, error } = await supabase.from("staff_login_keys").select("token").eq("user_id", userId).maybeSingle();
+    if (error) return { ok: false, error: "needs_migration" };
+    token = (data?.token as string | undefined) ?? null;
+  }
+  if (!token) {
+    token = newToken();
+    const { error } = await supabase
+      .from("staff_login_keys")
+      .upsert({ user_id: userId, token, created_at: new Date().toISOString() });
+    if (error) return { ok: false, error: error.code === "42P01" ? "needs_migration" : error.message };
+  }
+
+  const url = `${await siteOrigin()}/k/${token}`;
+  return { ok: true, url, qr: await qrSvg(url) };
+}
+
+/** رابط دخول المشرف الحالي، ويُنشأ إن لم يوجد. */
+export async function getStaffLink(userId: string): Promise<StaffLinkResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "invalid" };
+  return staffLinkFor(auth.supabase, userId, false);
+}
+
+/** رابط جديد يُبطل القديم فورًا. */
+export async function rotateStaffLink(userId: string): Promise<StaffLinkResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "invalid" };
+  const res = await staffLinkFor(auth.supabase, userId, true);
+  if (res.ok) {
+    await signOutEverywhere(userId);
+    await auth.supabase.from("audit_log").insert({
+      actor_id: auth.actorId,
+      action: "rotate_staff_link",
+      entity: "users",
+      entity_id: userId,
+    });
+  }
+  return res;
+}
+
+/**
+ * يلغي الرابط ويُخرج المشرف من كل أجهزته.
+ *
+ * Supabase لا يُخرج مستخدمًا من كل جلساته إلا بـ JWT يخصّه، فننشئ له جلسة
+ * مؤقتة على عميل لا يحفظ شيئًا ثم نستعملها لإنهاء الكل (scope: global).
+ * الجلسات المفتوحة تتوقّف عند تجديد رمزها التالي؛ للإيقاف الفوري زرّ التعطيل.
+ */
+export async function revokeStaffLink(userId: string): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "invalid" };
+
+  const { error } = await auth.supabase.from("staff_login_keys").delete().eq("user_id", userId);
+  if (error) return { ok: false, error: error.message };
+  await signOutEverywhere(userId);
+
+  await auth.supabase.from("audit_log").insert({
+    actor_id: auth.actorId,
+    action: "revoke_staff_link",
+    entity: "users",
+    entity_id: userId,
+  });
+  revalidatePath("/admin/supervisors");
+  return { ok: true };
+}
+
+async function signOutEverywhere(userId: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: u } = await admin.auth.admin.getUserById(userId);
+    const email = u.user?.email;
+    if (!email) return;
+    const { data: link } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+    const hashed = link?.properties?.hashed_token;
+    if (!hashed) return;
+    const scratch = createPlainClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: session } = await scratch.auth.verifyOtp({ type: "magiclink", token_hash: hashed });
+    const jwt = session.session?.access_token;
+    if (jwt) await admin.auth.admin.signOut(jwt, "global");
+  } catch {
+    // فشل الإخراج لا يُفشل الإلغاء: الرابط نفسه حُذف ولم يعد يُدخل أحدًا
+  }
+}
+
+// ── مفتاح مزرعة الطالب (0007) ────────────────────────────────────────────
+
+/** مفتاح جديد لطالب: البطاقة القديمة تتوقّف فورًا. */
+export async function rotateFarmKey(studentId: string): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+  if (!z.string().uuid().safeParse(studentId).success) return { ok: false, error: "invalid" };
+
+  const { error } = await auth.supabase
+    .from("student_farm_keys")
+    .upsert({ student_id: studentId, token: newToken(), created_at: new Date().toISOString() });
+  if (error) return { ok: false, error: error.message };
+
+  await auth.supabase.from("audit_log").insert({
+    actor_id: auth.actorId,
+    action: "rotate_farm_key",
+    entity: "students",
+    entity_id: studentId,
+  });
+  revalidatePath("/admin/keys");
+  return { ok: true };
+}
+
+// ── حدّ النبتات لكل فئة (0007) ────────────────────────────────────────────
+
+const tierEnum = z.enum(["green", "yellow", "purple", "red"]);
+
+/**
+ * حدود دور واحد لفئاته الأربع دفعةً واحدة: الحقول `tier:<الفئة>`.
+ * كل فئة نداءٌ لـ set_tier_limit، وهي تتحقق من الدور وتكتب في audit_log.
+ */
+export async function updateTierLimits(formData: FormData): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+
+  const role = z.enum(["group_supervisor", "committee_supervisor"]).safeParse(formData.get("role"));
+  if (!role.success) return { ok: false, error: "invalid" };
+
+  for (const tier of tierEnum.options) {
+    const n = z.coerce.number().int().min(0).max(10000).safeParse(formData.get(`tier:${tier}`));
+    if (!n.success) return { ok: false, error: "invalid" };
+    const { error } = await auth.supabase.rpc("set_tier_limit", {
+      p_role: role.data,
+      p_tier: tier,
+      p_per_day: n.data,
+    });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/admin/limits");
+  revalidatePath("/supervisor");
+  return { ok: true };
+}
+
+/**
+ * استثناء مشرف واحد: خانة فارغة تعني «حدّ دوره» فتُلغي الاستثناء لتلك الفئة.
+ */
+export async function updateSupervisorTierLimits(formData: FormData): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+
+  const sup = z.string().uuid().safeParse(formData.get("supervisorId"));
+  if (!sup.success) return { ok: false, error: "invalid" };
+
+  for (const tier of tierEnum.options) {
+    const raw = String(formData.get(`tier:${tier}`) ?? "").trim();
+    let value: number | null = null;
+    if (raw !== "") {
+      const n = z.coerce.number().int().min(0).max(10000).safeParse(raw);
+      if (!n.success) return { ok: false, error: "invalid" };
+      value = n.data;
+    }
+    const { error } = await auth.supabase.rpc("set_supervisor_tier_limit", {
+      p_supervisor: sup.data,
+      p_tier: tier,
+      p_per_day: value,
+    });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/admin/supervisors");
   revalidatePath("/supervisor");
   return { ok: true };
 }

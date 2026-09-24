@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import ArrangePreview from "./ArrangePreview";
 import FarmScene from "@/components/FarmScene";
 import { quadrantCoord } from "@/lib/layout";
 import { TIER_LIST } from "@/lib/tiers";
@@ -83,6 +84,7 @@ export default async function FarmPreview({
     cinematic?: string;
     showcase?: string;
     seq?: string;
+    arrange?: string;
   }>;
 }) {
   if (process.env.NODE_ENV === "production") notFound();
@@ -94,11 +96,15 @@ export default async function FarmPreview({
 
   return (
     <div style={{ position: "fixed", inset: 0 }}>
-      <FarmScene
-        plants={plants}
-        dusk={params.dusk === "1"}
-        cinematic={params.cinematic === "1"}
-      />
+      {params.arrange === "1" ? (
+        <ArrangePreview plants={plants} />
+      ) : (
+        <FarmScene
+          plants={plants}
+          dusk={params.dusk === "1"}
+          cinematic={params.cinematic === "1"}
+        />
+      )}
       <div
         style={{
           position: "absolute",

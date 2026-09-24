@@ -106,6 +106,16 @@ async function run() {
     undoMissing ? "غير موجودة — نفّذ supabase/migrations/0006_undo_and_compact.sql" : "نعم",
   );
 
+  // ── 0007: حدّ النبتات ومفاتيح المزارع. farm_key_ok متاحة لـ anon، فغيابها
+  //    (PGRST202) يعني أن الملف لم يُنفَّذ ──
+  const { error: keyErr } = await db.rpc("farm_key_ok", { p_student: "00000000-0000-0000-0000-000000000000", p_key: "x" });
+  const keysMissing = keyErr?.code === "PGRST202";
+  record(
+    !keysMissing,
+    "0007 مطبَّق (حدّ النبتات، روابط المشرفين، مفاتيح المزارع)",
+    keysMissing ? "غير مطبَّق — نفّذ supabase/migrations/0007_tier_limits_links_keys.sql" : "نعم",
+  );
+
   // ── وجود award_points: نستدعيه بمعرّف وهمي بلا جلسة، والمتوقّع رفض
   //    الصلاحية لا «الدالة غير موجودة» ──
   const { error: awardErr } = await db.rpc("award_points", {

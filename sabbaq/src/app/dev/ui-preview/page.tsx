@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import AdminNav from "@/app/admin/AdminNav";
 import StudentsManager from "@/app/admin/students/StudentsManager";
+import TierLimitsEditor from "@/app/admin/limits/TierLimitsEditor";
+import SupervisorLimitsForm from "@/app/admin/supervisors/SupervisorLimitsForm";
 import AwardPanel from "@/app/supervisor/AwardPanel";
 import { Brand } from "@/components/Brand";
 import { LangToggle, ThemeToggle } from "@/components/Toggles";
@@ -64,6 +66,32 @@ export default async function UiPreview({ searchParams }: { searchParams: Promis
     </header>
   );
 
+  if (view === "limits") {
+    const roleLimits = { green: 8, yellow: 5, purple: 3, red: 2 };
+    return (
+      <>
+        {header}
+        <div style={{ maxWidth: 1240, margin: "0 auto", padding: "22px 20px 64px", display: "grid", gridTemplateColumns: "236px minmax(0, 1fr)", gap: 22, alignItems: "start" }}>
+          <AdminNav locale={locale} />
+          <main style={{ minWidth: 0, display: "grid", gap: 18 }}>
+            <h1 style={{ fontSize: 26, margin: 0 }}>حدّ كل نوع في اليوم</h1>
+            <TierLimitsEditor
+              locale={locale}
+              initial={{
+                group_supervisor: roleLimits,
+                committee_supervisor: { green: 16, yellow: 10, purple: 6, red: 4 },
+              }}
+            />
+            <h2 style={{ fontSize: 20, margin: "8px 0 0" }}>حدّ خاص لمشرف</h2>
+            <div className="pop" style={{ background: "var(--surface-alt)", borderRadius: 18, padding: 16 }}>
+              <SupervisorLimitsForm locale={locale} supervisorId="00000000-0000-0000-0000-000000000000" roleLimits={roleLimits} overrides={{ red: 4 }} />
+            </div>
+          </main>
+        </div>
+      </>
+    );
+  }
+
   if (view === "admin") {
     return (
       <>
@@ -108,7 +136,18 @@ export default async function UiPreview({ searchParams }: { searchParams: Promis
         roleName="مشرف مجموعة"
         scopeLabel="قبس · مجد ١"
         students={STUDENTS}
-        initialStatus={{ role: "group_supervisor", limit: 200, used: 150, remaining: 50 }}
+        initialStatus={{
+          role: "group_supervisor",
+          limit: 0,
+          used: 0,
+          remaining: 0,
+          tiers: {
+            green: { limit: 8, used: 3, remaining: 5 },
+            yellow: { limit: 5, used: 5, remaining: 0 },
+            purple: { limit: 3, used: 1, remaining: 2 },
+            red: { limit: 2, used: 0, remaining: 2 },
+          },
+        }}
         initialRecent={[
           { id: 3, studentId: "s3", studentName: "سارة العتيبي", points: 50, tier: "red", awardedAt: new Date().toISOString() },
           { id: 2, studentId: "s2", studentName: "محمد الحيمي", points: 30, tier: "purple", awardedAt: new Date(Date.now() - 70_000).toISOString() },
