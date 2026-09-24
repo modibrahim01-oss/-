@@ -14,51 +14,70 @@ export function PlantIcon({ tier, size = 22 }: { tier: Tier; size?: number }) {
   const W = 2.6;
   const mound = <ellipse cx="32" cy="56" rx="19" ry="5.5" fill="#E38A3E" stroke={O} strokeWidth={W} />;
 
+  // السنبلة: ثلاث سيقان تنفرج كمروحة، على كلٍّ حبّات متناوبة وسُفا
+  const ear = (x: number, y: number, tilt: number, key: string) => (
+    <g key={key} transform={`rotate(${tilt} ${x} ${y + 22})`}>
+      <path d={`M${x} ${y + 34}V${y + 12}`} stroke="#C9962E" strokeWidth="2.6" strokeLinecap="round" />
+      {[0, 1, 2, 3].map((i) => (
+        <g key={i}>
+          <ellipse cx={x - 3.2} cy={y + 12 - i * 5} rx="3.2" ry="4.4" fill={i % 2 ? "#E0A52E" : "#F5C542"} stroke={O} strokeWidth="1.6" transform={`rotate(-24 ${x - 3.2} ${y + 12 - i * 5})`} />
+          <ellipse cx={x + 3.2} cy={y + 10 - i * 5} rx="3.2" ry="4.4" fill={i % 2 ? "#F5C542" : "#E0A52E"} stroke={O} strokeWidth="1.6" transform={`rotate(24 ${x + 3.2} ${y + 10 - i * 5})`} />
+        </g>
+      ))}
+      <path d={`M${x} ${y - 9}v-8M${x - 3} ${y - 8}l-3-7M${x + 3} ${y - 8}l3-7`} stroke="#B98A22" strokeWidth="1.4" strokeLinecap="round" />
+    </g>
+  );
+
   const shapes: Record<Tier, React.ReactNode> = {
     green: (
       <>
         {mound}
-        <circle cx="20" cy="41" r="11" fill="#52A832" stroke={O} strokeWidth={W} />
-        <circle cx="44" cy="41" r="11" fill="#52A832" stroke={O} strokeWidth={W} />
-        <circle cx="32" cy="31" r="14" fill="#7BD44E" stroke={O} strokeWidth={W} />
-        <path d="M25 26c2-3 6-4 9-3" stroke="#C8F5A8" strokeWidth="2.6" strokeLinecap="round" fill="none" />
-        <circle cx="26" cy="37" r="3.2" fill="#FF4436" stroke={O} strokeWidth="1.8" />
-        <circle cx="38" cy="33" r="3.2" fill="#FF4436" stroke={O} strokeWidth="1.8" />
-        <circle cx="45" cy="44" r="3" fill="#FF4436" stroke={O} strokeWidth="1.8" />
+        <path d="M22 55c1-6 3-9 6-11M42 55c-1-6-3-9-6-11" stroke="#7BB43A" strokeWidth="3" strokeLinecap="round" fill="none" />
+        {ear(20, 24, -16, "l")}
+        {ear(44, 24, 16, "r")}
+        {ear(32, 18, 0, "c")}
       </>
     ),
     yellow: (
       <>
         {mound}
-        <path d="M32 55V26M20 55V32M44 55V30" stroke="#2F8A2A" strokeWidth="3.2" strokeLinecap="round" />
-        <path d="M32 46c-6-1-10-5-11-10 6 0 10 4 11 10zM32 42c6-1 10-5 11-10-6 0-10 4-11 10z" fill="#5CC23B" stroke={O} strokeWidth="2" strokeLinejoin="round" />
-        {[
-          [32, 20, "#FFD23F"],
-          [20, 27, "#FFB01F"],
-          [44, 25, "#FFB01F"],
-        ].map(([x, y, c]) => (
-          <path
-            key={`${x}`}
-            d={`M${Number(x) - 7} ${Number(y) - 3}l3.5 3 3.5-6 3.5 6 3.5-3v6c0 5-3.2 8-7 8s-7-3-7-8z`}
-            fill={String(c)}
-            stroke={O}
-            strokeWidth={W}
-            strokeLinejoin="round"
-          />
-        ))}
+        <path d="M32 55V24" stroke="#3E8E2A" strokeWidth="3.2" strokeLinecap="round" />
+        {/* نبتة خضراء: أوراق عريضة متقابلة تكبر نحو الأسفل */}
+        <path d="M32 50c-9 0-16-5-18-13 9-1 16 4 18 13z" fill="#52A832" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <path d="M32 50c9 0 16-5 18-13-9-1-16 4-18 13z" fill="#52A832" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <path d="M32 38c-7 0-12-4-13-10 7-1 12 3 13 10z" fill="#7BD44E" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <path d="M32 38c7 0 12-4 13-10-7-1-12 3-13 10z" fill="#7BD44E" stroke={O} strokeWidth={W} strokeLinejoin="round" />
+        <path d="M32 27c-4-2-6-6-5-11 4 2 6 6 5 11zM32 27c4-2 6-6 5-11-4 2-6 6-5 11z" fill="#A8E874" stroke={O} strokeWidth="2" strokeLinejoin="round" />
       </>
     ),
     purple: (
       <>
         {mound}
-        <path d="M27 54c0-7 1-13 2-17h8c1 4 2 10 2 17z" fill="#FFF3DC" stroke={O} strokeWidth={W} strokeLinejoin="round" />
-        <path d="M11 38c0-13 9-22 21-22s21 9 21 22c0 2-2 3-4 3H15c-2 0-4-1-4-3z" fill="#BB6EE0" stroke={O} strokeWidth={W} strokeLinejoin="round" />
-        <circle cx="23" cy="29" r="3.4" fill="#fff" />
-        <circle cx="36" cy="24" r="2.6" fill="#fff" />
-        <circle cx="42" cy="33" r="3" fill="#fff" />
-        <circle cx="30" cy="35" r="2" fill="#fff" />
-        <path d="M46 55c0-3 .5-6 1-8h4c.5 2 1 5 1 8z" fill="#FFF3DC" stroke={O} strokeWidth="2" />
-        <path d="M42 48c0-5 4-8 7-8s7 3 7 8z" fill="#9A4FC4" stroke={O} strokeWidth="2" strokeLinejoin="round" />
+        <path d="M32 55V28M20 55V34M44 55V32" stroke="#2F8A2A" strokeWidth="3.2" strokeLinecap="round" />
+        <path d="M32 47c-6-1-10-5-11-10 6 0 10 4 11 10zM32 43c6-1 10-5 11-10-6 0-10 4-11 10z" fill="#5CC23B" stroke={O} strokeWidth="2" strokeLinejoin="round" />
+        {/* زهرة بنفسجية: خمس بتلات حول قلب ذهبي */}
+        {[
+          [32, 22, 9, "#B96FF0"],
+          [20, 30, 7, "#9B4FDC"],
+          [44, 28, 7, "#9B4FDC"],
+        ].map(([x, y, r, c]) => (
+          <g key={`${x}`}>
+            {[0, 72, 144, 216, 288].map((a) => (
+              <ellipse
+                key={a}
+                cx={Number(x)}
+                cy={Number(y) - Number(r) * 0.62}
+                rx={Number(r) * 0.46}
+                ry={Number(r) * 0.66}
+                fill={String(c)}
+                stroke={O}
+                strokeWidth="1.8"
+                transform={`rotate(${a} ${x} ${y})`}
+              />
+            ))}
+            <circle cx={Number(x)} cy={Number(y)} r={Number(r) * 0.36} fill="#FFC93C" stroke={O} strokeWidth="1.8" />
+          </g>
+        ))}
       </>
     ),
     red: (

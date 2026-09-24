@@ -24,29 +24,35 @@ export type TierSpec = {
   labelAr: string;
   labelEn: string;
   /** شكل النبتة على المزرعة — كل فئة كائن مختلف تمامًا */
-  plant: "bush" | "tulips" | "mushroom" | "fruitTree";
+  plant: "wheat" | "sprout" | "flowers" | "fruitTree";
 };
 
+/**
+ * أسماء الفئات (`green`، `yellow`…) معرّفات في قاعدة البيانات لا ألوان: هي
+ * قيم النوع `point_tier`، وعليها يقوم السجل وزوايا المزرعة. حين تغيّرت
+ * النبتات بقيت الأسماء، فالسنبلة الذهبية هي `green` والنبتة الخضراء `yellow`.
+ * كل ما يُرى (الاسم، اللون، الشكل) يأتي من هنا لا من اسم الفئة.
+ */
 export const TIER_SPECS: Record<Tier, TierSpec> = {
   green: {
     tier: "green",
     points: 10,
-    color: "#7BD44E",
-    shade: "#52A832",
-    ink: "#38821F",
-    labelAr: "شجيرة",
-    labelEn: "Bush",
-    plant: "bush",
+    color: "#FFC93C",
+    shade: "#E0A52E",
+    ink: "#8A6410",
+    labelAr: "سنبلة",
+    labelEn: "Wheat",
+    plant: "wheat",
   },
   yellow: {
     tier: "yellow",
     points: 20,
-    color: "#FFD23F",
-    shade: "#FFB01F",
-    ink: "#8A6410",
-    labelAr: "زهور",
-    labelEn: "Tulips",
-    plant: "tulips",
+    color: "#7BD44E",
+    shade: "#52A832",
+    ink: "#38821F",
+    labelAr: "نبتة",
+    labelEn: "Sprout",
+    plant: "sprout",
   },
   purple: {
     tier: "purple",
@@ -54,9 +60,9 @@ export const TIER_SPECS: Record<Tier, TierSpec> = {
     color: "#BB6EE0",
     shade: "#9A4FC4",
     ink: "#74408F",
-    labelAr: "فطر",
-    labelEn: "Mushroom",
-    plant: "mushroom",
+    labelAr: "زهور",
+    labelEn: "Flowers",
+    plant: "flowers",
   },
   red: {
     tier: "red",

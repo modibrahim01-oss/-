@@ -32,16 +32,18 @@ const C = {
   leafDeep: 0x52a832,
   leafPale: 0xa8e874,
 
-  berry: 0xff4436,
-  petal: 0xffd23f,
-  petalHi: 0xffb01f,
-  petalCore: 0xb8761a,
+  // الزهرة بنفسجية بقلب ذهبي: القلب الفاتح يفصلها عن البتلات من أعلى
+  petal: 0xb96ff0,
+  petalHi: 0x9b4fdc,
+  petalCore: 0xffc93c,
   stamen: 0xfff3c4,
 
-  mushStem: 0xfaf0dc,
-  mushCap: 0xbb6ee0,
-  mushCapDark: 0x9a4fc4,
-  spot: 0xffffff,
+  // السنبلة: ساق قشّية تتدرّج من خضرة عند الأرض إلى ذهب عند الحبّ
+  straw: 0xf0c64e,
+  strawLow: 0xa9cf4e,
+  grain: 0xffd24a,
+  grainDeep: 0xf0a92c,
+  awn: 0xfff0a8,
 
   bark: 0x9c6434,
   barkDark: 0x7c4c24,
@@ -57,7 +59,6 @@ const src = {
   petal: petalBlade(),
   berry: new THREE.IcosahedronGeometry(1, 0),
   fruit: new THREE.IcosahedronGeometry(1, 1),
-  cap: new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 1.9),
   disc: new THREE.CylinderGeometry(1, 1, 1, 8),
   patch: new THREE.CylinderGeometry(0.5, 0.56, 0.09, 16),
 };
@@ -130,7 +131,7 @@ function rng(seed: number) {
   };
 }
 
-// ── ١٠ · شجيرة مورقة ─────────────────────────────────────────────────────
+// ── ٢٠ · نبتة خضراء مورقة ─────────────────────────────────────────────────
 // طبقتان في الارتفاع لا طبقة واحدة: الأغصان المتساوية الطول كانت تضع كل
 // الأوراق على مستوى واحد، فتُرى الشجيرة قرصًا مسطّحًا من الكاميرا العلوية.
 // الطبقة السفلى أعرض وأخفض، والعليا أضيق وأعلى — فتظهر كتلة لها عمق.
@@ -168,14 +169,11 @@ function bush(parts: Part[], detail: Detail, seed: number) {
           side * 0.45,
         );
       }
-      if (b % 2 === 0) {
-        blob(parts, src.berry, V(tip.x * 0.85, tip.y + 0.04, tip.z * 0.85), 0.05, C.berry);
-      }
     }
   }
 }
 
-// ── ٢٠ · زهور ببتلات مفردة ────────────────────────────────────────────────
+// ── ٣٠ · زهور بنفسجية ببتلات مفردة ──────────────────────────────────────────
 function flowers(parts: Part[], detail: Detail, seed: number) {
   const r = rng(seed);
   const petalCount = detail === "hi" ? 7 : 5;
@@ -218,53 +216,52 @@ function flowers(parts: Part[], detail: Detail, seed: number) {
   }
 }
 
-// ── ٣٠ · فطر ──────────────────────────────────────────────────────────────
-//
-// بُنيت له خياشيم شعاعية تحت القبّعة أولًا، ثم أظهرت اللقطة أنها **لا تُرى
-// إطلاقًا**: الكاميرا أيزومترية ثابتة تنظر من أعلى، وما تحت القبّعة محجوب
-// دائمًا. فحُذفت — مثلثات تُدفع في كل نبتة ولا يراها أحد. التفصيل هنا يذهب
-// إلى ما يظهر من فوق: حافة القبّعة، والبقع، وتفاوت القبّعات.
-function mushrooms(parts: Part[], detail: Detail, seed: number) {
+// ── ١٠ · سنبلة قمح ────────────────────────────────────────────────────────
+// حزمة سيقان نحيلة، على رأس كلٍّ سنبلة من حبّات متناوبة تعلوها سُفا دقيقة.
+// الشكل يُقرأ من الكاميرا العلوية بالسنابل الذهبية المائلة لا بالسيقان: لذلك
+// تميل كل سنبلة قليلًا للخارج، فتنفرج الحزمة كمروحة بدل عمود واحد.
+function wheat(parts: Part[], detail: Detail, seed: number) {
   const r = rng(seed);
+  const stalks = detail === "hi" ? 9 : 5;
+  const grains = detail === "hi" ? 7 : 5;
 
-  function cap(at: THREE.Vector3, radius: number, stemR: number, spots: number) {
-    const foot = V(at.x, 0.02, at.z);
-    const mid = V(at.x + (r() - 0.5) * 0.06, at.y * 0.55, at.z + (r() - 0.5) * 0.06);
-    limb(parts, foot, mid, stemR * 1.3, stemR, C.mushStem);
-    limb(parts, mid, at, stemR, stemR * 0.92, C.mushStem);
+  for (let s = 0; s < stalks; s++) {
+    const yaw = (s / stalks) * Math.PI * 2 + r() * 0.5;
+    const lean = 0.14 + r() * 0.1;
+    const h = 0.5 + r() * 0.14;
+    const base = V(Math.cos(yaw) * 0.08, 0.03, Math.sin(yaw) * 0.08);
+    const mid = V(Math.cos(yaw) * lean * 0.6, h * 0.5, Math.sin(yaw) * lean * 0.6);
+    const top = V(Math.cos(yaw) * lean * 1.4, h, Math.sin(yaw) * lean * 1.4);
+    limb(parts, base, mid, 0.024, 0.02, C.strawLow);
+    limb(parts, mid, top, 0.02, 0.016, C.straw);
 
-    // حافة بارزة تحت محيط القبّعة: تُرى من أعلى كإطار فاتح يفصل القبّعة عن
-    // الأرض، وهي ما يجعل الشكل فطرًا لا نصف كرة ملوّنة
-    blob(parts, src.disc, V(at.x, at.y - radius * 0.1, at.z), radius * 1.02, C.mushStem, 0.06);
-
-    blob(parts, src.cap, at, radius, C.mushCap, 0.78);
-    // قبّة داخلية أغمق: تعطي عمقًا للقبّعة من أعلى بدل سطح مسطّح اللون
-    blob(parts, src.cap, V(at.x, at.y + radius * 0.06, at.z), radius * 0.6, C.mushCapDark, 0.62);
-
-    for (let i = 0; i < spots; i++) {
-      const a = (i / spots) * Math.PI * 2 + 0.4;
-      const rr = radius * 0.6;
-      blob(
-        parts,
-        src.berry,
-        V(at.x + Math.cos(a) * rr, at.y + radius * 0.42, at.z + Math.sin(a) * rr),
-        radius * 0.15,
-        C.spot,
-      );
+    // السنبلة تكمل خطّ الساق مائلةً قليلًا، والحبّ يتناوب على جانبيها
+    const dir = new THREE.Vector3().subVectors(top, mid).normalize();
+    const side = new THREE.Vector3(-Math.sin(yaw), 0, Math.cos(yaw));
+    const earLen = 0.28 + r() * 0.05;
+    for (let g = 0; g < grains; g++) {
+      const t = (g + 0.5) / grains;
+      const at = top.clone().addScaledVector(dir, t * earLen);
+      const off = (g % 2 === 0 ? 1 : -1) * 0.03;
+      at.addScaledVector(side, off);
+      const size = 0.048 * (1 - t * 0.3);
+      blob(parts, src.berry, at, size, g % 2 === 0 ? C.grain : C.grainDeep, 1.7);
+    }
+    // السُّفا: شعيرات قصيرة فوق السنبلة
+    if (detail === "hi") {
+      const tip = top.clone().addScaledVector(dir, earLen);
+      for (let a = -1; a <= 1; a++) {
+        const end = tip.clone().addScaledVector(dir, 0.14).addScaledVector(side, a * 0.05);
+        limb(parts, tip, end, 0.007, 0.003, C.awn);
+      }
     }
   }
 
-  // ثلاث قبّعات متفاوتة بدل اثنتين: المجموعة تُقرأ فطرًا أسرع من الفردة
-  // تفاوت أوسع في الحجم والارتفاع: قبّعات متقاربة القياس تُقرأ تكرارًا لا
-  // عنقودًا نابتًا
-  cap(V(0.03, 0.5, 0.02), 0.33, 0.085, detail === "hi" ? 5 : 3);
-  cap(V(-0.27, 0.26, -0.15), 0.18, 0.05, 3);
-  cap(V(0.24, 0.16, -0.26), 0.11, 0.034, 2);
-
-  const tufts = detail === "hi" ? 4 : 2;
-  for (let i = 0; i < tufts; i++) {
-    const a = (i / tufts) * Math.PI * 2 + 1.1;
-    leaf(parts, V(Math.cos(a) * 0.24, 0.03, Math.sin(a) * 0.24), a, -0.2, 0.2, C.leafDeep, 0.2);
+  // أوراق قاعدية طويلة رفيعة كأوراق النجيل
+  const blades = detail === "hi" ? 5 : 3;
+  for (let i = 0; i < blades; i++) {
+    const yaw = (i / blades) * Math.PI * 2 + 0.3;
+    leaf(parts, V(0, 0.04, 0), yaw, 0.35 + r() * 0.25, 0.26, i % 2 ? C.strawLow : C.leaf, 0.2);
   }
 }
 
@@ -331,10 +328,15 @@ function fruitTree(parts: Part[], detail: Detail, seed: number) {
   }
 }
 
+/**
+ * الفئة → النبتة. أسماء الفئات (`green`…) معرّفات تاريخية في قاعدة البيانات
+ * لا ألوان: السنبلة الذهبية هي `green`، والنبتة الخضراء هي `yellow`. انظر
+ * TIER_SPECS في tiers.ts.
+ */
 const BUILDERS: Record<Tier, (p: Part[], d: Detail, seed: number) => void> = {
-  green: bush,
-  yellow: flowers,
-  purple: mushrooms,
+  green: wheat,
+  yellow: bush,
+  purple: flowers,
   red: fruitTree,
 };
 
@@ -381,9 +383,9 @@ function bake(parts: Part[]): THREE.BufferGeometry {
  * (١٠) أقصرها. الارتفاع هو ما يميّز القيمة من بعيد، لا العرض.
  */
 const TIER_SCALE: Record<Tier, number> = {
-  green: 1.2,
-  yellow: 1.6,
-  purple: 1.6,
+  green: 1.05,
+  yellow: 1.25,
+  purple: 1.5,
   red: 1.3,
 };
 
