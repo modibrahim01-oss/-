@@ -10,7 +10,7 @@ describe("fieldBoundsFor", () => {
   });
 
   it("keeps a two-cell margin around the farthest plant on each side separately", () => {
-    // بستان أحمر كبير يمدّ الساحة نحوه وحده، لا في الجهات الأربع
+    // ركن أحمر كبير يمدّ الساحة نحوه وحده، لا في الجهات الأربع
     const reds = Array.from({ length: 30 }, (_, n) => quadrantCoord("red", n));
     const b = fieldBoundsFor(reds);
     const minX = Math.min(...reds.map((c) => c.x));

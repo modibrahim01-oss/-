@@ -9,7 +9,7 @@ export default async function SupervisorsPage() {
   const locale = await getLocale();
   const supabase = await createClient();
 
-  const [{ data: groups }, { data: staff }, { data: assignments }, tierRes, overrideRes] = await Promise.all([
+  const [{ data: groups }, { data: staff }, { data: assignments }, tierRes, overrideRes, vcRes] = await Promise.all([
     supabase.from("groups").select("*").order("sort_order"),
     supabase
       .from("users")
@@ -18,7 +18,12 @@ export default async function SupervisorsPage() {
     supabase.from("supervisor_groups").select("supervisor_id, group_id"),
     supabase.from("tier_limits").select("role, tier, per_day"),
     supabase.from("supervisor_tier_limits").select("supervisor_id, tier, per_day"),
+    // صلاحية اللجنة القيمية عمود من 0007: استعلام منفصل فلا يكسر غيابه القائمة
+    supabase.from("users").select("id, value_committee"),
   ]);
+  const valueCommittee = new Set(
+    vcRes.error ? [] : (vcRes.data ?? []).filter((u) => u.value_committee).map((u) => u.id as string),
+  );
 
   // حدود النبتات (0007): غياب الجدول يُخفي «حدّ خاص» بدل أن يكسر الصفحة
   const tiersReady = !tierRes.error;
@@ -48,6 +53,7 @@ export default async function SupervisorsPage() {
     role: u.role as UserRole,
     isActive: u.is_active as boolean,
     groupIds: groupsBySupervisor.get(u.id as string) ?? [],
+    valueCommittee: valueCommittee.has(u.id as string),
   }));
 
   return (

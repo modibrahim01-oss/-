@@ -413,7 +413,29 @@ async function signOutEverywhere(userId: string) {
   }
 }
 
-// ── مفتاح مزرعة الطالب (0007) ────────────────────────────────────────────
+// ── صلاحية اللجنة القيمية (0007) ─────────────────────────────────────────
+
+/** يمنح مشرفًا صلاحية إرسال «نقاط إضافية من اللجنة القيمية» أو يسحبها. */
+export async function setValueCommittee(userId: string, enabled: boolean): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "invalid" };
+
+  const { error } = await auth.supabase.from("users").update({ value_committee: enabled }).eq("id", userId).neq("role", "admin");
+  if (error) return { ok: false, error: error.message };
+
+  await auth.supabase.from("audit_log").insert({
+    actor_id: auth.actorId,
+    action: "set_value_committee",
+    entity: "users",
+    entity_id: userId,
+    details: { enabled },
+  });
+  revalidatePath("/admin/supervisors");
+  return { ok: true };
+}
+
+// ── مفتاح بستان الطالب (0007) ────────────────────────────────────────────
 
 /** مفتاح جديد لطالب: البطاقة القديمة تتوقّف فورًا. */
 export async function rotateFarmKey(studentId: string): Promise<ActionResult> {

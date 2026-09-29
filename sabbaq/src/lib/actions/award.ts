@@ -38,7 +38,7 @@ export async function awardPoints(studentId: string, tier: string): Promise<Awar
     return { ok: false, reason: "unknown" };
   }
 
-  // المزرعة العامة والقوائم تُخزَّن؛ نُبطل تخزينها فورًا لتظهر النبتة الجديدة
+  // البستان العام والقوائم تُخزَّن؛ نُبطل تخزينها فورًا لتظهر النبتة الجديدة
   revalidatePath(`/farm/${parsed.data.studentId}`);
   revalidatePath("/tv");
   revalidatePath("/");

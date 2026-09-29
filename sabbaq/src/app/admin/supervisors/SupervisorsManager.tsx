@@ -6,6 +6,7 @@ import {
   createSupervisor,
   setSupervisorActive,
   setSupervisorGroups,
+  setValueCommittee,
 } from "@/lib/actions/admin";
 import { roleLabel, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
@@ -21,6 +22,7 @@ type StaffRow = {
   role: UserRole;
   isActive: boolean;
   groupIds: number[];
+  valueCommittee?: boolean;
 };
 
 
@@ -215,7 +217,10 @@ export default function SupervisorsManager({
                 <tr style={{ opacity: u.isActive ? 1 : 0.5 }}>
                   <Td>{locale === "en" && u.nameEn ? u.nameEn : u.nameAr}</Td>
                   <Td>
-                    <Badge tone={roleTone(u.role)}>{roleLabel(locale, u.role)}</Badge>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <Badge tone={roleTone(u.role)}>{roleLabel(locale, u.role)}</Badge>
+                      {u.valueCommittee && <Badge tone="sky">{t(locale, "valueCommittee")}</Badge>}
+                    </div>
                   </Td>
                   <Td muted>
                     {u.role === "group_supervisor"
@@ -262,6 +267,26 @@ export default function SupervisorsManager({
                           style={{ ...buttonStyle(), padding: "5px 10px", fontSize: 12, background: "var(--sun)", color: "var(--on-fill)" }}
                         >
                           {t(locale, "loginLink")}
+                        </button>
+                      )}
+                      {u.role === "committee_supervisor" && tiersReady && (
+                        <button
+                          type="button"
+                          className="press"
+                          disabled={pending}
+                          title={t(locale, "valueCommitteeHint")}
+                          onClick={() => run(() => setValueCommittee(u.id, !u.valueCommittee))}
+                          aria-pressed={Boolean(u.valueCommittee)}
+                          style={{
+                            ...buttonStyle(),
+                            padding: "5px 10px",
+                            fontSize: 12,
+                            background: u.valueCommittee ? "var(--sky)" : "var(--surface)",
+                            color: u.valueCommittee ? "var(--on-fill)" : "var(--ink)",
+                          }}
+                        >
+                          {u.valueCommittee ? "✓ " : ""}
+                          {t(locale, "valueCommittee")}
                         </button>
                       )}
                       {u.role !== "admin" && tiersReady && (

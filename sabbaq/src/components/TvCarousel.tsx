@@ -178,7 +178,7 @@ export default function TvCarousel({
                   padding: "7px 8px",
                   borderRadius: 12,
                   // الطالب المعروض الآن يُضاء في اللوحة، فيربط المشاهد بين
-                  // المزرعة واسم صاحبها وترتيبه
+                  // البستان واسم صاحبه وترتيبه
                   background: active ? "var(--sun)" : "transparent",
                   color: active ? "var(--on-fill)" : undefined,
                   border: active ? "2.5px solid var(--outline)" : "2.5px solid transparent",

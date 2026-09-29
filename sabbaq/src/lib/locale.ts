@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, type Locale } from "./i18n";
 
 /**
- * اللغة مخزّنة في كوكي لا في المسار. المزارع تُعرض على شاشات مدرسة برابط
+ * اللغة مخزّنة في كوكي لا في المسار. البساتين تُعرض على شاشات مدرسة برابط
  * ثابت، وتغيير اللغة لا يجب أن يبدّل الرابط المحفوظ على الشاشة.
  */
 export async function getLocale(): Promise<Locale> {

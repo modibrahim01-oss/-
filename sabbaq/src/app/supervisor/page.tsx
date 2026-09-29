@@ -8,8 +8,9 @@ import { fetchDailyStatus } from "@/lib/actions/award";
 import { roleLabel, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { createClient } from "@/lib/supabase/server";
-import type { Group, StaffUser, StudentFarmSummary } from "@/lib/types";
+import type { CommitteeGrant, Group, GrantRecipient, StaffUser, StudentFarmSummary } from "@/lib/types";
 import AwardPanel from "./AwardPanel";
+import CommitteeSender from "./CommitteeSender";
 
 export const dynamic = "force-dynamic";
 
@@ -83,19 +84,38 @@ export default async function SupervisorPage() {
     students = (data ?? []) as StudentFarmSummary[];
   }
 
-  const [status, { data: todayRows }] = await Promise.all([
-    fetchDailyStatus(),
+  const todayQuery = (columns: string) =>
     supabase
       .from("points_ledger")
-      .select("id, student_id, points, tier, awarded_at, students(full_name)")
+      .select(columns)
       .eq("supervisor_id", staff.id)
       .is("revoked_at", null)
       .gte("awarded_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
       .order("awarded_at", { ascending: false })
-      .limit(12),
-  ]);
+      .limit(12);
 
-  const recent = (todayRows ?? []).map((r) => {
+  const [status, todayFirst, grantsRes, vcRes] = await Promise.all([
+    fetchDailyStatus(),
+    todayQuery("id, student_id, points, tier, awarded_at, grant_id, students(full_name)"),
+    // أرصدة اللجنة القيمية وصلاحيتها (0007). غيابها قبل تشغيل الملف يُخفي
+    // القسم بدل أن يكسر الصفحة
+    supabase.rpc("my_grants"),
+    supabase.from("users").select("value_committee").eq("id", staff.id).maybeSingle(),
+  ]);
+  // grant_id عمود من 0007: قبله يُعاد الاستعلام بدونه
+  const { data: todayRows } = todayFirst.error
+    ? await todayQuery("id, student_id, points, tier, awarded_at, students(full_name)")
+    : todayFirst;
+
+  const grants = grantsRes.error ? null : ((grantsRes.data ?? []) as CommitteeGrant[]);
+  const isValueCommittee = !vcRes.error && Boolean((vcRes.data as { value_committee?: boolean } | null)?.value_committee);
+  let recipients: GrantRecipient[] = [];
+  if (isValueCommittee) {
+    const { data } = await supabase.rpc("grant_recipients");
+    recipients = (data ?? []) as GrantRecipient[];
+  }
+
+  const recent = ((todayRows ?? []) as unknown as Record<string, unknown>[]).map((r) => {
     const joined = r.students as unknown as { full_name: string } | { full_name: string }[] | null;
     const name = Array.isArray(joined) ? joined[0]?.full_name : joined?.full_name;
     return {
@@ -105,6 +125,7 @@ export default async function SupervisorPage() {
       points: r.points as number,
       tier: r.tier as string,
       awardedAt: r.awarded_at as string,
+      grantId: (r.grant_id as number | null | undefined) ?? null,
     };
   });
 
@@ -167,7 +188,15 @@ export default async function SupervisorPage() {
         students={students}
         initialStatus={status}
         initialRecent={recent}
+        initialGrants={(grants ?? []).filter((g) => g.direction === "in")}
       />
+      {isValueCommittee && (
+        <CommitteeSender
+          locale={locale}
+          recipients={recipients}
+          sent={(grants ?? []).filter((g) => g.direction === "out")}
+        />
+      )}
     </>
   );
 }

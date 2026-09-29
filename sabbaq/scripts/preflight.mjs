@@ -75,7 +75,7 @@ async function run() {
     farmsErr ? farmsErr.message : `${farms?.length ? "به بيانات" : "فارغ (لا طلاب بعد)"}`,
   );
 
-  // ── سجل النقاط مقروء للعامّة: بدونه تظهر المزارع فارغة دائمًا ──
+  // ── سجل النقاط مقروء للعامّة: بدونه تظهر البساتين فارغة دائمًا ──
   const { error: ledgerErr } = await db.from("points_ledger").select("id").limit(1);
   record(!ledgerErr, "points_ledger مقروء للعامّة", ledgerErr?.message ?? "نعم");
 
@@ -106,13 +106,13 @@ async function run() {
     undoMissing ? "غير موجودة — نفّذ supabase/migrations/0006_undo_and_compact.sql" : "نعم",
   );
 
-  // ── 0007: حدّ النبتات ومفاتيح المزارع. farm_key_ok متاحة لـ anon، فغيابها
+  // ── 0007: حدّ النبتات ومفاتيح البساتين. farm_key_ok متاحة لـ anon، فغيابها
   //    (PGRST202) يعني أن الملف لم يُنفَّذ ──
   const { error: keyErr } = await db.rpc("farm_key_ok", { p_student: "00000000-0000-0000-0000-000000000000", p_key: "x" });
   const keysMissing = keyErr?.code === "PGRST202";
   record(
     !keysMissing,
-    "0007 مطبَّق (حدّ النبتات، روابط المشرفين، مفاتيح المزارع)",
+    "0007 مطبَّق (حدّ النبتات، روابط المشرفين، مفاتيح البساتين، اللجنة القيمية)",
     keysMissing ? "غير مطبَّق — نفّذ supabase/migrations/0007_tier_limits_links_keys.sql" : "نعم",
   );
 

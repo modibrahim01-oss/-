@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { PlantIcon } from "@/components/TierLegend";
-import { Badge, Card, EmptyState, SectionLabel } from "@/components/ui";
+import { Badge, Card, EmptyState, SectionLabel, buttonStyle } from "@/components/ui";
 import { awardPoints, undoAward } from "@/lib/actions/award";
+import { awardFromGrant, unlockGrant } from "@/lib/actions/committee";
 import { formatNumber, localizeDigits, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { TIER_LIST, isTier } from "@/lib/tiers";
 import type { Tier } from "@/lib/tiers";
-import type { DailyStatus, StudentFarmSummary, TierAllowance } from "@/lib/types";
+import type { CommitteeGrant, DailyStatus, StudentFarmSummary, TierAllowance } from "@/lib/types";
 import { undoSecondsLeft } from "@/lib/undo";
 
 type RecentAward = {
@@ -18,6 +19,8 @@ type RecentAward = {
   points: number;
   tier: string;
   awardedAt: string;
+  /** منحٌ من رصيد اللجنة القيمية — لا يُحسب على الحد اليومي */
+  grantId?: number | null;
 };
 
 export default function AwardPanel({
@@ -28,6 +31,7 @@ export default function AwardPanel({
   students,
   initialStatus,
   initialRecent,
+  initialGrants = [],
 }: {
   locale: Locale;
   supervisorName: string;
@@ -36,11 +40,14 @@ export default function AwardPanel({
   students: StudentFarmSummary[];
   initialStatus: DailyStatus;
   initialRecent: RecentAward[];
+  initialGrants?: CommitteeGrant[];
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<StudentFarmSummary | null>(null);
   const [status, setStatus] = useState(initialStatus);
   const [recent, setRecent] = useState(initialRecent);
+  // أرصدة اللجنة القيمية الواردة: المقفلة تنتظر الفتح، والمفتوحة تُمنح منها
+  const [grants, setGrants] = useState(initialGrants);
   // تعديلات محلية على أرصدة الطلاب بعد المنح، حتى لا تحتاج إعادة تحميل
   const [bumps, setBumps] = useState<Record<string, { points: number; plants: number }>>({});
   const [toast, setToast] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
@@ -169,6 +176,65 @@ export default function AwardPanel({
     });
   }
 
+  /** فتح رصيد مقفل بعد عرض المحتوى. */
+  function unlock(grant: CommitteeGrant) {
+    if (pending) return;
+    startTransition(async () => {
+      const res = await unlockGrant(grant.id);
+      if (res.ok) {
+        setGrants((prev) => prev.map((g) => (g.id === grant.id ? { ...g, status: "active" } : g)));
+        setToast({ tone: "ok", text: t(locale, "grantUnlocked") });
+      } else setToast({ tone: "err", text: t(locale, "grantFailed") });
+    });
+  }
+
+  /** منحٌ من رصيد مفتوح: خارج الحد اليومي، ويُسجَّل في «آخر إضافات اليوم». */
+  function awardGrant(grant: CommitteeGrant, tier: Tier) {
+    if (!selected || pending) return;
+    const student = selected;
+    startTransition(async () => {
+      const outcome = await awardFromGrant(grant.id, student.student_id, tier);
+      if (!outcome.ok) {
+        setToast({
+          tone: "err",
+          text: t(
+            locale,
+            outcome.reason === "exhausted" ? "grantExhausted" : outcome.reason === "scope" ? "awardFailed" : "grantFailed",
+          ),
+        });
+        return;
+      }
+      const gained = outcome.result.points;
+      setGrants((prev) =>
+        prev.map((g) =>
+          g.id === grant.id
+            ? { ...g, items: g.items.map((it) => (it.tier === tier ? { ...it, used: it.used + 1 } : it)) }
+            : g,
+        ),
+      );
+      setBumps((prev) => {
+        const cur = prev[student.student_id] ?? { points: 0, plants: 0 };
+        return { ...prev, [student.student_id]: { points: cur.points + gained, plants: cur.plants + 1 } };
+      });
+      setRecent((prev) =>
+        [
+          {
+            id: outcome.result.ledger_id,
+            studentId: student.student_id,
+            studentName: student.full_name,
+            points: gained,
+            tier,
+            awardedAt: new Date().toISOString(),
+            grantId: grant.id,
+          },
+          ...prev,
+        ].slice(0, 12),
+      );
+      setToast({ tone: "ok", text: `${t(locale, "awarded")} +${formatNumber(locale, gained)} · ${student.full_name}` });
+      setNow(Date.now());
+    });
+  }
+
   /**
    * التراجع عن منحٍ خلال دقيقتين. كل ما عدّله المنح محليًا يُعكس: الرصيد
    * اليومي، ورصيد الطالب في القائمة، وسطر «آخر إضافات اليوم».
@@ -196,7 +262,16 @@ export default function AwardPanel({
       }
 
       const lost = outcome.points;
-      if (perTier && isTier(r.tier)) bumpTier(r.tier, -1);
+      if (r.grantId) {
+        // منح الرصيد يعود إلى الرصيد لا إلى الحد اليومي
+        setGrants((prev) =>
+          prev.map((g) =>
+            g.id === r.grantId
+              ? { ...g, items: g.items.map((it) => (it.tier === r.tier ? { ...it, used: Math.max(0, it.used - 1) } : it)) }
+              : g,
+          ),
+        );
+      } else if (perTier && isTier(r.tier)) bumpTier(r.tier, -1);
       else
         setStatus((prev) =>
           prev.limit < 0
@@ -538,6 +613,17 @@ export default function AwardPanel({
           <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-mute)", marginTop: 12 }}>{t(locale, "noManualEntry")}</p>
         </div>
 
+        {grants.some((g) => g.status !== "cancelled" && g.items.some((it) => it.used < it.quantity)) && (
+          <GrantsSection
+            locale={locale}
+            grants={grants.filter((g) => g.status !== "cancelled" && g.items.some((it) => it.used < it.quantity))}
+            canAward={Boolean(selected) && !pending}
+            pending={pending}
+            onUnlock={unlock}
+            onAward={awardGrant}
+          />
+        )}
+
         {toast && (
           <div
             role="status"
@@ -584,7 +670,10 @@ export default function AwardPanel({
                     }}
                   >
                     <PlantIcon tier={tier} size={32} />
-                    <span style={{ fontWeight: 700 }}>{r.studentName}</span>
+                    <span style={{ fontWeight: 700, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
+                      {r.studentName}
+                      {r.grantId ? <Badge tone="grape">{t(locale, "committeeBadge")}</Badge> : null}
+                    </span>
                     <span
                       className="tabular"
                       style={{
@@ -633,6 +722,136 @@ export default function AwardPanel({
         }}
       />
     </main>
+  );
+}
+
+/**
+ * «نقاط إضافية من اللجنة القيمية»: بطاقة لكل رصيد وارد. المقفل يعرض عنوان
+ * المحتوى والمرسِل وزرّ الفتح؛ المفتوح أزرار منح بلون كل نبتة وباقيها.
+ */
+function GrantsSection({
+  locale,
+  grants,
+  canAward,
+  pending,
+  onUnlock,
+  onAward,
+}: {
+  locale: Locale;
+  grants: CommitteeGrant[];
+  canAward: boolean;
+  pending: boolean;
+  onUnlock: (g: CommitteeGrant) => void;
+  onAward: (g: CommitteeGrant, tier: Tier) => void;
+}) {
+  return (
+    <section aria-labelledby="committee-title">
+      <SectionLabel>
+        <span id="committee-title">{t(locale, "committeePoints")}</span>
+      </SectionLabel>
+      <div style={{ display: "grid", gap: 12 }}>
+        {grants.map((g) => {
+          const locked = g.status === "locked";
+          return (
+            <div
+              key={g.id}
+              className="pop"
+              style={{
+                borderRadius: 20,
+                padding: "14px 16px",
+                background: locked
+                  ? "repeating-linear-gradient(135deg, var(--grape-soft) 0 12px, var(--surface) 12px 24px)"
+                  : "color-mix(in oklab, var(--grape-fill) 14%, var(--surface))",
+                display: "grid",
+                gap: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span aria-hidden style={{ fontSize: 0 }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="11" width="16" height="10" rx="2" fill={locked ? "var(--grape-fill)" : "var(--lime)"} />
+                    {locked ? <path d="M8 11V7a4 4 0 0 1 8 0v4" /> : <path d="M8 11V7a4 4 0 0 1 7.5-2" />}
+                  </svg>
+                </span>
+                <strong style={{ fontSize: 17 }}>{g.title}</strong>
+                <Badge tone={locked ? "grape" : "brand"}>{t(locale, locked ? "grantLocked" : "grantActive")}</Badge>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-soft)", marginInlineStart: "auto" }}>
+                  {t(locale, "grantFrom")} {locale === "en" && g.sender_en ? g.sender_en : g.sender_ar}
+                </span>
+              </div>
+              {g.note && <p style={{ margin: 0, fontSize: 14, color: "var(--ink-soft)" }}>{g.note}</p>}
+
+              {locked ? (
+                <>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {g.items.map((it) => (
+                      <span key={it.tier} style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+                        <PlantIcon tier={it.tier} size={28} /> ×{formatNumber(locale, it.quantity)}
+                      </span>
+                    ))}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--ink-soft)" }}>{t(locale, "grantLockedHint")}</p>
+                  <button
+                    type="button"
+                    className="press"
+                    disabled={pending}
+                    onClick={() => onUnlock(g)}
+                    style={{ ...buttonStyle("primary"), justifySelf: "start", background: "var(--grape-fill)" }}
+                  >
+                    {t(locale, "unlockGrant")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {g.items.map((it) => {
+                      const spec = TIER_LIST.find((s) => s.tier === it.tier)!;
+                      const left = it.quantity - it.used;
+                      const disabled = !canAward || left <= 0;
+                      return (
+                        <button
+                          key={it.tier}
+                          type="button"
+                          className="press"
+                          disabled={disabled}
+                          onClick={() => onAward(g, it.tier)}
+                          title={!canAward ? t(locale, "selectStudentFirst") : left <= 0 ? t(locale, "grantExhausted") : undefined}
+                          style={{
+                            font: "inherit",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 14px 8px 10px",
+                            borderRadius: 16,
+                            border: "2.5px solid var(--outline)",
+                            boxShadow: "var(--pop)",
+                            background: spec.color,
+                            color: "var(--on-fill)",
+                            cursor: disabled ? "not-allowed" : "pointer",
+                            fontWeight: 700,
+                          }}
+                        >
+                          <span style={{ background: "#fff", borderRadius: "50%", border: "2px solid var(--outline)", display: "grid", placeItems: "center", width: 38, height: 38 }}>
+                            <PlantIcon tier={it.tier} size={30} />
+                          </span>
+                          <span className="tabular" style={{ fontFamily: "var(--font-display)", fontSize: 20 }}>
+                            +{formatNumber(locale, spec.points)}
+                          </span>
+                          <span className="tabular" style={{ fontSize: 13, padding: "0 8px", borderRadius: 999, background: "#fff", border: "2px solid var(--outline)" }}>
+                            {t(locale, "left")} {formatNumber(locale, left)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--ink-soft)" }}>{t(locale, "grantAwardHint")}</p>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

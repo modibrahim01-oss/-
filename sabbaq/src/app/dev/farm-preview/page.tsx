@@ -7,13 +7,13 @@ import type { Tier } from "@/lib/tiers";
 import type { Plant } from "@/lib/types";
 
 /**
- * معاينة المزرعة ببيانات مولَّدة، بلا قاعدة بيانات.
+ * معاينة البستان ببيانات مولَّدة، بلا قاعدة بيانات.
  *
  * تجعل فحص المحرّك ثلاثي الأبعاد ممكنًا قبل وجود مشروع Supabase: الأشكال،
  * الإضاءة، الظلال، وكثافة الشبكة عند أعداد كبيرة. محجوبة في الإنتاج.
  *
  *   /dev/farm-preview?count=200&dusk=1
- *   /dev/farm-preview?seq=gyrpgpyyprrrrrrrrr   ← مزرعة حقيقية بترتيب منحها
+ *   /dev/farm-preview?seq=gyrpgpyyprrrrrrrrr   ← بستان حقيقي بترتيب منحها
  */
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ const LETTER: Record<string, Tier> = { g: "green", y: "yellow", p: "purple", r: 
 /**
  * فئات النبتات بترتيب منحها: من `seq` إن وُجد، وإلا توزيع واقعي مولَّد.
  *
- * `seq` يعيد إنتاج مزرعة طالب حقيقي حرفًا بحرف — هكذا تُفحَص مشكلة يراها
+ * `seq` يعيد إنتاج بستان طالب حقيقي حرفًا بحرف — هكذا تُفحَص مشكلة يراها
  * المالك على الموقع الحيّ دون الوصول إلى قاعدة بياناته.
  */
 function tierSequence(count: number, seq: string | undefined, seed = 42): Tier[] {

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import AdminNav from "@/app/admin/AdminNav";
 import StudentsManager from "@/app/admin/students/StudentsManager";
+import CommitteeSender from "@/app/supervisor/CommitteeSender";
+import type { CommitteeGrant } from "@/lib/types";
 import TierLimitsEditor from "@/app/admin/limits/TierLimitsEditor";
 import SupervisorLimitsForm from "@/app/admin/supervisors/SupervisorLimitsForm";
 import AwardPanel from "@/app/supervisor/AwardPanel";
@@ -15,7 +17,7 @@ import type { Group, StudentFarmSummary } from "@/lib/types";
  *
  * لوحة المشرف والإدارة خلف المصادقة، فلا يراها فحص بصري آلي ولا مراجِع لا
  * يملك حسابًا. هذا المعرض يرسم المكوّنات نفسها — لا نسخًا عنها — ببيانات
- * وهمية، فيُفحص شكلها كما تُفحص المزرعة في /dev/farm-preview. الأزرار تنادي
+ * وهمية، فيُفحص شكلها كما يُفحص البستان في /dev/farm-preview. الأزرار تنادي
  * الخادم فعلًا فتفشل بلا جلسة، وهذا مقصود: المعرض للشكل لا للسلوك.
  *
  *   /dev/ui-preview?view=supervisor   أو   ?view=admin
@@ -65,6 +67,38 @@ export default async function UiPreview({ searchParams }: { searchParams: Promis
       </div>
     </header>
   );
+
+  const GRANTS: CommitteeGrant[] = [
+    {
+      id: 1, title: "درس الأمانة", note: "بعد صلاة الظهر في المصلى", status: "locked", created_at: new Date().toISOString(),
+      unlocked_at: null, direction: "in", sender_ar: "عبدالله البكري", sender_en: null, recipient_ar: "البراء العبدالجبار",
+      recipient_en: null, items: [{ tier: "purple", quantity: 3, used: 0 }, { tier: "red", quantity: 2, used: 0 }],
+    },
+    {
+      id: 2, title: "قيمة الصدق", note: null, status: "active", created_at: new Date().toISOString(),
+      unlocked_at: new Date().toISOString(), direction: "in", sender_ar: "عبدالله البكري", sender_en: null,
+      recipient_ar: "البراء العبدالجبار", recipient_en: null,
+      items: [{ tier: "yellow", quantity: 4, used: 1 }, { tier: "red", quantity: 1, used: 0 }],
+    },
+  ];
+
+  if (view === "committee") {
+    return (
+      <>
+        {header}
+        <div style={{ paddingTop: 22 }}>
+          <CommitteeSender
+            locale={locale}
+            recipients={[
+              { id: "11111111-1111-1111-1111-111111111111", full_name_ar: "البراء العبدالجبار", full_name_en: null, groups_ar: "قبس · مجد ١", groups_en: null },
+              { id: "22222222-2222-2222-2222-222222222222", full_name_ar: "خالد الشمري", full_name_en: null, groups_ar: "باسل ١", groups_en: null },
+            ]}
+            sent={GRANTS.map((g, i) => ({ ...g, direction: "out", status: i === 0 ? "locked" : "active" }))}
+          />
+        </div>
+      </>
+    );
+  }
 
   if (view === "limits") {
     const roleLimits = { green: 8, yellow: 5, purple: 3, red: 2 };
@@ -148,6 +182,7 @@ export default async function UiPreview({ searchParams }: { searchParams: Promis
             red: { limit: 2, used: 0, remaining: 2 },
           },
         }}
+        initialGrants={GRANTS}
         initialRecent={[
           { id: 3, studentId: "s3", studentName: "سارة العتيبي", points: 50, tier: "red", awardedAt: new Date().toISOString() },
           { id: 2, studentId: "s2", studentName: "محمد الحيمي", points: 30, tier: "purple", awardedAt: new Date(Date.now() - 70_000).toISOString() },

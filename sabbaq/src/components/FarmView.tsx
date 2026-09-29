@@ -18,7 +18,7 @@ import { TIER_LIST } from "@/lib/tiers";
 import { useLocale } from "@/lib/useLocale";
 
 /**
- * واجهة صفحة المزرعة. النبتات والإحصاءات تصل من الخادم جاهزة فتُرسم فورًا،
+ * واجهة صفحة البستان. النبتات والإحصاءات تصل من الخادم جاهزة فتُرسم فورًا،
  * ثم تُعاد قراءتها من المتصفح لتلحق بما فات النسخةَ المخزَّنة.
  */
 export default function FarmView({ id, initial }: { id: string; initial: FarmData }) {
@@ -29,7 +29,7 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
   const [grown, setGrown] = useState(0);
   const shown = useRef(initial.plants.length);
 
-  // ── مفتاح المزرعة ──
+  // ── مفتاح البستان ──
   // يصل في الـ hash (#k=…) من بطاقة الطالب: لا يبلغ الخادم ولا يكسر تخزين
   // الصفحة. يُحفظ في المتصفح ويُمحى من الشريط فلا يُنسخ مع الرابط صدفةً.
   const [farmKey, setFarmKey] = useState<string | null>(null);
@@ -156,7 +156,7 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
         }
       } catch {
         // تعذّر الاتصال: النسخة المعروضة صحيحة حتى لحظة تخزينها، فلا نستبدلها
-        // برسالة خطأ — الطالب يرى مزرعته ولو متأخرة دقائق
+        // برسالة خطأ — الطالب يرى بستانه ولو متأخرًا دقائق
       }
     }
 
@@ -203,7 +203,7 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
       </header>
 
       <main style={{ maxWidth: 1240, margin: "0 auto", padding: "24px 20px 64px" }}>
-        {/* شريط الاسم: صاحب المزرعة ونقاطه وترتيبه قبل أي شيء */}
+        {/* شريط الاسم: صاحب البستان ونقاطه وترتيبه قبل أي شيء */}
         <section
           className="pop farm-banner"
           style={{
@@ -424,7 +424,7 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
             @media (max-width: 480px) { .hide-narrow { display: none; } }
             @media (max-width: 820px) {
               .farm-grid { grid-template-columns: minmax(0, 1fr) !important; }
-              /* المزرعة معيّنٌ عرضه ضعف ارتفاعه، والعرض هو ما يحدّ حجمها على
+              /* البستان معيّنٌ عرضه ضعف ارتفاعه، والعرض هو ما يحدّ حجمه على
                  الجوّال: إطار طوليّ كان يضيف سماءً فارغة لا أكثر */
               .farm-stage { min-height: 0; aspect-ratio: 6 / 5; }
               /* على الشاشة الضيّقة يغطّي التلميح طرف السور، والإيماءات هناك
@@ -459,7 +459,7 @@ function Chip({ fill, children }: { fill: string; children: React.ReactNode }) {
 }
 
 /**
- * شريط الترتيب أسفل المزرعة: زرّ «رتّب مزرعتي» لمن يملك المفتاح، ثم أثناء
+ * شريط الترتيب أسفل البستان: زرّ «رتّب بستاني» لمن يملك المفتاح، ثم أثناء
  * الترتيب تلميح وعدّاد النقلات و«حفظ» و«إلغاء» و«الترتيب الأصلي».
  */
 function ArrangeBar({

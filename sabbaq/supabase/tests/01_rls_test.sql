@@ -6,7 +6,7 @@
 --  2. الحد اليومي صارم ولا يُتجاوز بنقطة واحدة
 --  3. مشرف اللجنة يمنح الجميع، لكن بحدّه الخاص
 --  4. لا insert مباشر على points_ledger لأي مشرف
---  5. العامّة (anon) تقرأ المزارع ولا تكتب شيئًا
+--  5. العامّة (anon) تقرأ البساتين ولا تكتب شيئًا
 --  6. المدير معفى من الحد
 --  7. كل فئة في ربعها، تبدأ من زاويته ولا تخرج منه
 --  8. مشرفان متزامنان لا يحصلان على نفس الخانة
@@ -55,7 +55,7 @@ truncate points_ledger, supervisor_groups, students, audit_log,
          semester_archives restart identity cascade;
 update daily_limits set updated_by = null;
 update tier_limits set updated_by = null;
-truncate supervisor_tier_limits, staff_login_keys;
+truncate supervisor_tier_limits, staff_login_keys, committee_grants cascade;
 delete from users;
 delete from auth.users;
 
@@ -606,7 +606,7 @@ begin
 end;
 $$;
 
--- ── 16. مفتاح المزرعة وترتيبها ──────────────────────────────────────────
+-- ── 16. مفتاح البستان وترتيبه ──────────────────────────────────────────
 do $$
 declare
   v_err text; v_ok boolean; v_n integer; v_sem uuid;
@@ -749,6 +749,114 @@ begin
   select count(*) into v_n from staff_login_keys;
   reset role;
   perform assert(v_n = 1, '17c. admin reads the login links');
+end;
+$$;
+
+-- ── 18. نقاط إضافية من اللجنة القيمية ───────────────────────────────────
+do $$
+declare
+  v_err text; v_grant bigint; v_res jsonb; v_n integer; v_before integer; v_j jsonb;
+begin
+  update users set value_committee = true where id = '44444444-4444-4444-4444-444444444444';
+
+  v_err := try_as('33333333-3333-3333-3333-333333333333',
+    $q$select send_committee_grant('22222222-2222-2222-2222-222222222222', 'درس الأمانة', null, '{"purple":2}')$q$);
+  perform assert(v_err like '%NOT_VALUE_COMMITTEE%', '18a. a supervisor without the value-committee role CANNOT send');
+
+  v_err := try_as('44444444-4444-4444-4444-444444444444',
+    $q$select send_committee_grant('11111111-1111-1111-1111-111111111111', 'درس الأمانة', null, '{"purple":2}')$q$);
+  perform assert(v_err like '%INVALID_RECIPIENT%', '18b. points go to group supervisors only');
+
+  v_err := try_as('44444444-4444-4444-4444-444444444444',
+    $q$select send_committee_grant('22222222-2222-2222-2222-222222222222', 'درس الأمانة', null, '{"purple":0}')$q$);
+  perform assert(v_err like '%GRANT_INVALID%', '18c. an empty grant is refused');
+
+  perform set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', true);
+  v_grant := send_committee_grant('22222222-2222-2222-2222-222222222222', 'درس الأمانة', 'بعد صلاة الظهر',
+                                  '{"purple":2,"red":1}');
+  perform assert(v_grant is not null
+    and (select status from committee_grants where id = v_grant) = 'locked',
+    '18d. the value committee sends a grant and it arrives LOCKED');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select award_from_grant(%s, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple')$q$, v_grant));
+  perform assert(v_err like '%GRANT_NOT_AVAILABLE%', '18e. nothing can be awarded from a locked grant');
+
+  v_err := try_as('33333333-3333-3333-3333-333333333333', format($q$select unlock_committee_grant(%s)$q$, v_grant));
+  perform assert(v_err like '%GRANT_NOT_AVAILABLE%', '18f. only the recipient can unlock');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222', format($q$select unlock_committee_grant(%s)$q$, v_grant));
+  perform assert(v_err is null, '18g. the recipient unlocks after presenting the content');
+
+  -- حدّ الزهور اليومي صفر: المنح من الرصيد يمرّ رغم ذلك
+  perform try_as('11111111-1111-1111-1111-111111111111',
+    $q$select set_tier_limit('group_supervisor', 'purple', 0)$q$);
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  v_before := (my_daily_status()->'tiers'->'purple'->>'used')::int;
+  v_res := award_from_grant(v_grant, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple');
+  perform assert(v_res ? 'ledger_id', '18h. grant awards bypass the daily limit');
+  perform assert((my_daily_status()->'tiers'->'purple'->>'used')::int = v_before,
+    '18i. grant awards do not use up the supervisor''s own daily limit');
+  perform assert((select grant_id from points_ledger where id = (v_res->>'ledger_id')::bigint) = v_grant,
+    '18j. the ledger remembers the award came from the committee');
+
+  perform award_from_grant(v_grant, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple');
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select award_from_grant(%s, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'purple')$q$, v_grant));
+  perform assert(v_err like '%GRANT_TIER_EXHAUSTED%', '18k. no more than the grant''s quantity');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select award_from_grant(%s, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'red')$q$, v_grant));
+  perform assert(v_err like '%STUDENT_OUT_OF_SCOPE%', '18l. still only students of the recipient''s groups');
+
+  -- التراجع يعيد الوحدة إلى الرصيد
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  v_res := award_from_grant(v_grant, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'red');
+  perform undo_my_award((v_res->>'ledger_id')::bigint);
+  perform assert((select used from committee_grant_items where grant_id = v_grant and tier = 'red') = 0,
+    '18m. undoing a grant award returns the plant to the grant');
+
+  -- الرؤية: الطرفان فقط
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+  set local role authenticated;
+  select count(*) into v_n from committee_grants;
+  reset role;
+  perform assert(v_n = 0, '18n. other supervisors do NOT see the grant');
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  v_j := my_grants();
+  perform assert(jsonb_array_length(v_j) = 1 and v_j->0->>'direction' = 'in'
+    and jsonb_array_length(v_j->0->'items') = 2, '18o. the recipient sees it as incoming with its items');
+
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+  perform assert((select count(*) from grant_recipients()) = 0,
+    '18p. the recipient list is for the value committee only');
+  perform set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', true);
+  perform assert(exists (select 1 from grant_recipients() where id = '22222222-2222-2222-2222-222222222222'),
+    '18q. the value committee sees group supervisors to send to');
+
+  -- لا كتابة مباشرة
+  perform set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', true);
+  set local role authenticated;
+  begin
+    update committee_grant_items set quantity = 50 where grant_id = v_grant;
+    get diagnostics v_n = row_count;
+    v_err := case when v_n = 0 then 'no rows' else null end;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform assert(v_err is not null, '18r. nobody edits a grant directly — only through the functions');
+
+  -- السحب: المُرسِل وحده، وما وُزِّع يبقى
+  v_err := try_as('22222222-2222-2222-2222-222222222222', format($q$select cancel_committee_grant(%s)$q$, v_grant));
+  perform assert(v_err like '%GRANT_NOT_AVAILABLE%', '18s. the recipient cannot withdraw the grant');
+  v_err := try_as('44444444-4444-4444-4444-444444444444', format($q$select cancel_committee_grant(%s)$q$, v_grant));
+  perform assert(v_err is null, '18t. the value committee withdraws what is left');
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    format($q$select award_from_grant(%s, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'red')$q$, v_grant));
+  perform assert(v_err like '%GRANT_NOT_AVAILABLE%', '18u. a withdrawn grant cannot be used');
+  perform assert((select count(*) from points_ledger where grant_id = v_grant and revoked_at is null) = 2,
+    '18v. plants already awarded from it stay in the students'' farms');
 end;
 $$;
 

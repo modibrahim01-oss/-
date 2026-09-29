@@ -21,7 +21,7 @@ const body = Tajawal({
 
 export const metadata: Metadata = {
   title: "سبّاق · Sabbaq",
-  description: "نظام تحفيز الطلاب بالنقاط والمزارع الافتراضية",
+  description: "نظام تحفيز الطلاب بالنقاط والبساتين الافتراضية",
 };
 
 export const viewport: Viewport = {

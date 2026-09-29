@@ -110,7 +110,7 @@ begin
      where s.full_name like '[تجريبي]%' and s.next_slot_index = 0) = 2,
     'seed: two farms left empty for the empty-state path');
 
-  -- منح حقيقي فوق أكبر مزرعة مبذورة: الحالة التي يكشفها عدّاد خاطئ
+  -- منح حقيقي فوق أكبر بستان مبذور: الحالة التي يكشفها عدّاد خاطئ
   select s.id, s.next_slot_index into v_s, v_n
     from students s
     join (select student_id, count(*) c from points_ledger

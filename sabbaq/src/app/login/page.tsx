@@ -30,7 +30,7 @@ export default async function LoginPage({
       </header>
 
       <main className="login-wrap">
-        {/* لوحة ترحيب ملوّنة: الدخول للمشرفين، لكنه باب المزرعة نفسها */}
+        {/* لوحة ترحيب ملوّنة: الدخول للمشرفين، لكنه باب البستان نفسه */}
         <section
           aria-hidden
           className="pop login-art"

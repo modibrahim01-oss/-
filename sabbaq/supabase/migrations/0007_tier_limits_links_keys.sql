@@ -1,16 +1,51 @@
 -- ════════════════════════════════════════════════════════════════════════
--- سبّاق — حدّ بعدد النبتات، ودخول المشرف برابط، ومفتاح مزرعة الطالب
+-- سبّاق — حدّ بعدد النبتات، ودخول المشرف برابط، ومفتاح بستان الطالب
 --
 -- ١. حدّ المشرف اليومي يصبح بعدد النبتات من كل نوع لا بمجموع النقاط: كم
 --    سنبلة وكم نبتة وكم زهرة وكم شجرة. حدّ لكل دور، واستثناء اختياري لمشرف.
 -- ٢. رابط دخول دائم لكل مشرف بدل الإيميل وكلمة المرور.
--- ٣. مفتاح لكل طالب يرتّب به نبتات مزرعته داخل سورها، ولا يرتّب غيرها.
+-- ٣. مفتاح لكل طالب يرتّب به نبتات بستانه داخل سوره، ولا يرتّب غيره.
+-- ٤. نقاط إضافية من اللجنة القيمية: رصيد نبتات يرسله مشرف اللجنة لمشرف
+--    مجموعة، مقفلًا حتى يعرض المستلم المحتوى ويفتحه، ثم يوزّعه خارج حدّه.
 --
 -- يعتمد على 0006 (الفهرس الجزئي للخانات الحيّة، و award_points بأول خانة
 -- شاغرة). يُطبَّق مرّة واحدة في معاملة واحدة، ولا يحرّك أي نبتة قائمة.
 -- ════════════════════════════════════════════════════════════════════════
 
 begin;
+
+-- ═══════════════════ ٠. جداول رصيد اللجنة القيمية ═══════════════════════
+-- تُنشأ أولًا لأن المنح (١) يعرف مصدره منها: منحٌ من رصيد اللجنة لا يُحسب
+-- على حدّ المشرف اليومي. الدوال في القسم ٤.
+
+-- صلاحية الإرسال: تمنحها الإدارة لمشرف بعينه
+alter table users add column if not exists value_committee boolean not null default false;
+
+create table if not exists committee_grants (
+  id           bigserial primary key,
+  sender_id    uuid not null references users,
+  recipient_id uuid not null references users,
+  semester_id  uuid not null references semesters,
+  title        text not null check (length(title) between 2 and 120),
+  note         text check (note is null or length(note) <= 500),
+  status       text not null default 'locked' check (status in ('locked', 'active', 'cancelled')),
+  created_at   timestamptz not null default now(),
+  unlocked_at  timestamptz,
+  cancelled_at timestamptz
+);
+create index if not exists committee_grants_recipient_idx on committee_grants (recipient_id, status);
+create index if not exists committee_grants_sender_idx on committee_grants (sender_id, created_at desc);
+
+create table if not exists committee_grant_items (
+  grant_id bigint     not null references committee_grants on delete cascade,
+  tier     point_tier not null,
+  quantity integer    not null check (quantity between 1 and 50),
+  used     integer    not null default 0 check (used >= 0 and used <= quantity),
+  primary key (grant_id, tier)
+);
+
+-- مصدر كل منح: null للمنح العادي، ورقم الرصيد لمنحٍ من رصيد اللجنة
+alter table points_ledger add column if not exists grant_id bigint references committee_grants;
 
 -- ════════════════════════════ ١. حدّ النبتات ════════════════════════════
 
@@ -83,42 +118,28 @@ $$;
 
 revoke all on function tier_limit_for(uuid, user_role, point_tier) from public;
 
--- ── منح النقاط: الحدّ بعدد نبتات الفئة ──────────────────────────────────
--- مطابق لـ 0006 إلا فحص الحد: عدد منح اليوم الحيّة لهذا المشرف من هذه الفئة.
--- الإلغاء والتراجع يُخرجان المنح من العدّ، فيعود للمشرف ما ألغاه.
-create or replace function award_points(p_student_id uuid, p_tier point_tier)
+-- ── الغرس نفسه: مشترك بين المنح العادي والمنح من رصيد اللجنة ─────────────
+-- قفل صف الطالب، ونطاق مشرف المجموعة، وأول خانة شاغرة في ربع الفئة (0006)،
+-- والإدراج. المستدعي يأخذ القفل الاستشاري على المشرف ويفحص ما يخصّه (الحد
+-- اليومي أو الرصيد) قبل النداء. داخلية: لا صلاحية تنفيذ لأحد.
+create or replace function plant_award(
+  p_actor uuid, p_role user_role, p_student_id uuid, p_tier point_tier, p_grant bigint
+)
 returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_actor    uuid := auth.uid();
-  v_role     user_role;
-  v_points   smallint;
+  v_points   smallint := tier_points(p_tier);
   v_semester uuid;
   v_group    smallint;
-  v_limit    integer;
-  v_used     integer;
   v_slot     integer;
   v_rank     integer := 0;
   v_x        integer;
   v_y        integer;
   v_id       bigint;
 begin
-  if v_actor is null then
-    raise exception 'AUTH_REQUIRED' using errcode = '42501';
-  end if;
-
-  select role into v_role from users where id = v_actor and is_active;
-  if v_role is null then
-    raise exception 'NOT_STAFF' using errcode = '42501';
-  end if;
-
-  v_points := tier_points(p_tier);
-
-  perform pg_advisory_xact_lock(hashtextextended(v_actor::text, 0));
-
   select id into v_semester from semesters where is_active;
   if v_semester is null then
     raise exception 'NO_ACTIVE_SEMESTER' using errcode = 'P0002';
@@ -134,30 +155,13 @@ begin
     raise exception 'STUDENT_NOT_FOUND' using errcode = 'P0002';
   end if;
 
-  if v_role = 'group_supervisor'
+  if p_role = 'group_supervisor'
      and not exists (
        select 1 from supervisor_groups
-        where supervisor_id = v_actor and group_id = v_group
+        where supervisor_id = p_actor and group_id = v_group
      )
   then
     raise exception 'STUDENT_OUT_OF_SCOPE' using errcode = '42501';
-  end if;
-
-  if v_role <> 'admin' then
-    v_limit := tier_limit_for(v_actor, v_role, p_tier);
-
-    select count(*) into v_used
-      from points_ledger
-     where supervisor_id = v_actor
-       and tier = p_tier
-       and revoked_at is null
-       and awarded_at >= date_trunc('day', now());
-
-    if v_used + 1 > v_limit then
-      raise exception 'DAILY_LIMIT_EXCEEDED tier=% used=% limit=%',
-        p_tier, v_used, v_limit
-        using errcode = 'P0001';
-    end if;
   end if;
 
   loop
@@ -174,9 +178,9 @@ begin
   end loop;
 
   insert into points_ledger (
-    student_id, supervisor_id, semester_id, points, tier, slot_index, grid_x, grid_y
+    student_id, supervisor_id, semester_id, points, tier, slot_index, grid_x, grid_y, grant_id
   ) values (
-    p_student_id, v_actor, v_semester, v_points, p_tier, v_slot, v_x, v_y
+    p_student_id, p_actor, v_semester, v_points, p_tier, v_slot, v_x, v_y, p_grant
   )
   returning id into v_id;
 
@@ -190,6 +194,57 @@ begin
     'points',     v_points,
     'tier',       p_tier
   );
+end;
+$$;
+
+revoke all on function plant_award(uuid, user_role, uuid, point_tier, bigint) from public;
+
+-- ── منح النقاط: الحدّ بعدد نبتات الفئة ──────────────────────────────────
+-- عدد منح اليوم الحيّة لهذا المشرف من هذه الفئة، دون ما منحه من رصيد اللجنة.
+-- الإلغاء والتراجع يُخرجان المنح من العدّ، فيعود للمشرف ما ألغاه. القفل
+-- الاستشاري على المشرف يسبق العدّ، فمنحان متزامنان منه لا يقرآن نفس العدد.
+create or replace function award_points(p_student_id uuid, p_tier point_tier)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_role  user_role;
+  v_limit integer;
+  v_used  integer;
+begin
+  if v_actor is null then
+    raise exception 'AUTH_REQUIRED' using errcode = '42501';
+  end if;
+
+  select role into v_role from users where id = v_actor and is_active;
+  if v_role is null then
+    raise exception 'NOT_STAFF' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(v_actor::text, 0));
+
+  if v_role <> 'admin' then
+    v_limit := tier_limit_for(v_actor, v_role, p_tier);
+
+    select count(*) into v_used
+      from points_ledger
+     where supervisor_id = v_actor
+       and tier = p_tier
+       and grant_id is null
+       and revoked_at is null
+       and awarded_at >= date_trunc('day', now());
+
+    if v_used + 1 > v_limit then
+      raise exception 'DAILY_LIMIT_EXCEEDED tier=% used=% limit=%',
+        p_tier, v_used, v_limit
+        using errcode = 'P0001';
+    end if;
+  end if;
+
+  return plant_award(v_actor, v_role, p_student_id, p_tier, null);
 end;
 $$;
 
@@ -223,6 +278,7 @@ begin
       from points_ledger
      where supervisor_id = v_actor
        and tier = v_tier
+       and grant_id is null
        and revoked_at is null
        and awarded_at >= date_trunc('day', now());
 
@@ -318,7 +374,7 @@ create policy staff_keys_admin on staff_login_keys
   for all using (is_admin()) with check (is_admin());
 grant select, insert, update, delete on staff_login_keys to authenticated;
 
--- ═══════════════════════ ٣. مفتاح مزرعة الطالب ═════════════════════════
+-- ═══════════════════════ ٣. مفتاح بستان الطالب ═════════════════════════
 -- جدول منفصل عن students عمدًا: students مقروء للعامّة بالكامل (0003)،
 -- فعمود مفتاح عليه ينكشف لأي زائر.
 create table if not exists student_farm_keys (
@@ -367,7 +423,7 @@ as $$
     from ranked r cross join lateral quadrant_coord(r.tier, r.rnk) q;
 $$;
 
--- ── ترتيب المزرعة: [{slot, x, y}] ────────────────────────────────────────
+-- ── ترتيب البستان: [{slot, x, y}] ────────────────────────────────────────
 -- النقل بخطوتين: الصفوف المنقولة تُركن أولًا في خانات مؤقتة خارج الشبكة ثم
 -- تنزل أهدافها، فيمرّ تبديل نبتتين من الفهرس الفريد. أي تصادم نهائي (هدفان
 -- لخانة واحدة، أو هدف على نبتة لم تُنقل) يُسقط الترتيب كله.
@@ -504,5 +560,339 @@ revoke all on function reset_farm(uuid, text)           from public;
 grant execute on function farm_key_ok(uuid, text)         to anon, authenticated;
 grant execute on function arrange_farm(uuid, text, jsonb) to anon, authenticated;
 grant execute on function reset_farm(uuid, text)          to anon, authenticated;
+
+-- ═══════════════════ ٤. نقاط إضافية من اللجنة القيمية ════════════════════
+-- مشرف اللجنة القيمية يرسل لمشرف مجموعة رصيدًا من النبتات مع عنوان المحتوى.
+-- يصل مقفلًا؛ يعرض المستلم المحتوى على طلابه ثم يفتحه، فيمنح منه خارج حدّه
+-- اليومي. المُرسِل يسحب ما لم يُوزَّع متى شاء، وما وُزِّع يبقى في البساتين.
+
+alter table committee_grants      enable row level security;
+alter table committee_grant_items enable row level security;
+
+drop policy if exists grants_read_parties on committee_grants;
+create policy grants_read_parties on committee_grants
+  for select using (sender_id = auth.uid() or recipient_id = auth.uid() or is_admin());
+drop policy if exists grant_items_read_parties on committee_grant_items;
+create policy grant_items_read_parties on committee_grant_items
+  for select using (exists (
+    select 1 from committee_grants g
+     where g.id = grant_id
+       and (g.sender_id = auth.uid() or g.recipient_id = auth.uid() or is_admin())
+  ));
+
+-- قراءة فقط: الإرسال والفتح والمنح والسحب تمرّ بالدوال أدناه وحدها
+grant select on committee_grants, committee_grant_items to authenticated;
+
+create or replace function is_value_committee()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select value_committee from users where id = auth.uid() and is_active), false);
+$$;
+
+-- ── إرسال رصيد: items = {"purple": 3, "red": 2} ──────────────────────────
+create or replace function send_committee_grant(
+  p_recipient uuid, p_title text, p_note text, p_items jsonb
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_sem   uuid;
+  v_id    bigint;
+  v_item  record;
+  v_count integer := 0;
+begin
+  if not is_value_committee() then
+    raise exception 'NOT_VALUE_COMMITTEE' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1 from users where id = p_recipient and is_active and role = 'group_supervisor'
+  ) then
+    raise exception 'INVALID_RECIPIENT' using errcode = '22023';
+  end if;
+  if p_title is null or length(trim(p_title)) not between 2 and 120
+     or (p_note is not null and length(p_note) > 500)
+     or jsonb_typeof(p_items) is distinct from 'object'
+  then
+    raise exception 'GRANT_INVALID' using errcode = '22023';
+  end if;
+
+  select id into v_sem from semesters where is_active;
+  if v_sem is null then
+    raise exception 'NO_ACTIVE_SEMESTER' using errcode = 'P0002';
+  end if;
+
+  insert into committee_grants (sender_id, recipient_id, semester_id, title, note)
+  values (v_actor, p_recipient, v_sem, trim(p_title), nullif(trim(coalesce(p_note, '')), ''))
+  returning id into v_id;
+
+  for v_item in select key, value from jsonb_each_text(p_items) loop
+    if v_item.key not in (select unnest(enum_range(null::point_tier))::text)
+       or v_item.value !~ '^[0-9]+$'
+    then
+      raise exception 'GRANT_INVALID' using errcode = '22023';
+    end if;
+    if v_item.value::integer = 0 then
+      continue;
+    end if;
+    if v_item.value::integer > 50 then
+      raise exception 'GRANT_INVALID' using errcode = '22023';
+    end if;
+    insert into committee_grant_items (grant_id, tier, quantity)
+    values (v_id, v_item.key::point_tier, v_item.value::integer);
+    v_count := v_count + 1;
+  end loop;
+
+  if v_count = 0 then
+    raise exception 'GRANT_INVALID' using errcode = '22023';
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, details)
+  values (v_actor, 'send_committee_grant', 'committee_grants', v_id::text,
+          jsonb_build_object('recipient', p_recipient, 'items', p_items));
+  return v_id;
+end;
+$$;
+
+-- ── فتح الرصيد: المستلم وحده، بعد عرض المحتوى ────────────────────────────
+create or replace function unlock_committee_grant(p_grant bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update committee_grants
+     set status = 'active', unlocked_at = now()
+   where id = p_grant
+     and recipient_id = auth.uid()
+     and status = 'locked'
+     and exists (select 1 from users where id = auth.uid() and is_active);
+  if not found then
+    raise exception 'GRANT_NOT_AVAILABLE' using errcode = 'P0002';
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id)
+  values (auth.uid(), 'unlock_committee_grant', 'committee_grants', p_grant::text);
+end;
+$$;
+
+-- ── المنح من الرصيد: خارج الحد اليومي، ضمن نطاق المستلم ───────────────────
+create or replace function award_from_grant(p_grant bigint, p_student_id uuid, p_tier point_tier)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+  v_role  user_role;
+  v_qty   integer;
+  v_used  integer;
+  v_res   jsonb;
+begin
+  select role into v_role from users where id = v_actor and is_active;
+  if v_role is null then
+    raise exception 'NOT_STAFF' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(v_actor::text, 0));
+
+  perform 1 from committee_grants g
+   where g.id = p_grant
+     and g.recipient_id = v_actor
+     and g.status = 'active'
+     and g.semester_id = (select id from semesters where is_active)
+     for update;
+  if not found then
+    raise exception 'GRANT_NOT_AVAILABLE' using errcode = 'P0002';
+  end if;
+
+  select quantity, used into v_qty, v_used
+    from committee_grant_items
+   where grant_id = p_grant and tier = p_tier
+     for update;
+  if not found or v_used >= v_qty then
+    raise exception 'GRANT_TIER_EXHAUSTED' using errcode = 'P0001';
+  end if;
+
+  v_res := plant_award(v_actor, v_role, p_student_id, p_tier, p_grant);
+
+  update committee_grant_items set used = used + 1 where grant_id = p_grant and tier = p_tier;
+
+  return v_res || jsonb_build_object('grant_id', p_grant);
+end;
+$$;
+
+-- ── سحب الباقي: المُرسِل أو المدير. ما وُزِّع قبلها يبقى في البساتين ─────────
+create or replace function cancel_committee_grant(p_grant bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update committee_grants
+     set status = 'cancelled', cancelled_at = now()
+   where id = p_grant
+     and status in ('locked', 'active')
+     and (sender_id = auth.uid() or is_admin());
+  if not found then
+    raise exception 'GRANT_NOT_AVAILABLE' using errcode = 'P0002';
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id)
+  values (auth.uid(), 'cancel_committee_grant', 'committee_grants', p_grant::text);
+end;
+$$;
+
+-- ── من يستقبل: مشرفو المجموعات ومجموعاتهم، لمن يحمل الصلاحية وحده ─────────
+-- سياسة users تمنع المشرف من قراءة غيره، فالقائمة تمرّ من هنا.
+create or replace function grant_recipients()
+returns table (id uuid, full_name_ar text, full_name_en text, groups_ar text, groups_en text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select u.id, u.full_name_ar, u.full_name_en,
+         string_agg(g.name_ar, ' · ' order by g.sort_order),
+         string_agg(g.name_en, ' · ' order by g.sort_order)
+    from users u
+    left join supervisor_groups sg on sg.supervisor_id = u.id
+    left join groups g on g.id = sg.group_id
+   where is_value_committee()
+     and u.is_active and u.role = 'group_supervisor'
+   group by u.id, u.full_name_ar, u.full_name_en
+   order by u.full_name_ar;
+$$;
+
+-- ── أرصدتي: الواردة والمرسلة في الفصل النشط، بأسماء الطرفين وبنودها ───────
+create or replace function my_grants()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at desc), '[]'::jsonb)
+    from (
+      select g.id, g.title, g.note, g.status, g.created_at, g.unlocked_at,
+             case when g.recipient_id = auth.uid() then 'in' else 'out' end as direction,
+             s.full_name_ar as sender_ar, s.full_name_en as sender_en,
+             r.full_name_ar as recipient_ar, r.full_name_en as recipient_en,
+             (select coalesce(jsonb_agg(jsonb_build_object('tier', i.tier, 'quantity', i.quantity, 'used', i.used)
+                                        order by i.tier), '[]'::jsonb)
+                from committee_grant_items i where i.grant_id = g.id) as items
+        from committee_grants g
+        join users s on s.id = g.sender_id
+        join users r on r.id = g.recipient_id
+       where (g.sender_id = auth.uid() or g.recipient_id = auth.uid())
+         and g.semester_id = (select id from semesters where is_active)
+       order by g.created_at desc
+       limit 100
+    ) t;
+$$;
+
+-- ── التراجع: منحٌ من رصيد اللجنة تعود وحدته إلى الرصيد ─────────────────────
+-- مطابق لـ 0006، وزيادته السطر الذي يعيد الوحدة.
+create or replace function undo_my_award(p_ledger_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor   uuid := auth.uid();
+  v_student uuid;
+  v_points  smallint;
+  v_tier    point_tier;
+  v_grant   bigint;
+  v_owner   uuid;
+  v_at      timestamptz;
+  v_revoked timestamptz;
+begin
+  if v_actor is null then
+    raise exception 'AUTH_REQUIRED' using errcode = '42501';
+  end if;
+
+  if not exists (select 1 from users where id = v_actor and is_active) then
+    raise exception 'NOT_STAFF' using errcode = '42501';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(v_actor::text, 0));
+
+  select student_id, supervisor_id, awarded_at, revoked_at
+    into v_student, v_owner, v_at, v_revoked
+    from points_ledger
+   where id = p_ledger_id;
+
+  if not found or v_owner is distinct from v_actor then
+    raise exception 'UNDO_NOT_YOURS' using errcode = '42501';
+  end if;
+  if v_revoked is not null then
+    raise exception 'UNDO_ALREADY_REVOKED' using errcode = 'P0002';
+  end if;
+  if v_at < now() - interval '150 seconds' then
+    raise exception 'UNDO_WINDOW_PASSED' using errcode = 'P0001';
+  end if;
+
+  perform 1 from students where id = v_student for update;
+
+  update points_ledger
+     set revoked_at = now(), revoked_by = v_actor, revoke_reason = 'undo'
+   where id = p_ledger_id
+     and supervisor_id = v_actor
+     and revoked_at is null
+     and awarded_at >= now() - interval '150 seconds'
+  returning points, tier, grant_id into v_points, v_tier, v_grant;
+
+  if not found then
+    raise exception 'UNDO_WINDOW_PASSED' using errcode = 'P0001';
+  end if;
+
+  if v_grant is not null then
+    update committee_grant_items
+       set used = greatest(0, used - 1)
+     where grant_id = v_grant and tier = v_tier;
+  end if;
+
+  insert into audit_log (actor_id, action, entity, entity_id, details)
+  values (v_actor, 'undo_award', 'points_ledger', p_ledger_id::text,
+          jsonb_build_object('student_id', v_student, 'points', v_points, 'tier', v_tier, 'grant_id', v_grant));
+
+  return jsonb_build_object(
+    'ledger_id',  p_ledger_id,
+    'student_id', v_student,
+    'points',     v_points,
+    'tier',       v_tier,
+    'grant_id',   v_grant
+  );
+end;
+$$;
+
+revoke all on function is_value_committee()                              from public;
+revoke all on function send_committee_grant(uuid, text, text, jsonb)     from public;
+revoke all on function unlock_committee_grant(bigint)                    from public;
+revoke all on function award_from_grant(bigint, uuid, point_tier)        from public;
+revoke all on function cancel_committee_grant(bigint)                    from public;
+revoke all on function grant_recipients()                                from public;
+revoke all on function my_grants()                                       from public;
+revoke all on function undo_my_award(bigint)                             from public;
+grant execute on function is_value_committee()                           to authenticated;
+grant execute on function send_committee_grant(uuid, text, text, jsonb)  to authenticated;
+grant execute on function unlock_committee_grant(bigint)                 to authenticated;
+grant execute on function award_from_grant(bigint, uuid, point_tier)     to authenticated;
+grant execute on function cancel_committee_grant(bigint)                 to authenticated;
+grant execute on function grant_recipients()                             to authenticated;
+grant execute on function my_grants()                                    to authenticated;
+grant execute on function undo_my_award(bigint)                          to authenticated;
 
 commit;

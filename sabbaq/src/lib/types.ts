@@ -95,3 +95,30 @@ export type AwardResult = {
   points: number;
   tier: Tier;
 };
+
+/** بند من رصيد اللجنة القيمية: كم نبتة من الفئة، وكم وُزِّع منها. */
+export type GrantItem = { tier: Tier; quantity: number; used: number };
+
+/** رصيد «نقاط إضافية من اللجنة القيمية» كما تعيده my_grants (0007). */
+export type CommitteeGrant = {
+  id: number;
+  title: string;
+  note: string | null;
+  status: "locked" | "active" | "cancelled";
+  created_at: string;
+  unlocked_at: string | null;
+  direction: "in" | "out";
+  sender_ar: string;
+  sender_en: string | null;
+  recipient_ar: string;
+  recipient_en: string | null;
+  items: GrantItem[];
+};
+
+export type GrantRecipient = {
+  id: string;
+  full_name_ar: string;
+  full_name_en: string | null;
+  groups_ar: string | null;
+  groups_en: string | null;
+};
