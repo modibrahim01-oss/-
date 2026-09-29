@@ -81,6 +81,7 @@ const dict = {
     customLimit: "حدّ خاص",
     customLimitHint: "اتركه فارغًا ليأخذ حدّ دوره",
     needsMigration: "هذه الميزة تحتاج تشغيل ملف قاعدة البيانات 0007",
+    sessionExpired: "انتهت جلستك — سجّل الخروج ثم ادخل من جديد",
     loginLinkInvalid: "رابط الدخول غير صالح أو أُلغي. اطلب من الإدارة رابطًا جديدًا.",
     loginLink: "رابط الدخول",
     loginLinkHint: "أرسله للمشرف في رسالة خاصة أو دعه يمسح الرمز. يبقى صالحًا حتى تلغيه، ومن يملكه يدخل لوحة هذا المشرف.",
@@ -278,6 +279,7 @@ const dict = {
     customLimit: "Custom limit",
     customLimitHint: "Leave empty to use the role's limit",
     needsMigration: "This feature needs database migration 0007",
+    sessionExpired: "Your session ended — sign out and sign in again",
     loginLinkInvalid: "This login link is invalid or was cancelled. Ask the admin for a new one.",
     loginLink: "Login link",
     loginLinkHint: "Send it privately or let the supervisor scan the code. It stays valid until you cancel it, and whoever has it opens this supervisor's panel.",
@@ -420,6 +422,17 @@ export function t(locale: Locale, key: TranslationKey): string {
 }
 
 /** مُترجِم مربوط بلغة واحدة — أقصر في الاستخدام داخل مكوّن. */
+/**
+ * رسالة خطأ إجراء الخادم بلغة الواجهة. الإجراءات تعيد رموزًا قصيرة؛
+ * «forbidden» تعني أن الخادم لم يجد جلسة مدير صالحة (انتهت أو أُنهيت من جهاز
+ * آخر)، فعرضها كلمةً إنجليزية لا يدلّ المدير على الحل.
+ */
+export function actionErrorText(locale: Locale, code: string | undefined): string {
+  if (code === "forbidden") return t(locale, "sessionExpired");
+  if (code === "needs_migration") return t(locale, "needsMigration");
+  return code ?? "error";
+}
+
 export function translator(locale: Locale) {
   return (key: TranslationKey) => dict[locale][key];
 }

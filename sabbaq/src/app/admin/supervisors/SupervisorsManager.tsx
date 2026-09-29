@@ -8,7 +8,7 @@ import {
   setSupervisorGroups,
   setValueCommittee,
 } from "@/lib/actions/admin";
-import { roleLabel, t } from "@/lib/i18n";
+import { actionErrorText, roleLabel, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import type { Tier } from "@/lib/tiers";
 import type { Group, UserRole } from "@/lib/types";
@@ -71,7 +71,7 @@ export default function SupervisorsManager({
       setNotice(
         res.ok
           ? { tone: "ok", text: t(locale, "saved") }
-          : { tone: "err", text: res.error ?? "error" },
+          : { tone: "err", text: actionErrorText(locale, res.error) },
       );
       if (res.ok) setEditingGroups(null);
     });

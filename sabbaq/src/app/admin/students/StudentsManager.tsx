@@ -9,7 +9,7 @@ import {
   updateStudent,
 } from "@/lib/actions/admin";
 import { parseStudentSheet } from "@/lib/actions/import-sheet";
-import { formatNumber, t, localizeDigits } from "@/lib/i18n";
+import { actionErrorText, formatNumber, t, localizeDigits } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import type { Group, Student } from "@/lib/types";
 
@@ -49,7 +49,7 @@ export default function StudentsManager({
   function run(action: () => Promise<{ ok: boolean; error?: string }>, okText: string) {
     startTransition(async () => {
       const res = await action();
-      setNotice(res.ok ? { tone: "ok", text: okText } : { tone: "err", text: res.error ?? "error" });
+      setNotice(res.ok ? { tone: "ok", text: okText } : { tone: "err", text: actionErrorText(locale, res.error) });
       if (res.ok) setEditing(null);
     });
   }
@@ -119,7 +119,7 @@ export default function StudentsManager({
                 setNotice(
                   res.ok
                     ? { tone: "ok", text: `${t(locale, "saved")} · ${formatNumber(locale, res.inserted)}` }
-                    : { tone: "err", text: res.error },
+                    : { tone: "err", text: actionErrorText(locale, res.error) },
                 );
                 if (res.ok) setShowImport(false);
               })

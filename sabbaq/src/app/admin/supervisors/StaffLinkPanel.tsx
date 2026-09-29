@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { buttonStyle } from "@/components/ui";
 import { getStaffLink, revokeStaffLink, rotateStaffLink, type StaffLinkResult } from "@/lib/actions/admin";
-import { t, type Locale } from "@/lib/i18n";
+import { actionErrorText, t, type Locale } from "@/lib/i18n";
 
 /**
  * لوحة رابط دخول المشرف: رمز QR يُمسح، والرابط نفسه للنسخ، وإصدار رابط جديد،
@@ -26,7 +26,7 @@ export default function StaffLinkPanel({ locale, userId }: { locale: Locale; use
   if (!link.ok) {
     return (
       <p role="alert" style={{ margin: 0, fontWeight: 700, color: "var(--coral)" }}>
-        {link.error === "needs_migration" ? t(locale, "needsMigration") : link.error}
+        {actionErrorText(locale, link.error)}
       </p>
     );
   }

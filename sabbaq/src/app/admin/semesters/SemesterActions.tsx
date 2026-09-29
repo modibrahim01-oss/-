@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { buttonStyle, Card, field } from "@/components/ui";
 import { closeSemester } from "@/lib/actions/admin";
-import { t } from "@/lib/i18n";
+import { actionErrorText, t } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import type { Semester } from "@/lib/types";
 
@@ -52,7 +52,7 @@ export default function SemesterActions({
         setResult({ tone: "ok", text: t(locale, "saved") });
         setConfirm("");
       } else {
-        setResult({ tone: "err", text: res.error });
+        setResult({ tone: "err", text: actionErrorText(locale, res.error) });
       }
     });
   }
