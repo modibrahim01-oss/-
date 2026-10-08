@@ -435,6 +435,28 @@ export async function setValueCommittee(userId: string, enabled: boolean): Promi
   return { ok: true };
 }
 
+// ── صلاحية الخصم «الليدر» (0008) ─────────────────────────────────────────
+
+/** يمنح مشرفًا صلاحية الخصم من البساتين أو يسحبها. المدير يخصم دائمًا. */
+export async function setCanDeduct(userId: string, enabled: boolean): Promise<ActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: "forbidden" };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "invalid" };
+
+  const { error } = await auth.supabase.from("users").update({ can_deduct: enabled }).eq("id", userId).neq("role", "admin");
+  if (error) return { ok: false, error: error.message };
+
+  await auth.supabase.from("audit_log").insert({
+    actor_id: auth.actorId,
+    action: "set_can_deduct",
+    entity: "users",
+    entity_id: userId,
+    details: { enabled },
+  });
+  revalidatePath("/admin/supervisors");
+  return { ok: true };
+}
+
 // ── مفتاح بستان الطالب (0007) ────────────────────────────────────────────
 
 /** مفتاح جديد لطالب: البطاقة القديمة تتوقّف فورًا. */

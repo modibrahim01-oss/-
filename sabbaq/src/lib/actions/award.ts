@@ -41,6 +41,7 @@ export async function awardPoints(studentId: string, tier: string): Promise<Awar
   // البستان العام والقوائم تُخزَّن؛ نُبطل تخزينها فورًا لتظهر النبتة الجديدة
   revalidatePath(`/farm/${parsed.data.studentId}`);
   revalidatePath("/tv");
+  revalidatePath("/tv/[groups]", "page");
   revalidatePath("/");
 
   return { ok: true, result: data as AwardResult };
@@ -75,6 +76,7 @@ export async function undoAward(ledgerId: number): Promise<UndoOutcome> {
   const row = data as { student_id: string; points: number };
   revalidatePath(`/farm/${row.student_id}`);
   revalidatePath("/tv");
+  revalidatePath("/tv/[groups]", "page");
   revalidatePath("/");
 
   return { ok: true, points: row.points, studentId: row.student_id };

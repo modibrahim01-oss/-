@@ -3,6 +3,8 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { arrangeBounds, farmBounds, insideBounds } from "@/lib/farm-layout";
+import { cumulative, mowRoute, pointAt } from "@/lib/mow-path";
+import { buildMower, clippingParts } from "@/lib/mower-model";
 import {
   PALETTES,
   TILE,
@@ -12,6 +14,7 @@ import {
   fieldBox,
   gridToWorld,
 } from "@/lib/plants";
+import type { Tier } from "@/lib/tiers";
 import type { Plant } from "@/lib/types";
 
 /**
@@ -62,7 +65,16 @@ type Props = {
    * بناؤه، فلا تقفز الكاميرا ولا يومض شيء.
    */
   arrange?: { onMove: (moves: { slot: number; x: number; y: number }[]) => void };
+  /**
+   * الخصم: جزّازة تمرّ على خانات نبتات أُزيلت من البستان. النبتات تُرسم في
+   * خاناتها مؤقتًا ثم تقصّها الجزّازة واحدة واحدة. `key` يميّز كل تشغيل.
+   */
+  mow?: { key: string; cells: MowCell[]; onDone: () => void } | null;
+  /** يُزاد لإنهاء الجزّازة فورًا (زرّ «تخطٍّ») */
+  skipMow?: number;
 };
+
+export type MowCell = { x: number; y: number; tier: Tier };
 
 export default function FarmScene({
   plants,
@@ -71,12 +83,16 @@ export default function FarmScene({
   className,
   style,
   arrange,
+  mow,
+  skipMow = 0,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   // مرجع لا خاصية في تبعيات المشهد: الدخول إلى وضع الترتيب والخروج منه لا
   // يعيدان بناء المشهد، ومعالجات المؤشر تقرأ آخر قيمة
   const arrangeRef = useRef(arrange);
   arrangeRef.current = arrange;
+  const mowRef = useRef(mow);
+  mowRef.current = mow;
   // يُزاد لإعادة بناء المشهد كاملًا حين لا تكفي الإضافة: نبتات قائمة انتقلت
   // من خاناتها، أو بستان تجاوز سوره
   const [epoch, setEpoch] = useState(0);
@@ -90,6 +106,8 @@ export default function FarmScene({
     zoomOut: () => void;
     reset: () => void;
     sync: (next: Plant[]) => void;
+    mow: (cells: MowCell[], onDone: () => void) => void;
+    skipMow: () => void;
   } | null>(null);
 
   useEffect(() => {
@@ -237,7 +255,15 @@ export default function FarmScene({
         group.updateMatrixWorld(true);
         box.expandByObject(group);
       }
+      const f = frameFor(box, cinematic ? 1.3 : 1.06);
+      panX = f.x;
+      panY = f.y;
+      panZ = f.z;
+      zoom = f.zoom;
+    }
 
+    /** نقطة النظر والتكبير اللذان يؤطّران صندوقًا كاملًا بهامش `pad`. */
+    function frameFor(box: THREE.Box3, pad: number) {
       let minR = Infinity;
       let maxR = -Infinity;
       let minU = Infinity;
@@ -258,16 +284,16 @@ export default function FarmScene({
       }
 
       const center = box.getCenter(new THREE.Vector3());
-      panX = center.x;
-      panY = center.y;
-      panZ = center.z;
-
       // هامش العرض أوسع: الكاميرا تتمايل فيه وتتنفّس تكبيرًا، وبطاقتا الاسم
       // ولوحة الصدارة تشغلان زاويتين من الشاشة
-      const pad = cinematic ? 1.3 : 1.06;
       const aspect = host.clientWidth / Math.max(1, host.clientHeight);
       const viewH = Math.max(maxU - minU, (maxR - minR) / Math.max(0.2, aspect)) * pad;
-      zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, BASE_VIEW_HEIGHT / viewH));
+      return {
+        x: center.x,
+        y: center.y,
+        z: center.z,
+        zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, BASE_VIEW_HEIGHT / viewH)),
+      };
     }
 
     function resize() {
@@ -299,6 +325,241 @@ export default function FarmScene({
     function setZoom(next: number) {
       zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next));
       applyCamera();
+    }
+
+    // ── الجزّازة ──
+    let mowing: { finish: (notify: boolean) => void } | null = null;
+
+    /** تنقل الكاميرا بنعومة إلى إطار آخر خلال `ms`. */
+    function tweenCamera(to: { x: number; y: number; z: number; zoom: number }, ms: number, done?: () => void) {
+      const from = { x: panX, y: panY, z: panZ, zoom };
+      const start = performance.now();
+      const step = () => {
+        if (!mowing) return;
+        const t = Math.min(1, (performance.now() - start) / ms);
+        const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+        panX = from.x + (to.x - from.x) * e;
+        panY = from.y + (to.y - from.y) * e;
+        panZ = from.z + (to.z - from.z) * e;
+        zoom = from.zoom + (to.zoom - from.zoom) * e;
+        applyCamera();
+        if (t < 1) requestAnimationFrame(step);
+        else done?.();
+      };
+      step();
+    }
+
+    function mowCells(cells: MowCell[], onDone: () => void) {
+      if (mowing || cells.length === 0) {
+        if (!mowing) onDone();
+        return;
+      }
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const order = mowRoute(cells);
+      const taken = new Set([...drawn.values()].map((g) => g.userData.cell as string));
+
+      // النبتات المخصومة تُرسم في خاناتها مؤقتًا لتقصّها الجزّازة. خانة نمت
+      // فيها نبتة جديدة بعد الخصم تمرّ عليها الجزّازة دون رسم شيء
+      const doomed = order.map((i, k) => {
+        const c = cells[i];
+        if (taken.has(`${c.x},${c.y}`)) return null;
+        const g = buildPlant(c.tier, 900000 + k, detail);
+        const [x, y, z] = gridToWorld(c.x, c.y);
+        g.position.add(new THREE.Vector3(x, y, z));
+        g.userData.baseScale = g.scale.x;
+        scene.add(g);
+        return g;
+      });
+
+      // حلقة حمراء تحت كل نبتة ستُزال: يرى الطالب ما ستقصّه الجزّازة قبل أن تصله
+      const ringGeo = new THREE.RingGeometry(TILE * 0.3, TILE * 0.42, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xff5a4e, transparent: true, opacity: 0.85, depthWrite: false });
+      const rings = order.map((i) => {
+        const [x, , z] = gridToWorld(cells[i].x, cells[i].y);
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(x, 0.06, z);
+        scene.add(ring);
+        return ring;
+      });
+
+      const mower = buildMower();
+      const clips = clippingParts();
+      const flying: { mesh: THREE.Mesh; v: THREE.Vector3; life: number }[] = [];
+      let raf = 0;
+      let ended = false;
+
+      const finish = (notify: boolean) => {
+        if (ended) return;
+        ended = true;
+        cancelAnimationFrame(raf);
+        for (const g of doomed) if (g) scene.remove(g);
+        for (const r of rings) scene.remove(r);
+        ringGeo.dispose();
+        ringMat.dispose();
+        for (const f of flying) scene.remove(f.mesh);
+        scene.remove(mower.group);
+        mower.dispose();
+        clips.dispose();
+        mowing = null;
+        dirty = true;
+        if (notify) onDone();
+      };
+      mowing = { finish };
+
+      if (reduced) {
+        finish(true);
+        return;
+      }
+
+      // المسار: من حافة البستان إلى أول خانة، ثم الخانات، ثم الخروج من الحافة
+      const pts = order.map((i) => {
+        const [x, , z] = gridToWorld(cells[i].x, cells[i].y);
+        return { x, z };
+      });
+      const inside = (v: number, lo: number, hi: number) => Math.max(lo + TILE * 0.6, Math.min(hi - TILE * 0.6, v));
+      const entry = { x: inside(pts[0].x - TILE * 2.5, field.min.x, field.max.x), z: pts[0].z };
+      const last = pts[pts.length - 1];
+      const exit = { x: inside(last.x + TILE * 2.5, field.min.x, field.max.x), z: last.z };
+      const path = [entry, ...pts, exit];
+      const cum = cumulative(path);
+      const total = Math.max(0.001, cum[cum.length - 1]);
+      // بين ثلاث ثوانٍ وسبع مهما تباعدت الخانات
+      const duration = Math.max(3000, Math.min(7000, (total / 3.2) * 1000));
+      const speed = total / duration;
+
+      // الكاميرا تقترب من مكان الخصم، ثم تعود لإطار البستان كاملًا
+      const area = new THREE.Box3();
+      for (const q of path) area.expandByPoint(new THREE.Vector3(q.x, 0, q.z));
+      area.expandByVector(new THREE.Vector3(TILE * 1.5, 0, TILE * 1.5));
+      area.max.y = 1.6;
+      // تقترب الكاميرا فقط إن كان مكان الخصم أصغر من البستان بوضوح؛ وإلا
+      // يبقى الإطار الكامل فلا يُقصّ طرف البستان بلا فائدة
+      const fitted = frameFor(area, 1.15);
+      const close =
+        fitted.zoom > zoom * 1.25
+          ? { ...fitted, zoom: Math.min(fitted.zoom, zoom * 2.2, MAX_ZOOM) }
+          : { x: panX, y: panY, z: panZ, zoom };
+
+      // أكبر قليلًا من النبتات: هي بطلة اللحظة
+      const MOWER_SCALE = 1.4;
+      mower.group.position.set(entry.x, 0, entry.z);
+      mower.group.scale.setScalar(0.01);
+      scene.add(mower.group);
+
+      const spray = (at: THREE.Vector3, n: number, power: number) => {
+        for (let j = 0; j < n && flying.length < 160; j++) {
+          const mesh = new THREE.Mesh(clips.geometry, clips.materials[j % clips.materials.length]);
+          mesh.position.copy(at);
+          mesh.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+          const a = Math.random() * Math.PI * 2;
+          const r = (0.6 + Math.random()) * power;
+          flying.push({ mesh, v: new THREE.Vector3(Math.cos(a) * r, (2.2 + Math.random() * 1.6) * power, Math.sin(a) * r), life: 0.9 });
+          scene.add(mesh);
+        }
+      };
+
+      const cut = new Set<number>();
+      let traveled = 0;
+      let heading = Math.atan2(pts[0].x - entry.x, pts[0].z - entry.z || 1);
+      let lastSpray = 0;
+      let phase: "in" | "run" | "out" = "in";
+      let phaseStart = 0;
+      let last0 = performance.now();
+
+      const step = (now: number) => {
+        // سقف ربع ثانية لا عشرين ملّيثانية: على جهاز بطيء تبقى الجزّازة بسرعتها
+        // الحقيقية بدل أن تزحف دقيقة كاملة
+        const dt = Math.min(250, now - last0);
+        last0 = now;
+        if (phase === "in") {
+          const t = Math.min(1, (now - phaseStart) / 700);
+          mower.group.scale.setScalar(Math.max(0.01, t) * MOWER_SCALE);
+          if (t >= 1) {
+            phase = "run";
+            phaseStart = now;
+          }
+        } else if (phase === "run") {
+          traveled = Math.min(total, traveled + speed * dt);
+          const p = pointAt(path, cum, traveled);
+          const target = Math.atan2(p.dx, p.dz);
+          let diff = target - heading;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          heading += diff * Math.min(1, dt / 120);
+          mower.group.position.set(p.x, Math.abs(Math.sin(now / 45)) * 0.03, p.z);
+          mower.group.rotation.y = heading;
+          for (const w of mower.wheels) w.rotation.x += (speed * dt) / 0.17;
+
+          // قصّ كل نبتة حين تبلغها الجزّازة
+          for (let k = 0; k < doomed.length; k++) {
+            if (cut.has(k) || traveled < cum[k + 1] - 0.25) continue;
+            cut.add(k);
+            scene.remove(rings[k]);
+            const g = doomed[k];
+            const at = new THREE.Vector3(path[k + 1].x, 0.35, path[k + 1].z);
+            spray(at, 18, 1);
+            if (g) {
+              const base = (g.userData.baseScale as number) ?? 1;
+              const t0 = now;
+              const shrink = () => {
+                if (ended) return;
+                const t = Math.min(1, (performance.now() - t0) / 320);
+                g.scale.set(base * (1 + t * 0.3), base * Math.max(0.01, 1 - t), base * (1 + t * 0.3));
+                g.rotation.z = t * 0.6;
+                dirty = true;
+                if (t < 1) requestAnimationFrame(shrink);
+                else scene.remove(g);
+              };
+              shrink();
+            }
+          }
+          // قصاصات تتطاير من جانب الجزّازة وهي تمشي
+          if (now - lastSpray > 70) {
+            lastSpray = now;
+            spray(new THREE.Vector3(p.x, 0.25, p.z), 2, 0.55);
+          }
+          if (traveled >= total) {
+            phase = "out";
+            phaseStart = now;
+            tweenCamera(base0, 900);
+          }
+        } else {
+          const t = Math.min(1, (now - phaseStart) / 500);
+          mower.group.scale.setScalar(Math.max(0.01, 1 - t) * MOWER_SCALE);
+        }
+        // الحلقات تنبض حتى تصلها الجزّازة
+        ringMat.opacity = 0.55 + Math.sin(now / 160) * 0.3;
+
+        for (let j = flying.length - 1; j >= 0; j--) {
+          const f = flying[j];
+          f.life -= dt / 1000;
+          f.v.y -= 9 * (dt / 1000);
+          f.mesh.position.addScaledVector(f.v, dt / 1000);
+          f.mesh.rotation.x += dt / 90;
+          if (f.life <= 0 || f.mesh.position.y < 0) {
+            scene.remove(f.mesh);
+            flying.splice(j, 1);
+          }
+        }
+        dirty = true;
+
+        if (phase === "out" && now - phaseStart > 950 && flying.length === 0) {
+          finish(true);
+          return;
+        }
+        raf = requestAnimationFrame(step);
+      };
+
+      // الإطار الكامل الذي تعود إليه الكاميرا في النهاية
+      const base0 = { x: panX, y: panY, z: panZ, zoom };
+      dirty = true;
+      tweenCamera(close, 800, () => {
+        if (ended) return;
+        phaseStart = performance.now();
+        last0 = phaseStart;
+        raf = requestAnimationFrame(step);
+      });
     }
 
     // ── الترتيب ──
@@ -535,6 +796,13 @@ export default function FarmScene({
         fitToPlants();
         applyCamera();
       },
+      mow: mowCells,
+      skipMow: () => {
+        if (!mowing) return;
+        mowing.finish(true);
+        fitToPlants();
+        applyCamera();
+      },
       sync: (next) => {
         // الإضافة وحدها تفترض أن النبتات القائمة ثابتة وأن السور يسعها. إن
         // انتقلت نبتة (إعادة ترتيب البستان) أو خرجت الجديدة عن السور، يُعاد
@@ -564,6 +832,7 @@ export default function FarmScene({
     };
 
     return () => {
+      mowing?.finish(false);
       cancelAnimationFrame(raf);
       observer.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
@@ -592,6 +861,18 @@ export default function FarmScene({
   useEffect(() => {
     apiRef.current?.sync(plants);
   }, [plants]);
+
+  // الجزّازة تبدأ حين يصل خصمٌ لم يُرَ؛ وإن أُعيد بناء المشهد أثناءها تُعاد
+  const mowKey = mow?.key;
+  useEffect(() => {
+    const m = mowRef.current;
+    if (!m || !mowKey) return;
+    apiRef.current?.mow(m.cells, () => mowRef.current?.onDone());
+  }, [mowKey, epoch]);
+
+  useEffect(() => {
+    if (skipMow > 0) apiRef.current?.skipMow();
+  }, [skipMow]);
 
   return (
     // يملأ أقرب سلف مُموضَع بدل أن يقيس نفسه بمحتواه. أبناؤه كلهم absolute،

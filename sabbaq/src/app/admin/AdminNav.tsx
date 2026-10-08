@@ -72,6 +72,20 @@ const ITEMS: { href: string; key: TranslationKey; hue: string; icon: React.React
     ),
   },
   {
+    // الخصم صفحة خارج اللوحة يشاركها المدير و«الليدر»
+    href: "/deduct",
+    hue: "var(--coral-fill)",
+    key: "deductLink",
+    icon: (
+      <>
+        <path d="M4 18h12l3-5H7z" />
+        <circle cx="7" cy="19" r="2" />
+        <circle cx="16" cy="19" r="2" />
+        <path d="M7 13l-3-8" />
+      </>
+    ),
+  },
+  {
     href: "/admin/semesters",
     hue: "var(--berry)",
     key: "semesters",

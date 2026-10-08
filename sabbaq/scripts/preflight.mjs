@@ -116,6 +116,15 @@ async function run() {
     keysMissing ? "غير مطبَّق — نفّذ supabase/migrations/0007_tier_limits_links_keys.sql" : "نعم",
   );
 
+  // ── 0008: الخصم. العرض العام garden_deductions مقروء لـ anon، فغيابه يعني
+  //    أن الملف لم يُنفَّذ ──
+  const { error: mowErr } = await db.from("garden_deductions").select("id").limit(1);
+  record(
+    !mowErr,
+    "0008 مطبَّق (الخصم والجزّازة)",
+    mowErr ? "غير مطبَّق — نفّذ supabase/migrations/0008_deductions.sql" : "نعم",
+  );
+
   // ── وجود award_points: نستدعيه بمعرّف وهمي بلا جلسة، والمتوقّع رفض
   //    الصلاحية لا «الدالة غير موجودة» ──
   const { error: awardErr } = await db.rpc("award_points", {

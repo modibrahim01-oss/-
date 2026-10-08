@@ -18,6 +18,7 @@ export default async function AdminOverview() {
     { data: farms },
     { data: staff },
     { data: groupTotals },
+    { data: groupRows },
   ] = await Promise.all([
     supabase.from("semesters").select("*").eq("is_active", true).maybeSingle(),
     supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
@@ -31,6 +32,7 @@ export default async function AdminOverview() {
     // «أعلى مجموعة» تحتاج كل الطلاب لا العشرة الأوائل: مجموعة من متوسّطين
     // كثيرين تتقدّم على مجموعة فيها متصدّر واحد، وهذا لا يظهر في قائمة مقصوصة.
     supabase.from("student_farms").select("group_name_ar, group_name_en, total_points"),
+    supabase.from("groups").select("id, name_ar, name_en").order("sort_order"),
   ]);
 
   const pointsToday = (todayPoints ?? []).reduce((sum, r) => sum + (r.points as number), 0);
@@ -105,6 +107,21 @@ export default async function AdminOverview() {
         />
       </div>
 
+      {/* شاشة عرض لكل مجموعة: تُفتح على شاشة القاعة أو يرسلها المدير لمشرفها */}
+      <Card>
+        <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>{t(locale, "groupScreens")}</h2>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href="/tv" target="_blank" rel="noopener" style={screenChip(true)}>
+            {t(locale, "tvMode")}
+          </a>
+          {(groupRows ?? []).map((g) => (
+            <a key={g.id as number} href={`/tv/${g.id}`} target="_blank" rel="noopener" style={screenChip(false)}>
+              {(locale === "ar" ? g.name_ar : g.name_en) as string}
+            </a>
+          ))}
+        </div>
+      </Card>
+
       <Card>
         <h2 style={{ fontSize: 16, margin: "0 0 14px" }}>{t(locale, "topStudents")}</h2>
         {top.length === 0 ? (
@@ -144,6 +161,19 @@ export default async function AdminOverview() {
       </Card>
     </div>
   );
+}
+
+function screenChip(all: boolean): React.CSSProperties {
+  return {
+    fontSize: 14,
+    fontWeight: 700,
+    padding: "6px 14px",
+    borderRadius: 999,
+    textDecoration: "none",
+    color: all ? "var(--on-fill)" : "var(--ink)",
+    background: all ? "var(--sky)" : "var(--surface)",
+    border: "2px solid var(--outline)",
+  };
 }
 
 function Kpi({

@@ -6,6 +6,7 @@ import {
   createSupervisor,
   setSupervisorActive,
   setSupervisorGroups,
+  setCanDeduct,
   setValueCommittee,
 } from "@/lib/actions/admin";
 import { actionErrorText, roleLabel, t } from "@/lib/i18n";
@@ -23,6 +24,7 @@ type StaffRow = {
   isActive: boolean;
   groupIds: number[];
   valueCommittee?: boolean;
+  canDeduct?: boolean;
 };
 
 
@@ -41,6 +43,7 @@ export default function SupervisorsManager({
   groups,
   staff,
   tiersReady = false,
+  deductReady = false,
   roleLimits = {},
   overrides = {},
 }: {
@@ -48,6 +51,7 @@ export default function SupervisorsManager({
   groups: Group[];
   staff: StaffRow[];
   tiersReady?: boolean;
+  deductReady?: boolean;
   roleLimits?: Record<string, Record<Tier, number>>;
   overrides?: Record<string, Partial<Record<Tier, number>>>;
 }) {
@@ -220,6 +224,7 @@ export default function SupervisorsManager({
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       <Badge tone={roleTone(u.role)}>{roleLabel(locale, u.role)}</Badge>
                       {u.valueCommittee && <Badge tone="sky">{t(locale, "valueCommittee")}</Badge>}
+                      {u.canDeduct && <Badge tone="coral">{t(locale, "leaderBadge")}</Badge>}
                     </div>
                   </Td>
                   <Td muted>
@@ -287,6 +292,26 @@ export default function SupervisorsManager({
                         >
                           {u.valueCommittee ? "✓ " : ""}
                           {t(locale, "valueCommittee")}
+                        </button>
+                      )}
+                      {u.role !== "admin" && deductReady && (
+                        <button
+                          type="button"
+                          className="press"
+                          disabled={pending}
+                          title={t(locale, "deductPermissionHint")}
+                          onClick={() => run(() => setCanDeduct(u.id, !u.canDeduct))}
+                          aria-pressed={Boolean(u.canDeduct)}
+                          style={{
+                            ...buttonStyle(),
+                            padding: "5px 10px",
+                            fontSize: 12,
+                            background: u.canDeduct ? "var(--coral-fill)" : "var(--surface)",
+                            color: u.canDeduct ? "var(--on-fill)" : "var(--ink)",
+                          }}
+                        >
+                          {u.canDeduct ? "✓ " : ""}
+                          {t(locale, "deductPermission")}
                         </button>
                       )}
                       {u.role !== "admin" && tiersReady && (

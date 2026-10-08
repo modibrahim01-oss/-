@@ -7,6 +7,7 @@ import { signOut } from "@/app/login/actions";
 import { fetchDailyStatus } from "@/lib/actions/award";
 import { roleLabel, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { groupSegment } from "@/lib/tv-data";
 import { createClient } from "@/lib/supabase/server";
 import type { CommitteeGrant, Group, GrantRecipient, StaffUser, StudentFarmSummary } from "@/lib/types";
 import AwardPanel from "./AwardPanel";
@@ -94,14 +95,18 @@ export default async function SupervisorPage() {
       .order("awarded_at", { ascending: false })
       .limit(12);
 
-  const [status, todayFirst, grantsRes, vcRes] = await Promise.all([
+  const [status, todayFirst, grantsRes, vcRes, cdRes] = await Promise.all([
     fetchDailyStatus(),
     todayQuery("id, student_id, points, tier, awarded_at, grant_id, students(full_name)"),
     // أرصدة اللجنة القيمية وصلاحيتها (0007). غيابها قبل تشغيل الملف يُخفي
     // القسم بدل أن يكسر الصفحة
     supabase.rpc("my_grants"),
     supabase.from("users").select("value_committee").eq("id", staff.id).maybeSingle(),
+    // صلاحية الخصم (0008)
+    supabase.from("users").select("can_deduct").eq("id", staff.id).maybeSingle(),
   ]);
+  const canDeduct =
+    !cdRes.error && (staff.role === "admin" || Boolean((cdRes.data as { can_deduct?: boolean } | null)?.can_deduct));
   // grant_id عمود من 0007: قبله يُعاد الاستعلام بدونه
   const { data: todayRows } = todayFirst.error
     ? await todayQuery("id, student_id, points, tier, awarded_at, students(full_name)")
@@ -148,6 +153,43 @@ export default async function SupervisorPage() {
               justifyContent: "flex-end",
             }}
           >
+            {/* شاشة العرض: مشرف المجموعة يعرض سباق مجموعته وحدها */}
+            <a
+              href={staff.role === "group_supervisor" && groupIds.length > 0 ? `/tv/${groupSegment(groupIds)}` : "/tv"}
+              target="_blank"
+              rel="noopener"
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                padding: "7px 14px",
+                borderRadius: 999,
+                color: "var(--on-fill)",
+                background: "var(--sky)",
+                border: "2.5px solid var(--outline)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t(locale, staff.role === "group_supervisor" && groupIds.length > 0 ? "myGroupScreen" : "tvMode")}
+            </a>
+            {canDeduct && (
+              <Link
+                href="/deduct"
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  padding: "7px 14px",
+                  borderRadius: 999,
+                  color: "var(--on-fill)",
+                  background: "var(--coral-fill)",
+                  border: "2.5px solid var(--outline)",
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t(locale, "deductLink")}
+              </Link>
+            )}
             {staff.role === "admin" && (
               <Link
                 href="/admin"

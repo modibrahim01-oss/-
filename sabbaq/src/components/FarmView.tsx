@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Brand } from "@/components/Brand";
-import FarmScene from "@/components/FarmScene";
+import FarmScene, { type MowCell } from "@/components/FarmScene";
 import RankBadge from "@/components/RankBadge";
 import TierLegend from "@/components/TierLegend";
 import { LangToggle, ThemeToggle } from "@/components/Toggles";
@@ -14,14 +14,23 @@ import { MilestoneCelebration, MilestonesCard, useMilestoneCelebration } from "@
 import { createRestClient } from "@/lib/supabase/rest";
 import { resetArrangement, saveArrangement } from "@/lib/actions/farm";
 import { formatNumber, localizeDigits, t } from "@/lib/i18n";
-import { TIER_LIST } from "@/lib/tiers";
+import { TIER_LIST, isTier } from "@/lib/tiers";
 import { useLocale } from "@/lib/useLocale";
 
 /**
  * واجهة صفحة البستان. النبتات والإحصاءات تصل من الخادم جاهزة فتُرسم فورًا،
  * ثم تُعاد قراءتها من المتصفح لتلحق بما فات النسخةَ المخزَّنة.
  */
-export default function FarmView({ id, initial }: { id: string; initial: FarmData }) {
+export default function FarmView({
+  id,
+  initial,
+  demoDeductions,
+}: {
+  id: string;
+  initial: FarmData;
+  /** معاينة /dev فقط: خصومات ثابتة بدل القراءة من القاعدة */
+  demoDeductions?: GardenDeduction[];
+}) {
   const locale = useLocale();
   const [data, setData] = useState(initial);
   const { farm, plants, rank } = data;
@@ -178,6 +187,9 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
     return () => clearTimeout(timer);
   }, [grown]);
 
+  // ── الجزّازة: خصومات لم يرها هذا الجهاز بعد ──
+  const mower = useMower(id, initial.farm.semester_id, demoDeductions);
+
   const counts = countByTier(plants);
   const typesCollected = TIER_LIST.filter((s) => counts[s.tier] > 0).length;
   const { celebrating, dismiss } = useMilestoneCelebration(id, farm.total_points, typesCollected);
@@ -280,7 +292,7 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
             className="pop farm-stage"
             style={{ position: "relative", background: "var(--scene-sky)", borderRadius: 26, overflow: "hidden" }}
           >
-            {plants.length === 0 ? (
+            {plants.length === 0 && !mower.active ? (
               <div style={{ padding: 32, display: "grid", placeItems: "center", height: "100%" }}>
                 <EmptyState title={t(locale, "emptyFarm")} hint={t(locale, "emptyFarmHint")} />
               </div>
@@ -288,6 +300,8 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
               <FarmScene
                 key={sceneKey}
                 plants={plants}
+                mow={mower.mow}
+                skipMow={mower.skipCount}
                 arrange={
                   arranging
                     ? {
@@ -357,7 +371,11 @@ export default function FarmView({ id, initial }: { id: string; initial: FarmDat
                 <span className="hint-touch">{t(locale, "dragToPanTouch")}</span>
               </div>
             )}
-            {celebrating && <MilestoneCelebration locale={locale} milestone={celebrating} onDone={dismiss} />}
+            {celebrating && !mower.active && !mower.summary && (
+              <MilestoneCelebration locale={locale} milestone={celebrating} onDone={dismiss} />
+            )}
+            {mower.active && <MowingBanner locale={locale} onSkip={mower.skip} />}
+            {mower.summary && <MowedCard locale={locale} items={mower.summary} onClose={mower.close} />}
             {grown > 0 && (
               <div
                 role="status"
@@ -539,5 +557,192 @@ function ArrangeBar({
         {t(locale, "saveArrangement")}
       </button>
     </div>
+  );
+}
+
+export type GardenDeduction = { id: number; tier: string; points: number; grid_x: number; grid_y: number };
+
+const MOWED_PREFIX = "sabbaq-mowed:";
+
+/**
+ * الخصومات التي لم يرها هذا الجهاز: تُقرأ من garden_deductions (بلا السبب
+ * ولا الفاعل)، فتمرّ الجزّازة عليها مرّة واحدة، ثم تبقى بطاقة تشرح ما حدث
+ * حتى يغلقها الطالب.
+ *
+ * ما رُئي يُحفظ في المتصفح كإنجازات البستان: الطالب لا يسجّل دخولًا. على جهاز
+ * آخر (ولي الأمر) تمرّ الجزّازة مرّة أيضًا — وهذا مقصود.
+ */
+function useMower(id: string, semesterId: string, demo?: GardenDeduction[]) {
+  const [pending, setPending] = useState<GardenDeduction[] | null>(null);
+  const [summary, setSummary] = useState<GardenDeduction[] | null>(null);
+  const [skipCount, setSkipCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (demo) {
+      setPending(demo);
+      return;
+    }
+    void (async () => {
+      const { data, error } = await createRestClient()
+        .from("garden_deductions")
+        .select("id, tier, points, grid_x, grid_y")
+        .eq("student_id", id)
+        .eq("semester_id", semesterId)
+        .order("created_at");
+      // قبل تشغيل 0008 لا يوجد العرض: لا جزّازة ولا خطأ
+      if (cancelled || error || !data) return;
+      let seen = new Set<number>();
+      try {
+        seen = new Set(JSON.parse(localStorage.getItem(MOWED_PREFIX + id) ?? "[]") as number[]);
+      } catch {
+        // تخزين محجوب: تمرّ الجزّازة ولا نتذكّر
+      }
+      const fresh = (data as GardenDeduction[]).filter((d) => !seen.has(d.id) && isTier(d.tier));
+      if (fresh.length > 0) setPending(fresh);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, semesterId, demo]);
+
+  const done = () => {
+    if (!pending) return;
+    try {
+      const seen = new Set(JSON.parse(localStorage.getItem(MOWED_PREFIX + id) ?? "[]") as number[]);
+      for (const d of pending) seen.add(d.id);
+      localStorage.setItem(MOWED_PREFIX + id, JSON.stringify([...seen]));
+    } catch {
+      // انظر أعلاه
+    }
+    setSummary(pending);
+    setPending(null);
+  };
+
+  const mow = pending
+    ? {
+        key: pending.map((d) => d.id).join(","),
+        cells: pending.map((d): MowCell => ({ x: d.grid_x, y: d.grid_y, tier: d.tier as MowCell["tier"] })),
+        onDone: done,
+      }
+    : null;
+
+  return {
+    mow,
+    active: pending !== null,
+    summary,
+    skipCount,
+    skip: () => setSkipCount((n) => n + 1),
+    close: () => setSummary(null),
+  };
+}
+
+function MowingBanner({ locale, onSkip }: { locale: ReturnType<typeof useLocale>; onSkip: () => void }) {
+  return (
+    <div
+      role="status"
+      className="pop pop-in"
+      style={{
+        position: "absolute",
+        top: 14,
+        insetInline: 14,
+        marginInline: "auto",
+        width: "fit-content",
+        maxWidth: "calc(100% - 28px)",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "8px 10px 8px 16px",
+        borderRadius: 999,
+        fontWeight: 700,
+        background: "var(--coral-fill)",
+        color: "var(--on-fill)",
+        zIndex: 6,
+      }}
+    >
+      <MowerIcon size={26} />
+      <span>{t(locale, "mowerPassing")}</span>
+      <button
+        type="button"
+        onClick={onSkip}
+        className="press"
+        style={{ ...buttonStyle(), padding: "4px 12px", fontSize: 13 }}
+      >
+        {t(locale, "mowerSkip")}
+      </button>
+    </div>
+  );
+}
+
+/** ما أزالته الجزّازة، مجمّعًا بنوع النبتة. يبقى حتى يُغلق: الخصم لا يُخفى. */
+function MowedCard({
+  locale,
+  items,
+  onClose,
+}: {
+  locale: ReturnType<typeof useLocale>;
+  items: GardenDeduction[];
+  onClose: () => void;
+}) {
+  const byTier = TIER_LIST.map((spec) => ({
+    spec,
+    n: items.filter((d) => d.tier === spec.tier).length,
+  })).filter((r) => r.n > 0);
+  const total = items.reduce((sum, d) => sum + d.points, 0);
+  return (
+    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 16, zIndex: 6, background: "rgba(20, 18, 40, 0.25)" }}>
+      <div
+        role="alertdialog"
+        aria-label={t(locale, "mowerPassed")}
+        className="pop pop-in"
+        style={{
+          padding: "20px 24px",
+          borderRadius: 24,
+          background: "var(--surface)",
+          display: "grid",
+          justifyItems: "center",
+          gap: 10,
+          minWidth: 240,
+          textAlign: "center",
+          borderColor: "var(--coral-fill)",
+        }}
+      >
+        <MowerIcon size={64} />
+        <strong style={{ fontFamily: "var(--font-display)", fontSize: 24 }}>{t(locale, "mowerPassed")}</strong>
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}>
+          {byTier.map(({ spec, n }) => (
+            <li key={spec.tier} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", fontWeight: 700 }}>
+              <span>{locale === "ar" ? spec.labelAr : spec.labelEn}</span>
+              {n > 1 && <span className="tabular">×{formatNumber(locale, n)}</span>}
+              <span className="tabular" style={{ color: "var(--coral)" }}>
+                −{formatNumber(locale, spec.points * n)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <span className="tabular" style={{ fontSize: 15, fontWeight: 700, color: "var(--coral)" }}>
+          −{formatNumber(locale, total)} {t(locale, "points")}
+        </span>
+        <button type="button" onClick={onClose} className="press" style={{ ...buttonStyle("primary"), marginTop: 4 }}>
+          {t(locale, "ok")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** جزّازة مرسومة: جسم أحمر وعجلتان ومقبض. */
+function MowerIcon({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 48 40" width={size} height={(size * 40) / 48} aria-hidden>
+      <path d="M30 22 L44 4" stroke="#24222e" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M40 4 h7" stroke="#24222e" strokeWidth="4" strokeLinecap="round" />
+      <rect x="4" y="18" width="30" height="12" rx="4" fill="#e8452c" stroke="#24222e" strokeWidth="2.5" />
+      <rect x="10" y="12" width="16" height="8" rx="3" fill="#b3301c" stroke="#24222e" strokeWidth="2.5" />
+      <circle cx="11" cy="32" r="5" fill="#24222e" />
+      <circle cx="28" cy="32" r="5" fill="#24222e" />
+      <circle cx="11" cy="32" r="2" fill="#b9bfc6" />
+      <circle cx="28" cy="32" r="2" fill="#b9bfc6" />
+    </svg>
   );
 }

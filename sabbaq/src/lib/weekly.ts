@@ -49,22 +49,32 @@ export async function loadWeeklyStars(
   supabase: Pick<PostgrestClient, "from">,
   limit: number,
   now: number = Date.now(),
+  groupIds: readonly number[] | null = null,
 ): Promise<WeeklyStar[]> {
   try {
     const { data: semester } = await supabase.from("semesters").select("id").eq("is_active", true).maybeSingle();
     if (!semester) return [];
 
+    // شاشة مجموعة: السباق بين طلابها وحدهم. السجل لا يحمل المجموعة، فتُجلب
+    // معرّفات طلابها أولًا
+    let studentIds: string[] | null = null;
+    if (groupIds) {
+      const { data: members } = await supabase.from("students").select("id").in("group_id", [...groupIds]).eq("is_active", true);
+      studentIds = (members ?? []).map((m) => m.id as string);
+      if (studentIds.length === 0) return [];
+    }
+
     const since = new Date(now - WEEK_MS).toISOString();
-    const rows = await fetchAll<LedgerRow>((from, to) =>
-      supabase
+    const rows = await fetchAll<LedgerRow>((from, to) => {
+      let q = supabase
         .from("points_ledger")
         .select("student_id, points")
         .eq("semester_id", semester.id)
         .is("revoked_at", null)
-        .gte("awarded_at", since)
-        .order("id")
-        .range(from, to),
-    );
+        .gte("awarded_at", since);
+      if (studentIds) q = q.in("student_id", studentIds);
+      return q.order("id").range(from, to);
+    });
 
     const top = rankWeekly(rows, limit);
     if (top.length === 0) return [];

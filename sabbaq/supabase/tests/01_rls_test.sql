@@ -55,7 +55,7 @@ truncate points_ledger, supervisor_groups, students, audit_log,
          semester_archives restart identity cascade;
 update daily_limits set updated_by = null;
 update tier_limits set updated_by = null;
-truncate supervisor_tier_limits, staff_login_keys, committee_grants cascade;
+truncate supervisor_tier_limits, staff_login_keys, committee_grants, deductions cascade;
 delete from users;
 delete from auth.users;
 
@@ -857,6 +857,123 @@ begin
   perform assert(v_err like '%GRANT_NOT_AVAILABLE%', '18u. a withdrawn grant cannot be used');
   perform assert((select count(*) from points_ledger where grant_id = v_grant and revoked_at is null) = 2,
     '18v. plants already awarded from it stay in the students'' farms');
+end;
+$$;
+
+-- ── 19. الخصم بيد «الليدر» ──────────────────────────────────────────────
+do $$
+declare
+  v_err text; v_res jsonb; v_n integer; v_g1 bigint; v_g2 bigint; v_r1 bigint;
+  v_before integer; v_used integer; v_d bigint; v_j jsonb;
+begin
+  insert into students (id, full_name, group_id) values
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'طالب الخصم', 4);
+
+  -- المدير بلا حد: سنبلتان وشجرة
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  v_g1 := (award_points('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green')->>'ledger_id')::bigint;
+  v_g2 := (award_points('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green')->>'ledger_id')::bigint;
+  v_r1 := (award_points('cccccccc-cccc-cccc-cccc-cccccccccccc', 'red')->>'ledger_id')::bigint;
+  select total_points into v_before from student_farms where student_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222',
+    $q$select deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green', 'إزعاج في الحلقة')$q$);
+  perform assert(v_err like '%NOT_ALLOWED%', '19a. a supervisor without the permission CANNOT deduct');
+
+  v_err := try_as('11111111-1111-1111-1111-111111111111',
+    $q$select deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green', ' ')$q$);
+  perform assert(v_err like '%REASON_REQUIRED%', '19b. a deduction needs a reason');
+
+  v_err := try_as('11111111-1111-1111-1111-111111111111',
+    $q$select deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'purple', 'تأخر')$q$);
+  perform assert(v_err like '%NO_PLANT_OF_TIER%', '19c. nothing to deduct from a type the student lacks');
+
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  v_res := deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green', 'إزعاج في الحلقة');
+  perform assert((select revoke_reason from points_ledger where id = v_g2) = 'deduction'
+    and (select revoked_at from points_ledger where id = v_g1) is null,
+    '19d. the admin deducts the NEWEST plant of that type');
+  perform assert((select total_points from student_farms where student_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc') = v_before - 10,
+    '19e. the student''s points drop by the plant''s value');
+
+  -- صلاحية «الليدر» لمشرف قبس: يخصم من أي مجموعة
+  update users set can_deduct = true where id = '33333333-3333-3333-3333-333333333333';
+  v_err := try_as('33333333-3333-3333-3333-333333333333',
+    $q$select deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'red', 'لم يحضر')$q$);
+  perform assert(v_err is null, '19f. a leader deducts from a student in ANY group');
+  select id into v_d from deductions where actor_id = '33333333-3333-3333-3333-333333333333' order by id desc limit 1;
+
+  -- العامّة ترى مكان الخصم بلا سببه ولا فاعله
+  set local role anon;
+  select count(*) into v_n from garden_deductions where student_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+  reset role;
+  perform assert(v_n = 2, '19g. anon reads where the mower passed');
+  perform assert(not exists (select 1 from information_schema.columns
+                              where table_name = 'garden_deductions' and column_name in ('reason', 'actor_id')),
+    '19h. the public view carries no reason and no actor');
+  set local role anon;
+  begin
+    select count(*) into v_n from deductions;
+    v_err := null;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform assert(v_err is not null, '19i. anon CANNOT read the deductions table');
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  set local role authenticated;
+  select count(*) into v_n from deductions;
+  reset role;
+  perform assert(v_n = 0, '19j. other supervisors do NOT see deductions or reasons');
+  perform assert(jsonb_array_length(my_recent_deductions()) = 0, '19k. nor list them');
+
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+  v_j := my_recent_deductions();
+  perform assert(jsonb_array_length(v_j) = 1 and v_j->0->>'reason' = 'لم يحضر',
+    '19l. the leader lists their own deductions with reasons');
+
+  v_err := try_as('22222222-2222-2222-2222-222222222222', format($q$select undo_deduction(%s)$q$, v_d));
+  perform assert(v_err like '%UNDO_NOT_YOURS%', '19m. only the leader who deducted (or the admin) can undo');
+  v_err := try_as('33333333-3333-3333-3333-333333333333', format($q$select undo_deduction(%s)$q$, v_d));
+  perform assert(v_err is null and (select revoked_at from points_ledger where id = v_r1) is null,
+    '19n. undo within two minutes brings the tree back');
+
+  -- خانة السنبلة المخصومة يملؤها المنح التالي، فلا تراجع بعدها
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  select id into v_d from deductions where ledger_id = v_g2;
+  perform award_points('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green');
+  v_err := try_as('11111111-1111-1111-1111-111111111111', format($q$select undo_deduction(%s)$q$, v_d));
+  perform assert(v_err like '%CELL_TAKEN%', '19o. no undo once a new plant took the freed spot');
+
+  v_res := deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'red', 'تأخر');
+  update deductions set created_at = now() - interval '10 minutes' where id = (v_res->>'deduction_id')::bigint;
+  v_err := try_as('11111111-1111-1111-1111-111111111111',
+    format($q$select undo_deduction(%s)$q$, v_res->>'deduction_id'));
+  perform assert(v_err like '%UNDO_WINDOW_PASSED%', '19p. no undo after two minutes');
+
+  -- الخصم لا يعيد للمشرف مكانًا في حدّه اليومي
+  insert into supervisor_tier_limits (supervisor_id, tier, per_day)
+  values ('22222222-2222-2222-2222-222222222222', 'green', 50)
+  on conflict (supervisor_id, tier) do update set per_day = 50;
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  perform award_points('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green');
+  v_used := (my_daily_status()->'tiers'->'green'->>'used')::integer;
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+  perform deduct_plant('cccccccc-cccc-cccc-cccc-cccccccccccc', 'green', 'إزعاج');
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+  perform assert((my_daily_status()->'tiers'->'green'->>'used')::integer = v_used,
+    '19q. a deducted plant still counts against its supervisor''s daily limit');
+
+  set local role authenticated;
+  begin
+    insert into deductions (student_id, semester_id, actor_id, ledger_id, tier, points, grid_x, grid_y, reason)
+    select student_id, semester_id, '22222222-2222-2222-2222-222222222222', id, tier, points, grid_x, grid_y, 'x'
+      from points_ledger limit 1;
+    v_err := null;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform assert(v_err is not null, '19r. nobody writes deductions directly — only through the function');
 end;
 $$;
 

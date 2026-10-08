@@ -9,7 +9,7 @@ export default async function SupervisorsPage() {
   const locale = await getLocale();
   const supabase = await createClient();
 
-  const [{ data: groups }, { data: staff }, { data: assignments }, tierRes, overrideRes, vcRes] = await Promise.all([
+  const [{ data: groups }, { data: staff }, { data: assignments }, tierRes, overrideRes, vcRes, cdRes] = await Promise.all([
     supabase.from("groups").select("*").order("sort_order"),
     supabase
       .from("users")
@@ -20,7 +20,13 @@ export default async function SupervisorsPage() {
     supabase.from("supervisor_tier_limits").select("supervisor_id, tier, per_day"),
     // صلاحية اللجنة القيمية عمود من 0007: استعلام منفصل فلا يكسر غيابه القائمة
     supabase.from("users").select("id, value_committee"),
+    // صلاحية الخصم من 0008، بالطريقة نفسها
+    supabase.from("users").select("id, can_deduct"),
   ]);
+  const deductReady = !cdRes.error;
+  const canDeduct = new Set(
+    cdRes.error ? [] : (cdRes.data ?? []).filter((u) => u.can_deduct).map((u) => u.id as string),
+  );
   const valueCommittee = new Set(
     vcRes.error ? [] : (vcRes.data ?? []).filter((u) => u.value_committee).map((u) => u.id as string),
   );
@@ -54,6 +60,7 @@ export default async function SupervisorsPage() {
     isActive: u.is_active as boolean,
     groupIds: groupsBySupervisor.get(u.id as string) ?? [],
     valueCommittee: valueCommittee.has(u.id as string),
+    canDeduct: canDeduct.has(u.id as string),
   }));
 
   return (
@@ -64,6 +71,7 @@ export default async function SupervisorsPage() {
         groups={(groups ?? []) as Group[]}
         staff={rows}
         tiersReady={tiersReady}
+        deductReady={deductReady}
         roleLimits={roleLimits}
         overrides={overrides}
       />

@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import ArrangePreview from "./ArrangePreview";
 import FarmScene from "@/components/FarmScene";
-import { quadrantCoord } from "@/lib/layout";
+import { demoPlants, tierSequence } from "@/lib/demo-farm";
 import { TIER_LIST } from "@/lib/tiers";
-import type { Tier } from "@/lib/tiers";
 import type { Plant } from "@/lib/types";
 
 /**
@@ -16,52 +15,6 @@ import type { Plant } from "@/lib/types";
  *   /dev/farm-preview?seq=gyrpgpyyprrrrrrrrr   ← بستان حقيقي بترتيب منحها
  */
 export const dynamic = "force-dynamic";
-
-function seeded(seed: number) {
-  let s = (seed * 2654435761) % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-const LETTER: Record<string, Tier> = { g: "green", y: "yellow", p: "purple", r: "red" };
-
-/**
- * فئات النبتات بترتيب منحها: من `seq` إن وُجد، وإلا توزيع واقعي مولَّد.
- *
- * `seq` يعيد إنتاج بستان طالب حقيقي حرفًا بحرف — هكذا تُفحَص مشكلة يراها
- * المالك على الموقع الحيّ دون الوصول إلى قاعدة بياناته.
- */
-function tierSequence(count: number, seq: string | undefined, seed = 42): Tier[] {
-  if (seq) return [...seq].map((c) => LETTER[c]).filter((t): t is Tier => Boolean(t));
-  const rng = seeded(seed);
-  return Array.from({ length: count }, () => {
-    const r = rng();
-    // توزيع واقعي: الأخضر هو الغالب والأحمر نادر
-    return r < 0.5 ? "green" : r < 0.8 ? "yellow" : r < 0.95 ? "purple" : "red";
-  });
-}
-
-function demoPlants(tiers: Tier[]): Plant[] {
-  const plants: Plant[] = [];
-  // ترتيب كل نبتة داخل فئتها هو ما يحدّد موضعها، كما في award_points
-  const rank: Record<Tier, number> = { green: 0, yellow: 0, purple: 0, red: 0 };
-  for (let i = 0; i < tiers.length; i++) {
-    const tier = tiers[i];
-    const { x, y } = quadrantCoord(tier, rank[tier]++);
-    plants.push({
-      slot_index: i,
-      grid_x: x,
-      grid_y: y,
-      tier,
-      points: TIER_LIST.find((t) => t.tier === tier)!.points,
-      awarded_at: new Date().toISOString(),
-    });
-  }
-  return plants;
-}
 
 /** نبتة واحدة من كل فئة، متباعدة — الكاميرا تملأ بها الإطار فتُرى التفاصيل. */
 function showcasePlants(): Plant[] {

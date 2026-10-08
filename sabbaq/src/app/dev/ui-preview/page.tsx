@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import AdminNav from "@/app/admin/AdminNav";
 import StudentsManager from "@/app/admin/students/StudentsManager";
 import CommitteeSender from "@/app/supervisor/CommitteeSender";
+import DeductPanel from "@/app/deduct/DeductPanel";
 import type { CommitteeGrant } from "@/lib/types";
 import TierLimitsEditor from "@/app/admin/limits/TierLimitsEditor";
 import SupervisorLimitsForm from "@/app/admin/supervisors/SupervisorLimitsForm";
@@ -81,6 +82,32 @@ export default async function UiPreview({ searchParams }: { searchParams: Promis
       items: [{ tier: "yellow", quantity: 4, used: 1 }, { tier: "red", quantity: 1, used: 0 }],
     },
   ];
+
+  if (view === "deduct") {
+    return (
+      <>
+        {header}
+        <main style={{ maxWidth: 1080, margin: "0 auto", padding: "22px 16px 60px" }}>
+          <DeductPanel
+            locale={locale}
+            students={STUDENTS}
+            isAdmin
+            demoCounts={{ green: 6, yellow: 3, purple: 0, red: 2 }}
+            initialRecent={[
+              {
+                id: 1, student_id: STUDENTS[1].student_id, full_name: STUDENTS[1].full_name, tier: "red", points: 50,
+                reason: "إزعاج متكرر في الحلقة", created_at: new Date().toISOString(), undone_at: null, actor_name: "المدير",
+              },
+              {
+                id: 2, student_id: STUDENTS[2].student_id, full_name: STUDENTS[2].full_name, tier: "green", points: 10,
+                reason: "تأخر عن الحضور", created_at: new Date(Date.now() - 3600_000).toISOString(), undone_at: null, actor_name: "مالك الفريح",
+              },
+            ]}
+          />
+        </main>
+      </>
+    );
+  }
 
   if (view === "committee") {
     return (
