@@ -7,7 +7,8 @@ const compat = new FlatCompat({
 });
 
 const config = [
-  { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  // sabbaq تطبيق مستقل يلينت نفسه بإعداده الخاص
+  { ignores: [".next/**", "node_modules/**", "next-env.d.ts", "sabbaq/**"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 
