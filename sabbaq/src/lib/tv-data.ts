@@ -9,11 +9,15 @@ import { loadWeeklyStars, type WeeklyStar } from "./weekly";
  * بالاستعلامات نفسها مُصفّاةً بالمجموعة.
  *
  * لوحة الصدارة خمسون اسمًا من student_farms (أعمدة قليلة، استعلام واحد).
+ * شاشة المجموعة تعرض **كل** طلاب المجموعة، ومنهم من لم ينل نقطة بعد: المشرف
+ * يعرضها على طلابه، وغياب اسم أحدهم عنها يُفهم أنه نُسي.
  * أما البساتين فلأول اثني عشر وأبطال الأسبوع وحدهم: جلب نبتات خمسين طالبًا
  * يثقل الشاشة بآلاف الصفوف، ومن يُضغط اسمه خارجهم يُجلب بستانه عند الطلب.
  */
 
 export const BOARD_SIZE = 50;
+// سقف لشاشة المجموعة يحمي من استعلام بلا حدّ، وهو أكبر من أي مجموعة فعلية
+const GROUP_BOARD_CAP = 400;
 const ROSTER_SIZE = 12;
 const WEEKLY_SIZE = 3;
 
@@ -53,13 +57,14 @@ export async function loadTvData(supabase: Reader, groupIds: readonly number[] |
   let boardQuery = supabase
     .from("student_farms")
     .select("student_id, full_name, group_name_ar, group_name_en, total_points")
-    .gt("plant_count", 0)
     .order("total_points", { ascending: false })
-    .order("student_id")
-    .limit(BOARD_SIZE);
+    .order("full_name")
+    .order("student_id");
   if (groupIds) {
     topQuery = topQuery.in("group_id", [...groupIds]);
-    boardQuery = boardQuery.in("group_id", [...groupIds]);
+    boardQuery = boardQuery.in("group_id", [...groupIds]).limit(GROUP_BOARD_CAP);
+  } else {
+    boardQuery = boardQuery.gt("plant_count", 0).limit(BOARD_SIZE);
   }
 
   const [{ data: top }, { data: boardRows }, weekly] = await Promise.all([
